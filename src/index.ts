@@ -1,8 +1,10 @@
 import { Elysia } from "elysia";
 import { getCoinsRoute } from "./routes/getCoints";
+import { cryptoMoversRoutes } from "./routes/crypto-movers";
 
 const app = new Elysia()
   .use(getCoinsRoute)
+  .use(cryptoMoversRoutes)
   .get("/", () => "Hello Elysia")
   .listen(3000);
 
