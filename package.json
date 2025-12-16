@@ -10,6 +10,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@elysiajs/cors": "^1.4.0",
     "drizzle-orm": "^0.45.1",
     "elysia": "latest",
     "postgres": "^3.4.7"
