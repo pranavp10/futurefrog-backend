@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@elysiajs/cors": "^1.4.0",
+    "@solana/web3.js": "^1.98.4",
+    "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
     "elysia": "latest",
     "postgres": "^3.4.7"
