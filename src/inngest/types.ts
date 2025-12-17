@@ -8,7 +8,13 @@ type HelloWorldEvent = {
     };
 };
 
+// Crypto Snapshot event type (for manual triggering)
+type CryptoSnapshotEvent = {
+    name: "crypto/snapshot";
+    data: {};
+};
+
 // Union all events
-type AllEvents = HelloWorldEvent;
+type AllEvents = HelloWorldEvent | CryptoSnapshotEvent;
 
 export const schemas = new EventSchemas().fromUnion<AllEvents>();

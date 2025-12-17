@@ -1,3 +1,4 @@
 // Export all schema tables from this file
 export * from "./coints";
 export * from "./global_params";
+export * from "./crypto_performance_logs";
