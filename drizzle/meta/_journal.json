@@ -15,6 +15,13 @@
       "when": 1765984249975,
       "tag": "0001_superb_mathemanic",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1766058116833,
+      "tag": "0002_bored_starfox",
+      "breakpoints": true
     }
   ]
 }

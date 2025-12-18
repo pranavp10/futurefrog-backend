@@ -1,11 +1,12 @@
 import { Elysia } from 'elysia';
 import { db } from '../db';
-import { cryptoPerformanceLogs } from '../db/schema';
+import { cryptoPerformanceLogs, cryptoMarketCache } from '../db/schema';
 import {
     CoinGeckoMarketData,
     filterAndRankCryptos,
 } from '../lib/crypto-filters';
 import { randomUUID } from 'crypto';
+import { sql } from 'drizzle-orm';
 
 /**
  * Manual trigger route for crypto snapshot
@@ -50,7 +51,29 @@ export const triggerSnapshotRoute = new Elysia({ prefix: '/api' })
             console.log(`   🚀 Top gainer: ${topGainers[0]?.name} (${topGainers[0]?.price_change_percentage_24h}%)`);
             console.log(`   📉 Worst performer: ${worstPerformers[0]?.name} (${worstPerformers[0]?.price_change_percentage_24h}%)`);
 
-            // Step 3: Insert into database
+            // Step 3: Purge and populate cache table with all filtered data
+            await db.execute(sql`TRUNCATE TABLE crypto_market_cache`);
+            console.log(`   🗑️  Purged crypto_market_cache table`);
+
+            const cacheRecords = filteredData.map(coin => ({
+                roundId,
+                coingeckoId: coin.id,
+                symbol: coin.symbol,
+                name: coin.name,
+                imageUrl: coin.image,
+                currentPrice: coin.current_price.toString(),
+                marketCap: coin.market_cap?.toString() || null,
+                marketCapRank: coin.market_cap_rank || null,
+                totalVolume: coin.total_volume?.toString() || null,
+                volumeRank: coin.volume_rank || null,
+                priceChangePercentage24h: coin.price_change_percentage_24h.toString(),
+                snapshotTimestamp,
+            }));
+
+            await db.insert(cryptoMarketCache).values(cacheRecords);
+            console.log(`   💾 Inserted ${cacheRecords.length} records into crypto_market_cache`);
+
+            // Step 4: Insert top 5 and worst 5 into performance logs
             const records = [];
 
             // Add top gainers
@@ -95,17 +118,18 @@ export const triggerSnapshotRoute = new Elysia({ prefix: '/api' })
                 });
             }
 
-            // Insert all records
+            // Insert performance records (top 5 + worst 5)
             await db.insert(cryptoPerformanceLogs).values(records);
 
-            console.log(`   💾 Inserted ${records.length} records to database`);
+            console.log(`   💾 Inserted ${records.length} records into crypto_performance_logs`);
             console.log(`✅ [Manual Snapshot] Round ${roundId} completed successfully`);
 
             return {
                 success: true,
                 roundId,
                 snapshotTimestamp: snapshotTimestamp.toISOString(),
-                recordsInserted: records.length,
+                performanceLogsInserted: records.length,
+                cacheRecordsInserted: cacheRecords.length,
                 topGainer: {
                     name: topGainers[0]?.name,
                     symbol: topGainers[0]?.symbol,

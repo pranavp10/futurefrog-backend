@@ -2,3 +2,4 @@
 export * from "./coints";
 export * from "./global_params";
 export * from "./crypto_performance_logs";
+export * from "./crypto_market_cache";

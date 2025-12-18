@@ -1,11 +1,12 @@
 import { inngest } from "./client";
 import { db } from "../db";
-import { cryptoPerformanceLogs } from "../db/schema";
+import { cryptoPerformanceLogs, cryptoMarketCache } from "../db/schema";
 import {
     CoinGeckoMarketData,
     filterAndRankCryptos,
 } from "../lib/crypto-filters";
 import { randomUUID } from "crypto";
+import { sql } from "drizzle-orm";
 
 /**
  * Scheduled job to capture crypto performance snapshots
@@ -66,16 +67,42 @@ export const cryptoSnapshot = inngest.createFunction(
             console.log(`   🚀 Top gainer: ${topGainers[0]?.name} (${topGainers[0]?.price_change_percentage_24h}%)`);
             console.log(`   📉 Worst performer: ${worstPerformers[0]?.name} (${worstPerformers[0]?.price_change_percentage_24h}%)`);
 
-            return { topGainers, worstPerformers };
+            return { topGainers, worstPerformers, filteredData };
         });
 
-        // Step 3: Insert into database
-        const insertedCount = await step.run("insert-to-database", async () => {
+        // Step 3: Purge and populate cache table
+        const cacheCount = await step.run("populate-cache", async () => {
+            await db.execute(sql`TRUNCATE TABLE crypto_market_cache`);
+            console.log(`   🗑️  Purged crypto_market_cache table`);
+
+            const cacheRecords = filterAndRank.filteredData.map(coin => ({
+                roundId,
+                coingeckoId: coin.id,
+                symbol: coin.symbol,
+                name: coin.name,
+                imageUrl: coin.image,
+                currentPrice: coin.current_price.toString(),
+                marketCap: coin.market_cap?.toString() || null,
+                marketCapRank: coin.market_cap_rank || null,
+                totalVolume: coin.total_volume?.toString() || null,
+                volumeRank: coin.volume_rank || null,
+                priceChangePercentage24h: coin.price_change_percentage_24h.toString(),
+                snapshotTimestamp,
+            }));
+
+            await db.insert(cryptoMarketCache).values(cacheRecords);
+            console.log(`   💾 Inserted ${cacheRecords.length} records into crypto_market_cache`);
+
+            return cacheRecords.length;
+        });
+
+        // Step 4: Insert top 5 and worst 5 into performance logs
+        const insertedCount = await step.run("insert-performance-logs", async () => {
             const records = [];
 
             // Add top gainers
-            for (let i = 0; i < topGainers.length; i++) {
-                const coin = topGainers[i];
+            for (let i = 0; i < filterAndRank.topGainers.length; i++) {
+                const coin = filterAndRank.topGainers[i];
                 records.push({
                     roundId,
                     coingeckoId: coin.id,
@@ -95,8 +122,8 @@ export const cryptoSnapshot = inngest.createFunction(
             }
 
             // Add worst performers
-            for (let i = 0; i < worstPerformers.length; i++) {
-                const coin = worstPerformers[i];
+            for (let i = 0; i < filterAndRank.worstPerformers.length; i++) {
+                const coin = filterAndRank.worstPerformers[i];
                 records.push({
                     roundId,
                     coingeckoId: coin.id,
@@ -115,10 +142,10 @@ export const cryptoSnapshot = inngest.createFunction(
                 });
             }
 
-            // Insert all records
+            // Insert performance records
             await db.insert(cryptoPerformanceLogs).values(records);
 
-            console.log(`   💾 Inserted ${records.length} records to database`);
+            console.log(`   💾 Inserted ${records.length} records into crypto_performance_logs`);
             
             return records.length;
         });
@@ -129,9 +156,10 @@ export const cryptoSnapshot = inngest.createFunction(
             success: true,
             roundId,
             snapshotTimestamp: snapshotTimestamp.toISOString(),
-            recordsInserted: insertedCount,
-            topGainer: topGainers[0]?.name,
-            worstPerformer: worstPerformers[0]?.name,
+            performanceLogsInserted: insertedCount,
+            cacheRecordsInserted: cacheCount,
+            topGainer: filterAndRank.topGainers[0]?.name,
+            worstPerformer: filterAndRank.worstPerformers[0]?.name,
         };
     }
 );
