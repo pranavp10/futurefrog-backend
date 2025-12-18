@@ -1,10 +1,18 @@
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
+import { serve } from "inngest/bun";
 import { getCoinsRoute } from "./routes/getCoints";
 import { cryptoMoversRoutes } from "./routes/crypto-movers";
 import { cryptoCacheRoutes } from "./routes/crypto-cache";
 import { buybackWalletRoutes } from "./routes/buyback-wallet";
 import { triggerSnapshotRoute } from "./routes/trigger-snapshot";
+import { functions, inngest } from "./inngest";
+
+// Create Inngest handler
+const inngestHandler = serve({
+  client: inngest,
+  functions,
+});
 
 const app = new Elysia()
   .use(cors())
@@ -13,6 +21,7 @@ const app = new Elysia()
   .use(cryptoCacheRoutes)
   .use(buybackWalletRoutes)
   .use(triggerSnapshotRoute)
+  .all("/inngest", ({ request }) => inngestHandler(request))
   .get("/", () => "Hello Elysia")
   .listen(process.env.PORT || 3000);
 

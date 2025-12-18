@@ -24,10 +24,16 @@ export const cryptoSnapshot = inngest.createFunction(
         }
         : { event: "crypto/snapshot.manual" }, // Only triggered manually if disabled
     async ({ event, step }) => {
+        const startTime = Date.now();
         const snapshotTimestamp = new Date();
         const roundId = randomUUID();
 
-        console.log(`🐸 [Crypto Snapshot] Starting round ${roundId} at ${snapshotTimestamp.toISOString()}`);
+        console.log(`\n========================================`);
+        console.log(`🐸 [Crypto Snapshot] TRIGGERED!`);
+        console.log(`   Trigger type: ${event.name || 'cron'}`);
+        console.log(`   Time: ${snapshotTimestamp.toISOString()}`);
+        console.log(`   Round ID: ${roundId}`);
+        console.log(`========================================\n`);
 
         // Step 1: Fetch CoinGecko data
         const coinGeckoData = await step.run("fetch-coingecko-data", async () => {
@@ -48,7 +54,7 @@ export const cryptoSnapshot = inngest.createFunction(
         });
 
         // Step 2: Filter and rank cryptos
-        const { topGainers, worstPerformers } = await step.run("filter-and-rank", async () => {
+        const filterAndRank = await step.run("filter-and-rank", async () => {
             // Apply filters and ranking
             const filteredData = filterAndRankCryptos(coinGeckoData);
             console.log(`   ✅ Filtered to ${filteredData.length} coins`);
@@ -150,7 +156,16 @@ export const cryptoSnapshot = inngest.createFunction(
             return records.length;
         });
 
-        console.log(`✅ [Crypto Snapshot] Round ${roundId} completed successfully`);
+        const duration = Date.now() - startTime;
+        
+        console.log(`\n========================================`);
+        console.log(`✅ [Crypto Snapshot] Round ${roundId} COMPLETED`);
+        console.log(`   Duration: ${duration}ms (${(duration / 1000).toFixed(2)}s)`);
+        console.log(`   Performance logs: ${insertedCount} records`);
+        console.log(`   Cache records: ${cacheCount} records`);
+        console.log(`   Top gainer: ${filterAndRank.topGainers[0]?.name}`);
+        console.log(`   Worst performer: ${filterAndRank.worstPerformers[0]?.name}`);
+        console.log(`========================================\n`);
 
         return {
             success: true,
