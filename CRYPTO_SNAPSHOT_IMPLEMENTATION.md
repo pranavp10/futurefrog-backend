@@ -160,8 +160,25 @@ DATABASE_URL=postgresql://...
 COINGECKO_API_KEY=your_key_here
 
 # New (you need to add)
-CRYPTO_SNAPSHOT_FREQUENCY_MINUTES=15
+CRYPTO_SNAPSHOT_ON=true                    # Set to "true" to enable scheduled snapshots, "false" to disable
+CRYPTO_SNAPSHOT_FREQUENCY_MINUTES=15       # How often to run (in minutes)
 ```
+
+## Environment Variables Explained
+
+### CRYPTO_SNAPSHOT_ON
+Controls whether the scheduled Inngest job runs automatically.
+
+- `true` - Enables automatic scheduled snapshots (runs every X minutes)
+- `false` or not set - Disables automatic scheduling (only manual triggers via API)
+
+**Use Cases:**
+- Set to `true` in production to capture regular snapshots
+- Set to `false` in development to prevent automatic runs
+- Set to `false` if you only want to trigger snapshots manually
+
+### CRYPTO_SNAPSHOT_FREQUENCY_MINUTES
+Defines how often the snapshot runs (only when `CRYPTO_SNAPSHOT_ON=true`).
 
 ## Cron Schedule Examples
 
@@ -201,4 +218,6 @@ For issues or questions:
 - Review Inngest UI for function execution details
 - Verify database connectivity and schema
 - Consult `CRYPTO_SNAPSHOT_TESTING.md` for troubleshooting
+
+
 

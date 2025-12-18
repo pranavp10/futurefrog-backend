@@ -16,3 +16,5 @@ export const globalParams = pgTable('global_params', {
 export type GlobalParam = typeof globalParams.$inferSelect;
 export type NewGlobalParam = typeof globalParams.$inferInsert;
 
+
+

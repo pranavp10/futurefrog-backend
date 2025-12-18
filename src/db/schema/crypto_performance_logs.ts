@@ -36,7 +36,7 @@ export const cryptoPerformanceLogs = pgTable("crypto_performance_logs", {
     
     // Performance classification
     performanceCategory: varchar("performance_category", { length: 20 }).notNull(), // "top_gainer" or "worst_performer"
-    performanceRank: integer("performance_rank").notNull(), // 0-4 (1st through 5th)
+    performanceRank: integer("performance_rank").notNull(), // 1-5 (1st through 5th)
     
     // Timestamps
     snapshotTimestamp: timestamp("snapshot_timestamp").notNull(), // When CoinGecko data was received
@@ -46,4 +46,6 @@ export const cryptoPerformanceLogs = pgTable("crypto_performance_logs", {
 // Type inference helpers
 export type CryptoPerformanceLog = typeof cryptoPerformanceLogs.$inferSelect;
 export type NewCryptoPerformanceLog = typeof cryptoPerformanceLogs.$inferInsert;
+
+
 

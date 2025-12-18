@@ -8,13 +8,13 @@ type HelloWorldEvent = {
     };
 };
 
-// Crypto Snapshot event type (for manual triggering)
-type CryptoSnapshotEvent = {
-    name: "crypto/snapshot";
+// Crypto Snapshot event type (for manual triggering when scheduled job is disabled)
+type CryptoSnapshotManualEvent = {
+    name: "crypto/snapshot.manual";
     data: {};
 };
 
 // Union all events
-type AllEvents = HelloWorldEvent | CryptoSnapshotEvent;
+type AllEvents = HelloWorldEvent | CryptoSnapshotManualEvent;
 
 export const schemas = new EventSchemas().fromUnion<AllEvents>();

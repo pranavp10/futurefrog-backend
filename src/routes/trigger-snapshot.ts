@@ -1,37 +1,26 @@
-import { inngest } from "./client";
-import { db } from "../db";
-import { cryptoPerformanceLogs } from "../db/schema";
+import { Elysia } from 'elysia';
+import { db } from '../db';
+import { cryptoPerformanceLogs } from '../db/schema';
 import {
     CoinGeckoMarketData,
     filterAndRankCryptos,
-} from "../lib/crypto-filters";
-import { randomUUID } from "crypto";
+} from '../lib/crypto-filters';
+import { randomUUID } from 'crypto';
 
 /**
- * Scheduled job to capture crypto performance snapshots
- * Runs every X minutes as configured by CRYPTO_SNAPSHOT_FREQUENCY_MINUTES
- * Only runs if CRYPTO_SNAPSHOT_ON is set to "true"
+ * Manual trigger route for crypto snapshot
+ * This allows testing the snapshot functionality without Inngest
  */
-export const cryptoSnapshot = inngest.createFunction(
-    { id: "crypto-snapshot" },
-    // Only set up cron schedule if CRYPTO_SNAPSHOT_ON is true
-    process.env.CRYPTO_SNAPSHOT_ON === "true"
-        ? {
-            cron: process.env.CRYPTO_SNAPSHOT_FREQUENCY_MINUTES
-                ? `*/${process.env.CRYPTO_SNAPSHOT_FREQUENCY_MINUTES} * * * *`
-                : "*/15 * * * *",
-        }
-        : { event: "crypto/snapshot.manual" }, // Only triggered manually if disabled
-    async ({ event, step }) => {
-        const snapshotTimestamp = new Date();
-        const roundId = randomUUID();
+export const triggerSnapshotRoute = new Elysia({ prefix: '/api' })
+    .post('/trigger-snapshot', async ({ set }) => {
+        try {
+            const snapshotTimestamp = new Date();
+            const roundId = randomUUID();
 
-        console.log(`🐸 [Crypto Snapshot] Starting round ${roundId} at ${snapshotTimestamp.toISOString()}`);
+            console.log(`🐸 [Manual Snapshot] Starting round ${roundId} at ${snapshotTimestamp.toISOString()}`);
 
-        // Step 1: Fetch CoinGecko data
-        const coinGeckoData = await step.run("fetch-coingecko-data", async () => {
+            // Step 1: Fetch CoinGecko data
             const apiKey = process.env.COINGECKO_API_KEY;
-
             const response = await fetch(
                 `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc&per_page=200&page=1&sparkline=false&price_change_percentage=24h${apiKey ? `&x_cg_demo_api_key=${apiKey}` : ''}`
             );
@@ -43,13 +32,8 @@ export const cryptoSnapshot = inngest.createFunction(
             const data: CoinGeckoMarketData[] = await response.json();
             console.log(`   📊 Fetched ${data.length} coins from CoinGecko`);
 
-            return data;
-        });
-
-        // Step 2: Filter and rank cryptos
-        const { topGainers, worstPerformers } = await step.run("filter-and-rank", async () => {
-            // Apply filters and ranking
-            const filteredData = filterAndRankCryptos(coinGeckoData);
+            // Step 2: Filter and rank cryptos
+            const filteredData = filterAndRankCryptos(data);
             console.log(`   ✅ Filtered to ${filteredData.length} coins`);
 
             // Sort by price change percentage (descending for top gainers)
@@ -66,11 +50,7 @@ export const cryptoSnapshot = inngest.createFunction(
             console.log(`   🚀 Top gainer: ${topGainers[0]?.name} (${topGainers[0]?.price_change_percentage_24h}%)`);
             console.log(`   📉 Worst performer: ${worstPerformers[0]?.name} (${worstPerformers[0]?.price_change_percentage_24h}%)`);
 
-            return { topGainers, worstPerformers };
-        });
-
-        // Step 3: Insert into database
-        const insertedCount = await step.run("insert-to-database", async () => {
+            // Step 3: Insert into database
             const records = [];
 
             // Add top gainers
@@ -119,22 +99,41 @@ export const cryptoSnapshot = inngest.createFunction(
             await db.insert(cryptoPerformanceLogs).values(records);
 
             console.log(`   💾 Inserted ${records.length} records to database`);
-            
-            return records.length;
-        });
+            console.log(`✅ [Manual Snapshot] Round ${roundId} completed successfully`);
 
-        console.log(`✅ [Crypto Snapshot] Round ${roundId} completed successfully`);
-
-        return {
-            success: true,
-            roundId,
-            snapshotTimestamp: snapshotTimestamp.toISOString(),
-            recordsInserted: insertedCount,
-            topGainer: topGainers[0]?.name,
-            worstPerformer: worstPerformers[0]?.name,
-        };
-    }
-);
-
-
+            return {
+                success: true,
+                roundId,
+                snapshotTimestamp: snapshotTimestamp.toISOString(),
+                recordsInserted: records.length,
+                topGainer: {
+                    name: topGainers[0]?.name,
+                    symbol: topGainers[0]?.symbol,
+                    change: topGainers[0]?.price_change_percentage_24h,
+                },
+                worstPerformer: {
+                    name: worstPerformers[0]?.name,
+                    symbol: worstPerformers[0]?.symbol,
+                    change: worstPerformers[0]?.price_change_percentage_24h,
+                },
+                topGainers: topGainers.map(c => ({
+                    name: c.name,
+                    symbol: c.symbol,
+                    change: c.price_change_percentage_24h,
+                })),
+                worstPerformers: worstPerformers.map(c => ({
+                    name: c.name,
+                    symbol: c.symbol,
+                    change: c.price_change_percentage_24h,
+                })),
+            };
+        } catch (error) {
+            console.error('Error in manual snapshot:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to run snapshot',
+            };
+        }
+    });
 

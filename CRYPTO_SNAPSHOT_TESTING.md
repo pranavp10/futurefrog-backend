@@ -2,10 +2,13 @@
 
 ## Prerequisites
 
-1. **Add Environment Variable**: Add the following to your `.env` file:
+1. **Add Environment Variables**: Add the following to your `.env` file:
    ```env
-   CRYPTO_SNAPSHOT_FREQUENCY_MINUTES=15
+   CRYPTO_SNAPSHOT_ON=true                    # Set to "true" to enable scheduled runs
+   CRYPTO_SNAPSHOT_FREQUENCY_MINUTES=15       # How often to run (in minutes)
    ```
+
+   **Note**: Set `CRYPTO_SNAPSHOT_ON=false` if you only want to trigger snapshots manually via the API endpoint.
 
 2. **Apply Database Migration**: When you have database access, run:
    ```bash
@@ -221,4 +224,6 @@ Or delete specific test rounds:
 DELETE FROM crypto_performance_logs 
 WHERE round_id = '<specific-round-id>';
 ```
+
+
 
