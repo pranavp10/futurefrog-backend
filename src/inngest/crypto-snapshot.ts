@@ -26,14 +26,6 @@ export const cryptoSnapshot = inngest.createFunction(
     async ({ event, step }) => {
         const startTime = Date.now();
         const snapshotTimestamp = new Date();
-        const roundId = randomUUID();
-
-        console.log(`\n========================================`);
-        console.log(`🐸 [Crypto Snapshot] TRIGGERED!`);
-        console.log(`   Trigger type: ${event.name || 'cron'}`);
-        console.log(`   Time: ${snapshotTimestamp.toISOString()}`);
-        console.log(`   Round ID: ${roundId}`);
-        console.log(`========================================\n`);
 
         // Step 1: Fetch CoinGecko data
         const coinGeckoData = await step.run("fetch-coingecko-data", async () => {
@@ -53,8 +45,16 @@ export const cryptoSnapshot = inngest.createFunction(
             return data;
         });
 
-        // Step 2: Filter and rank cryptos
+        // Step 2: Filter and rank cryptos (generate roundId here to ensure consistency)
         const filterAndRank = await step.run("filter-and-rank", async () => {
+            const roundId = randomUUID();
+            
+            console.log(`\n========================================`);
+            console.log(`🐸 [Crypto Snapshot] Starting Round ${roundId}`);
+            console.log(`   Trigger type: ${event.name || 'cron'}`);
+            console.log(`   Time: ${snapshotTimestamp.toISOString()}`);
+            console.log(`========================================\n`);
+
             // Apply filters and ranking
             const filteredData = filterAndRankCryptos(coinGeckoData);
             console.log(`   ✅ Filtered to ${filteredData.length} coins`);
@@ -73,7 +73,7 @@ export const cryptoSnapshot = inngest.createFunction(
             console.log(`   🚀 Top gainer: ${topGainers[0]?.name} (${topGainers[0]?.price_change_percentage_24h}%)`);
             console.log(`   📉 Worst performer: ${worstPerformers[0]?.name} (${worstPerformers[0]?.price_change_percentage_24h}%)`);
 
-            return { topGainers, worstPerformers, filteredData };
+            return { roundId, topGainers, worstPerformers, filteredData };
         });
 
         // Step 3: Purge and populate cache table
@@ -82,7 +82,7 @@ export const cryptoSnapshot = inngest.createFunction(
             console.log(`   🗑️  Purged crypto_market_cache table`);
 
             const cacheRecords = filterAndRank.filteredData.map(coin => ({
-                roundId,
+                roundId: filterAndRank.roundId,
                 coingeckoId: coin.id,
                 symbol: coin.symbol,
                 name: coin.name,
@@ -110,7 +110,7 @@ export const cryptoSnapshot = inngest.createFunction(
             for (let i = 0; i < filterAndRank.topGainers.length; i++) {
                 const coin = filterAndRank.topGainers[i];
                 records.push({
-                    roundId,
+                    roundId: filterAndRank.roundId,
                     coingeckoId: coin.id,
                     symbol: coin.symbol,
                     name: coin.name,
@@ -131,7 +131,7 @@ export const cryptoSnapshot = inngest.createFunction(
             for (let i = 0; i < filterAndRank.worstPerformers.length; i++) {
                 const coin = filterAndRank.worstPerformers[i];
                 records.push({
-                    roundId,
+                    roundId: filterAndRank.roundId,
                     coingeckoId: coin.id,
                     symbol: coin.symbol,
                     name: coin.name,
@@ -159,7 +159,7 @@ export const cryptoSnapshot = inngest.createFunction(
         const duration = Date.now() - startTime;
         
         console.log(`\n========================================`);
-        console.log(`✅ [Crypto Snapshot] Round ${roundId} COMPLETED`);
+        console.log(`✅ [Crypto Snapshot] Round ${filterAndRank.roundId} COMPLETED`);
         console.log(`   Duration: ${duration}ms (${(duration / 1000).toFixed(2)}s)`);
         console.log(`   Performance logs: ${insertedCount} records`);
         console.log(`   Cache records: ${cacheCount} records`);
@@ -169,7 +169,7 @@ export const cryptoSnapshot = inngest.createFunction(
 
         return {
             success: true,
-            roundId,
+            roundId: filterAndRank.roundId,
             snapshotTimestamp: snapshotTimestamp.toISOString(),
             performanceLogsInserted: insertedCount,
             cacheRecordsInserted: cacheCount,
