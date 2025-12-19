@@ -1,12 +1,14 @@
 import { inngest } from "./client";
 import { db } from "../db";
-import { cryptoPerformanceLogs, cryptoMarketCache } from "../db/schema";
+import { cryptoPerformanceLogs, cryptoMarketCache, userPredictionsSnapshots, type NewUserPredictionsSnapshot } from "../db/schema";
 import {
     CoinGeckoMarketData,
     filterAndRankCryptos,
 } from "../lib/crypto-filters";
 import { randomUUID } from "crypto";
-import { sql } from "drizzle-orm";
+import { sql, eq, and, desc } from "drizzle-orm";
+import { Connection } from "@solana/web3.js";
+import { fetchAllUserPredictions } from "../lib/solana-predictions";
 
 /**
  * Scheduled job to capture crypto performance snapshots
@@ -156,6 +158,171 @@ export const cryptoSnapshot = inngest.createFunction(
             return records.length;
         });
 
+        // Step 5: Fetch and store user predictions from blockchain
+        const userPredictionsCount = await step.run("fetch-user-predictions", async () => {
+            const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+            const connection = new Connection(rpcUrl, 'confirmed');
+
+            console.log(`\n   🔗 Connecting to Solana RPC: ${rpcUrl}`);
+
+            // Fetch all user predictions from blockchain
+            console.log(`   📡 Fetching user predictions from blockchain...`);
+            const allUserPredictions = await fetchAllUserPredictions(connection);
+
+            if (allUserPredictions.length === 0) {
+                console.log(`   ℹ️  No user predictions found on blockchain`);
+                return { inserted: 0, skipped: 0, totalProcessed: 0, errors: 0 };
+            }
+
+            console.log(`   📋 Processing predictions for ${allUserPredictions.length} users...\n`);
+
+            let insertedCount = 0;
+            let skippedCount = 0;
+            let totalPredictions = 0;
+            let errorCount = 0;
+
+            // Process each user's predictions
+            for (const { userAddress, predictions } of allUserPredictions) {
+                console.log(`\n   👤 Processing user: ${userAddress.slice(0, 8)}...${userAddress.slice(-4)}`);
+                console.log(`      Points: ${predictions.points} | Last updated: ${predictions.lastUpdated}`);
+                
+                const predictionRecords: NewUserPredictionsSnapshot[] = [];
+
+                // Process top performer predictions (ranks 1-5)
+                for (let rank = 1; rank <= 5; rank++) {
+                    const symbol = predictions.topPerformer[rank - 1];
+                    const predictionTimestamp = predictions.topPerformerTimestamps[rank - 1];
+
+                    console.log(`      🔍 Top performer rank ${rank}: symbol="${symbol}" | timestamp=${predictionTimestamp}`);
+
+                    // Only create record if there's actually a prediction (symbol exists)
+                    if (symbol && symbol.trim() !== '') {
+                        predictionRecords.push({
+                            walletAddress: userAddress,
+                            predictionType: 'top_performer',
+                            rank,
+                            symbol: symbol.trim(),
+                            predictionTimestamp: predictionTimestamp || null,
+                            points: predictions.points,
+                            lastUpdated: predictions.lastUpdated || null,
+                            snapshotTimestamp,
+                        });
+                    }
+                }
+
+                // Process worst performer predictions (ranks 1-5)
+                for (let rank = 1; rank <= 5; rank++) {
+                    const symbol = predictions.worstPerformer[rank - 1];
+                    const predictionTimestamp = predictions.worstPerformerTimestamps[rank - 1];
+
+                    console.log(`      🔍 Worst performer rank ${rank}: symbol="${symbol}" | timestamp=${predictionTimestamp}`);
+
+                    // Only create record if there's actually a prediction (symbol exists)
+                    if (symbol && symbol.trim() !== '') {
+                        predictionRecords.push({
+                            walletAddress: userAddress,
+                            predictionType: 'worst_performer',
+                            rank,
+                            symbol: symbol.trim(),
+                            predictionTimestamp: predictionTimestamp || null,
+                            points: predictions.points,
+                            lastUpdated: predictions.lastUpdated || null,
+                            snapshotTimestamp,
+                        });
+                    }
+                }
+
+                totalPredictions += predictionRecords.length;
+                console.log(`      📝 Found ${predictionRecords.length} predictions to process`);
+
+                // Check each prediction to see if it's new or updated
+                for (const record of predictionRecords) {
+                    try {
+                        // Query for the most recent prediction for this user/type/rank
+                        console.log(`         🔎 Checking existing records for ${record.predictionType} rank ${record.rank}...`);
+                        
+                        const existingPredictions = await db
+                            .select()
+                            .from(userPredictionsSnapshots)
+                            .where(
+                                and(
+                                    eq(userPredictionsSnapshots.walletAddress, record.walletAddress),
+                                    eq(userPredictionsSnapshots.predictionType, record.predictionType),
+                                    eq(userPredictionsSnapshots.rank, record.rank)
+                                )
+                            )
+                            .orderBy(desc(userPredictionsSnapshots.predictionTimestamp))
+                            .limit(1);
+
+                        // Determine if we should insert
+                        let shouldInsert = false;
+                        let reason = '';
+
+                        if (existingPredictions.length === 0) {
+                            // No existing record - this is a brand new prediction
+                            shouldInsert = true;
+                            reason = 'NEW PREDICTION';
+                            console.log(`         ✨ New prediction detected!`);
+                        } else {
+                            const existing = existingPredictions[0];
+                            console.log(`         📊 Found existing: symbol="${existing.symbol}" | timestamp=${existing.predictionTimestamp}`);
+                            
+                            // Check if the timestamp has changed (prediction was updated)
+                            if (existing.predictionTimestamp !== record.predictionTimestamp) {
+                                shouldInsert = true;
+                                reason = `UPDATED (ts: ${existing.predictionTimestamp} → ${record.predictionTimestamp})`;
+                                console.log(`         🔄 Timestamp changed - prediction was updated!`);
+                            } else if (existing.symbol !== record.symbol) {
+                                // This shouldn't happen if timestamps are working correctly, but check symbol too
+                                shouldInsert = true;
+                                reason = `SYMBOL CHANGED (${existing.symbol} → ${record.symbol})`;
+                                console.log(`         ⚠️  Symbol changed without timestamp change!`);
+                            } else {
+                                // Same prediction already exists
+                                reason = 'DUPLICATE (no changes)';
+                                console.log(`         ⏭️  Already recorded - skipping`);
+                            }
+                        }
+
+                        if (shouldInsert) {
+                            await db.insert(userPredictionsSnapshots).values(record);
+                            insertedCount++;
+                            console.log(`         ✅ INSERTED: ${record.predictionType} | rank ${record.rank} | ${record.symbol} | ts: ${record.predictionTimestamp} | Reason: ${reason}`);
+                        } else {
+                            skippedCount++;
+                            console.log(`         ⏭️  SKIPPED: ${record.predictionType} | rank ${record.rank} | ${record.symbol} | Reason: ${reason}`);
+                        }
+                    } catch (error: any) {
+                        errorCount++;
+                        console.error(`         ❌ ERROR processing prediction:`, {
+                            wallet: record.walletAddress.slice(0, 8),
+                            type: record.predictionType,
+                            rank: record.rank,
+                            symbol: record.symbol,
+                            error: error.message,
+                            code: error.code
+                        });
+                    }
+                }
+            }
+
+            console.log(`\n   ========================================`);
+            console.log(`   📊 User Predictions Summary:`);
+            console.log(`      Total users processed: ${allUserPredictions.length}`);
+            console.log(`      Total predictions found: ${totalPredictions}`);
+            console.log(`      ✅ New/Updated inserted: ${insertedCount}`);
+            console.log(`      ⏭️  Duplicates skipped: ${skippedCount}`);
+            console.log(`      ❌ Errors: ${errorCount}`);
+            console.log(`   ========================================\n`);
+
+            return { 
+                inserted: insertedCount, 
+                skipped: skippedCount, 
+                totalProcessed: totalPredictions,
+                errors: errorCount
+            };
+        });
+
         const duration = Date.now() - startTime;
         
         console.log(`\n========================================`);
@@ -163,6 +330,7 @@ export const cryptoSnapshot = inngest.createFunction(
         console.log(`   Duration: ${duration}ms (${(duration / 1000).toFixed(2)}s)`);
         console.log(`   Performance logs: ${insertedCount} records`);
         console.log(`   Cache records: ${cacheCount} records`);
+        console.log(`   User predictions: ${userPredictionsCount.inserted} new/updated, ${userPredictionsCount.skipped} duplicates, ${userPredictionsCount.errors} errors, ${userPredictionsCount.totalProcessed} total`);
         console.log(`   Top gainer: ${filterAndRank.topGainers[0]?.name}`);
         console.log(`   Worst performer: ${filterAndRank.worstPerformers[0]?.name}`);
         console.log(`========================================\n`);
@@ -173,6 +341,12 @@ export const cryptoSnapshot = inngest.createFunction(
             snapshotTimestamp: snapshotTimestamp.toISOString(),
             performanceLogsInserted: insertedCount,
             cacheRecordsInserted: cacheCount,
+            userPredictions: {
+                inserted: userPredictionsCount.inserted,
+                skipped: userPredictionsCount.skipped,
+                errors: userPredictionsCount.errors,
+                totalProcessed: userPredictionsCount.totalProcessed,
+            },
             topGainer: filterAndRank.topGainers[0]?.name,
             worstPerformer: filterAndRank.worstPerformers[0]?.name,
         };

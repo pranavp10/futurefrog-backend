@@ -1,0 +1,1 @@
+ALTER TABLE "user_predictions_snapshots" DROP COLUMN "round_id";

@@ -43,3 +43,6 @@ export const cryptoMarketCache = pgTable("crypto_market_cache", {
 export type CryptoMarketCache = typeof cryptoMarketCache.$inferSelect;
 export type NewCryptoMarketCache = typeof cryptoMarketCache.$inferInsert;
 
+
+
+
