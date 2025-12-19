@@ -39,8 +39,9 @@ export const userPredictionsSnapshots = pgTable("user_predictions_snapshots", {
     snapshotTimestamp: timestamp("snapshot_timestamp").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     
-    // Processing flag
+    // Processing flag and points earned for this prediction
     processed: boolean("processed").notNull().default(false),
+    pointsEarned: integer("points_earned").default(0),
 }, (table) => ({
     // Unique constraint to prevent duplicate predictions
     // A user can only have one record per wallet+predictionType+rank+predictionTimestamp combination

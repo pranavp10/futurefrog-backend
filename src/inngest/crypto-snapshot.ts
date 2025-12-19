@@ -1,14 +1,15 @@
 import { inngest } from "./client";
 import { db } from "../db";
-import { cryptoPerformanceLogs, cryptoMarketCache, userPredictionsSnapshots, type NewUserPredictionsSnapshot } from "../db/schema";
+import { cryptoPerformanceLogs, cryptoMarketCache, userPredictionsSnapshots, userPointTransactions, type NewUserPredictionsSnapshot } from "../db/schema";
 import {
     CoinGeckoMarketData,
     filterAndRankCryptos,
 } from "../lib/crypto-filters";
 import { randomUUID } from "crypto";
-import { sql, eq, and, desc } from "drizzle-orm";
-import { Connection } from "@solana/web3.js";
+import { sql, eq, and, desc, lt } from "drizzle-orm";
+import { Connection, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { fetchAllUserPredictions } from "../lib/solana-predictions";
+import { getBuyBackKeypair } from "../lib/buyback-utils";
 
 /**
  * Scheduled job to capture crypto performance snapshots
@@ -323,6 +324,404 @@ export const cryptoSnapshot = inngest.createFunction(
             };
         });
 
+        // Step 6: Score and reward eligible predictions
+        const scoringResults = await step.run("score-and-reward-predictions", async () => {
+            console.log(`\n   ========================================`);
+            console.log(`   💰 Step 6: Scoring Eligible Predictions`);
+            console.log(`   ========================================\n`);
+
+            // Get PREDICTION_INTERVAL_MINUTES from env (default to 60 minutes if not set)
+            const predictionIntervalMinutes = parseInt(process.env.PREDICTION_INTERVAL_MINUTES || '60');
+            const intervalMs = predictionIntervalMinutes * 60 * 1000;
+            const cutoffTime = new Date(Date.now() - intervalMs);
+
+            console.log(`   ⏰ Prediction interval: ${predictionIntervalMinutes} minutes`);
+            console.log(`   📅 Cutoff time: ${cutoffTime.toISOString()}`);
+
+            // Find unprocessed predictions older than the interval
+            console.log(`\n   🔍 Finding unprocessed predictions older than cutoff...`);
+            const eligiblePredictions = await db
+                .select()
+                .from(userPredictionsSnapshots)
+                .where(
+                    and(
+                        eq(userPredictionsSnapshots.processed, false),
+                        lt(userPredictionsSnapshots.snapshotTimestamp, cutoffTime)
+                    )
+                );
+
+            if (eligiblePredictions.length === 0) {
+                console.log(`   ℹ️  No eligible predictions found to process`);
+                return {
+                    totalEligible: 0,
+                    usersProcessed: 0,
+                    totalPointsAwarded: 0,
+                    predictionIds: [],
+                };
+            }
+
+            console.log(`   ✅ Found ${eligiblePredictions.length} eligible predictions to process`);
+
+            // Get latest round's performance data
+            console.log(`\n   📊 Fetching latest round performance data...`);
+            const latestRoundData = await db
+                .select()
+                .from(cryptoPerformanceLogs)
+                .where(eq(cryptoPerformanceLogs.roundId, filterAndRank.roundId));
+
+            if (latestRoundData.length === 0) {
+                console.log(`   ⚠️  No performance data found for current round`);
+                return {
+                    totalEligible: eligiblePredictions.length,
+                    usersProcessed: 0,
+                    totalPointsAwarded: 0,
+                    predictionIds: [],
+                };
+            }
+
+            // Build lookup maps for quick scoring
+            const topPerformers = latestRoundData
+                .filter(r => r.performanceCategory === 'top_gainer')
+                .sort((a, b) => a.performanceRank - b.performanceRank);
+            
+            const worstPerformers = latestRoundData
+                .filter(r => r.performanceCategory === 'worst_performer')
+                .sort((a, b) => a.performanceRank - b.performanceRank);
+
+            // Create symbol-to-rank maps for both categories
+            const topPerformerMap = new Map(topPerformers.map(p => [p.symbol.toLowerCase(), p.performanceRank]));
+            const worstPerformerMap = new Map(worstPerformers.map(p => [p.symbol.toLowerCase(), p.performanceRank]));
+
+            console.log(`   📈 Top performers: ${topPerformers.map(p => `${p.symbol}(#${p.performanceRank})`).join(', ')}`);
+            console.log(`   📉 Worst performers: ${worstPerformers.map(p => `${p.symbol}(#${p.performanceRank})`).join(', ')}`);
+
+            // Score each prediction and group by user
+            console.log(`\n   🎯 Scoring predictions...`);
+            const userScores = new Map<string, { totalPoints: number; predictions: typeof eligiblePredictions }>();
+
+            for (const prediction of eligiblePredictions) {
+                if (!prediction.symbol || prediction.symbol.trim() === '') {
+                    continue; // Skip empty predictions
+                }
+
+                const symbol = prediction.symbol.toLowerCase();
+                let pointsEarned = 0;
+
+                // Determine which category map to use
+                const relevantMap = prediction.predictionType === 'top_performer' ? topPerformerMap : worstPerformerMap;
+                const actualRank = relevantMap.get(symbol);
+
+                if (actualRank !== undefined) {
+                    // Symbol was in the results!
+                    if (actualRank === prediction.rank) {
+                        // EXACT MATCH - Correct symbol AND correct rank
+                        pointsEarned = 50;
+                        console.log(`   🎯 EXACT MATCH: ${prediction.walletAddress.slice(0, 8)}... predicted ${symbol} at rank ${prediction.rank} in ${prediction.predictionType} (+${pointsEarned})`);
+                    } else {
+                        // CATEGORY MATCH - Correct symbol, wrong rank
+                        pointsEarned = 10;
+                        console.log(`   ✓ Category match: ${prediction.walletAddress.slice(0, 8)}... predicted ${symbol} (rank ${prediction.rank}, actual ${actualRank}) in ${prediction.predictionType} (+${pointsEarned})`);
+                    }
+                } else {
+                    // No match - but we still give 1 point for participating
+                    pointsEarned = 1;
+                    console.log(`   • Participation: ${prediction.walletAddress.slice(0, 8)}... predicted ${symbol} in ${prediction.predictionType} (+${pointsEarned})`);
+                }
+
+                // Update the prediction record with earned points
+                await db
+                    .update(userPredictionsSnapshots)
+                    .set({ pointsEarned })
+                    .where(eq(userPredictionsSnapshots.id, prediction.id));
+
+                // Accumulate points per user
+                if (!userScores.has(prediction.walletAddress)) {
+                    userScores.set(prediction.walletAddress, { totalPoints: 0, predictions: [] });
+                }
+                const userScore = userScores.get(prediction.walletAddress)!;
+                userScore.totalPoints += pointsEarned;
+                userScore.predictions.push(prediction);
+            }
+
+            console.log(`\n   💎 Calculating parlay bonuses...`);
+            // Calculate parlay bonuses per user
+            for (const [walletAddress, userScore] of userScores.entries()) {
+                const predictions = userScore.predictions;
+                
+                // Group by prediction type
+                const topPredictions = predictions.filter(p => p.predictionType === 'top_performer');
+                const worstPredictions = predictions.filter(p => p.predictionType === 'worst_performer');
+
+                let parlayBonus = 0;
+
+                // Calculate bonuses for top_performer category
+                const topCorrect = topPredictions.filter(p => {
+                    const symbol = p.symbol?.toLowerCase();
+                    return symbol && topPerformerMap.has(symbol);
+                }).length;
+
+                if (topCorrect >= 2) parlayBonus += 25;
+                if (topCorrect >= 3) parlayBonus += 50; // Total +75
+                if (topCorrect >= 4) parlayBonus += 125; // Total +200
+                if (topCorrect === 5) parlayBonus += 300; // Total +500
+
+                // Calculate bonuses for worst_performer category
+                const worstCorrect = worstPredictions.filter(p => {
+                    const symbol = p.symbol?.toLowerCase();
+                    return symbol && worstPerformerMap.has(symbol);
+                }).length;
+
+                if (worstCorrect >= 2) parlayBonus += 25;
+                if (worstCorrect >= 3) parlayBonus += 50;
+                if (worstCorrect >= 4) parlayBonus += 125;
+                if (worstCorrect === 5) parlayBonus += 300;
+
+                // Cross-category bonus
+                if (topCorrect > 0 && worstCorrect > 0) {
+                    parlayBonus += 50;
+                }
+
+                userScore.totalPoints += parlayBonus;
+
+                if (parlayBonus > 0) {
+                    console.log(`   🎰 ${walletAddress.slice(0, 8)}... parlay bonus: +${parlayBonus} (top: ${topCorrect}/5, worst: ${worstCorrect}/5)`);
+                }
+            }
+
+            // Update user points on Solana blockchain
+            console.log(`\n   🔗 Updating user points on Solana...`);
+            const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+            const connection = new Connection(rpcUrl, 'confirmed');
+            const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID!);
+            const UPDATE_USER_POINTS_IX = Buffer.from([0x40, 0x04, 0xb8, 0x7e, 0x00, 0x2e, 0xc4, 0x9f]);
+
+            let usersProcessed = 0;
+            let totalPointsAwarded = 0;
+            const processedPredictionIds: string[] = [];
+
+            try {
+                const adminKeypair = await getBuyBackKeypair();
+                console.log(`   🔑 Admin keypair loaded: ${adminKeypair.publicKey.toBase58()}`);
+
+                for (const [walletAddress, userScore] of userScores.entries()) {
+                    try {
+                        const userPubkey = new PublicKey(walletAddress);
+                        const pointsToAdd = userScore.totalPoints;
+
+                        // Derive PDAs
+                        const [globalStatePda] = PublicKey.findProgramAddressSync(
+                            [Buffer.from('global_state')],
+                            PROGRAM_ID
+                        );
+
+                        const [userPredictionsPda] = PublicKey.findProgramAddressSync(
+                            [Buffer.from('user_predictions'), userPubkey.toBuffer()],
+                            PROGRAM_ID
+                        );
+
+                        // Get current user account
+                        const userAccount = await connection.getAccountInfo(userPredictionsPda);
+                        if (!userAccount) {
+                            console.log(`   ⚠️  User ${walletAddress.slice(0, 8)}... account not found, skipping`);
+                            continue;
+                        }
+
+                        // Read current points and calculate new total
+                        const currentPoints = userAccount.data.readBigUInt64LE(8 + 32 + 140);
+                        const newPoints = Number(currentPoints) + pointsToAdd;
+
+                        // Create instruction
+                        const pointsBuffer = Buffer.alloc(8);
+                        pointsBuffer.writeBigUInt64LE(BigInt(newPoints));
+                        const instructionData = Buffer.concat([UPDATE_USER_POINTS_IX, pointsBuffer]);
+
+                        const instruction = new TransactionInstruction({
+                            programId: PROGRAM_ID,
+                            keys: [
+                                { pubkey: userPredictionsPda, isSigner: false, isWritable: true },
+                                { pubkey: globalStatePda, isSigner: false, isWritable: false },
+                                { pubkey: adminKeypair.publicKey, isSigner: true, isWritable: false },
+                            ],
+                            data: instructionData,
+                        });
+
+                        // Send transaction
+                        const transaction = new Transaction().add(instruction);
+                        const { blockhash } = await connection.getLatestBlockhash('confirmed');
+                        transaction.recentBlockhash = blockhash;
+                        transaction.feePayer = adminKeypair.publicKey;
+                        transaction.sign(adminKeypair);
+
+                        const signature = await connection.sendRawTransaction(transaction.serialize(), {
+                            skipPreflight: false,
+                            preflightCommitment: 'confirmed',
+                        });
+
+                        // Wait for confirmation
+                        await connection.confirmTransaction(signature, 'confirmed');
+
+                        console.log(`   ✅ ${walletAddress.slice(0, 8)}... +${pointsToAdd} points (${currentPoints} → ${newPoints}) | tx: ${signature.slice(0, 8)}...`);
+
+                        // Record individual prediction reward transactions
+                        for (const prediction of userScore.predictions) {
+                            // Determine transaction type based on points earned
+                            let transactionType = 'prediction_participation';
+                            if (prediction.pointsEarned === 50) {
+                                transactionType = 'prediction_exact_match';
+                            } else if (prediction.pointsEarned === 10) {
+                                transactionType = 'prediction_category_match';
+                            }
+
+                            await db.insert(userPointTransactions).values({
+                                walletAddress,
+                                roundId: filterAndRank.roundId,
+                                transactionType,
+                                pointsAmount: prediction.pointsEarned || 0,
+                                solanaSignature: signature,
+                                relatedPredictionIds: JSON.stringify([prediction.id]),
+                                metadata: JSON.stringify({
+                                    symbol: prediction.symbol,
+                                    rank: prediction.rank,
+                                    predictionType: prediction.predictionType,
+                                }),
+                            });
+
+                            // Mark prediction as processed
+                            await db
+                                .update(userPredictionsSnapshots)
+                                .set({ processed: true })
+                                .where(eq(userPredictionsSnapshots.id, prediction.id));
+                            processedPredictionIds.push(prediction.id);
+                        }
+
+                        // Record parlay bonus transactions if applicable
+                        const predictions = userScore.predictions;
+                        const topPredictions = predictions.filter(p => p.predictionType === 'top_performer');
+                        const worstPredictions = predictions.filter(p => p.predictionType === 'worst_performer');
+
+                        // Calculate individual bonus components for recording
+                        const topCorrect = topPredictions.filter(p => {
+                            const symbol = p.symbol?.toLowerCase();
+                            return symbol && topPerformerMap.has(symbol);
+                        }).length;
+
+                        const worstCorrect = worstPredictions.filter(p => {
+                            const symbol = p.symbol?.toLowerCase();
+                            return symbol && worstPerformerMap.has(symbol);
+                        }).length;
+
+                        // Record top performer parlay bonus
+                        if (topCorrect >= 2) {
+                            let topBonus = 0;
+                            if (topCorrect >= 2) topBonus += 25;
+                            if (topCorrect >= 3) topBonus += 50;
+                            if (topCorrect >= 4) topBonus += 125;
+                            if (topCorrect === 5) topBonus += 300;
+
+                            const topPredictionIds = topPredictions
+                                .filter(p => {
+                                    const symbol = p.symbol?.toLowerCase();
+                                    return symbol && topPerformerMap.has(symbol);
+                                })
+                                .map(p => p.id);
+
+                            await db.insert(userPointTransactions).values({
+                                walletAddress,
+                                roundId: filterAndRank.roundId,
+                                transactionType: 'parlay_bonus_top',
+                                pointsAmount: topBonus,
+                                solanaSignature: signature,
+                                relatedPredictionIds: JSON.stringify(topPredictionIds),
+                                metadata: JSON.stringify({
+                                    correctCount: topCorrect,
+                                    totalSlots: 5,
+                                }),
+                            });
+                        }
+
+                        // Record worst performer parlay bonus
+                        if (worstCorrect >= 2) {
+                            let worstBonus = 0;
+                            if (worstCorrect >= 2) worstBonus += 25;
+                            if (worstCorrect >= 3) worstBonus += 50;
+                            if (worstCorrect >= 4) worstBonus += 125;
+                            if (worstCorrect === 5) worstBonus += 300;
+
+                            const worstPredictionIds = worstPredictions
+                                .filter(p => {
+                                    const symbol = p.symbol?.toLowerCase();
+                                    return symbol && worstPerformerMap.has(symbol);
+                                })
+                                .map(p => p.id);
+
+                            await db.insert(userPointTransactions).values({
+                                walletAddress,
+                                roundId: filterAndRank.roundId,
+                                transactionType: 'parlay_bonus_worst',
+                                pointsAmount: worstBonus,
+                                solanaSignature: signature,
+                                relatedPredictionIds: JSON.stringify(worstPredictionIds),
+                                metadata: JSON.stringify({
+                                    correctCount: worstCorrect,
+                                    totalSlots: 5,
+                                }),
+                            });
+                        }
+
+                        // Record cross-category bonus
+                        if (topCorrect > 0 && worstCorrect > 0) {
+                            const allCorrectPredictionIds = [
+                                ...topPredictions.filter(p => {
+                                    const symbol = p.symbol?.toLowerCase();
+                                    return symbol && topPerformerMap.has(symbol);
+                                }).map(p => p.id),
+                                ...worstPredictions.filter(p => {
+                                    const symbol = p.symbol?.toLowerCase();
+                                    return symbol && worstPerformerMap.has(symbol);
+                                }).map(p => p.id),
+                            ];
+
+                            await db.insert(userPointTransactions).values({
+                                walletAddress,
+                                roundId: filterAndRank.roundId,
+                                transactionType: 'cross_category_bonus',
+                                pointsAmount: 50,
+                                solanaSignature: signature,
+                                relatedPredictionIds: JSON.stringify(allCorrectPredictionIds),
+                                metadata: JSON.stringify({
+                                    topCorrect,
+                                    worstCorrect,
+                                }),
+                            });
+                        }
+
+                        usersProcessed++;
+                        totalPointsAwarded += pointsToAdd;
+
+                    } catch (error: any) {
+                        console.error(`   ❌ Error updating ${walletAddress.slice(0, 8)}...: ${error.message}`);
+                    }
+                }
+            } catch (error: any) {
+                console.error(`   ❌ Error loading admin keypair: ${error.message}`);
+            }
+
+            console.log(`\n   ========================================`);
+            console.log(`   📊 Scoring Summary:`);
+            console.log(`      Total eligible: ${eligiblePredictions.length}`);
+            console.log(`      Users processed: ${usersProcessed}`);
+            console.log(`      Total points awarded: ${totalPointsAwarded}`);
+            console.log(`      Predictions marked processed: ${processedPredictionIds.length}`);
+            console.log(`   ========================================\n`);
+
+            return {
+                totalEligible: eligiblePredictions.length,
+                usersProcessed,
+                totalPointsAwarded,
+                predictionIds: processedPredictionIds,
+            };
+        });
+
         const duration = Date.now() - startTime;
         
         console.log(`\n========================================`);
@@ -331,6 +730,7 @@ export const cryptoSnapshot = inngest.createFunction(
         console.log(`   Performance logs: ${insertedCount} records`);
         console.log(`   Cache records: ${cacheCount} records`);
         console.log(`   User predictions: ${userPredictionsCount.inserted} new/updated, ${userPredictionsCount.skipped} duplicates, ${userPredictionsCount.errors} errors, ${userPredictionsCount.totalProcessed} total`);
+        console.log(`   Scoring: ${scoringResults.usersProcessed} users, ${scoringResults.totalPointsAwarded} points awarded`);
         console.log(`   Top gainer: ${filterAndRank.topGainers[0]?.name}`);
         console.log(`   Worst performer: ${filterAndRank.worstPerformers[0]?.name}`);
         console.log(`========================================\n`);
@@ -346,6 +746,12 @@ export const cryptoSnapshot = inngest.createFunction(
                 skipped: userPredictionsCount.skipped,
                 errors: userPredictionsCount.errors,
                 totalProcessed: userPredictionsCount.totalProcessed,
+            },
+            scoring: {
+                totalEligible: scoringResults.totalEligible,
+                usersProcessed: scoringResults.usersProcessed,
+                totalPointsAwarded: scoringResults.totalPointsAwarded,
+                predictionsProcessed: scoringResults.predictionIds.length,
             },
             topGainer: filterAndRank.topGainers[0]?.name,
             worstPerformer: filterAndRank.worstPerformers[0]?.name,

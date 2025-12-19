@@ -50,6 +50,20 @@
       "when": 1734652800000,
       "tag": "0006_add_processed_column",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1734656400000,
+      "tag": "0007_add_points_awarded_column",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1734660000000,
+      "tag": "0008_create_user_point_transactions",
+      "breakpoints": true
     }
   ]
 }
