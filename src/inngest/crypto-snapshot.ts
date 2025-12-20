@@ -548,6 +548,7 @@ export const cryptoSnapshot = inngest.createFunction(
             let usersProcessed = 0;
             let totalPointsAwarded = 0;
             const processedPredictionIds: string[] = [];
+            const processedUserAddresses: string[] = [];
 
             try {
                 const adminKeypair = await getBuyBackKeypair();
@@ -799,6 +800,7 @@ export const cryptoSnapshot = inngest.createFunction(
 
                             usersProcessed++;
                             totalPointsAwarded += update.pointsToAdd;
+                            processedUserAddresses.push(update.walletAddress);
                         }
 
                     } catch (error: any) {
@@ -826,6 +828,131 @@ export const cryptoSnapshot = inngest.createFunction(
                 usersProcessed,
                 totalPointsAwarded,
                 predictionIds: processedPredictionIds,
+                processedUserAddresses,
+            };
+        });
+
+        // Step 7: Clear predictions for processed users
+        const clearResults = await step.run("clear-processed-predictions", async () => {
+            console.log(`\n   ========================================`);
+            console.log(`   🧹 Step 7: Clearing Processed Predictions`);
+            console.log(`   ========================================\n`);
+
+            const processedUsers = 'processedUserAddresses' in scoringResults ? scoringResults.processedUserAddresses : [];
+
+            if (processedUsers.length === 0) {
+                console.log(`   ℹ️  No users to clear (no predictions were processed)`);
+                return {
+                    totalUsers: 0,
+                    usersCleared: 0,
+                    batchesProcessed: 0,
+                };
+            }
+
+            console.log(`   📋 Found ${processedUsers.length} users to clear`);
+
+            const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+            const connection = new Connection(rpcUrl, 'confirmed');
+            const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID!);
+            const ADMIN_CLEAR_USER_SILOS_IX = Buffer.from([0x72, 0xee, 0x6d, 0xd7, 0xf7, 0xac, 0x3c, 0xe9]);
+
+            let usersCleared = 0;
+            let batchesProcessed = 0;
+
+            try {
+                const adminKeypair = await getBuyBackKeypair();
+                console.log(`   🔑 Admin keypair loaded: ${adminKeypair.publicKey.toBase58()}`);
+
+                const [globalStatePda] = PublicKey.findProgramAddressSync(
+                    [Buffer.from('global_state')],
+                    PROGRAM_ID
+                );
+
+                // Process in batches of up to 10
+                const BATCH_SIZE = 10;
+                const batches: string[][] = [];
+                for (let i = 0; i < processedUsers.length; i += BATCH_SIZE) {
+                    batches.push(processedUsers.slice(i, i + BATCH_SIZE));
+                }
+
+                console.log(`   📦 Processing ${processedUsers.length} users in ${batches.length} batches (max ${BATCH_SIZE} per batch)`);
+
+                for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+                    const batch = batches[batchIndex];
+                    try {
+                        // Create instructions for all users in this batch
+                        const instructions: TransactionInstruction[] = [];
+                        
+                        for (const walletAddress of batch) {
+                            const userPubkey = new PublicKey(walletAddress);
+                            const [userPredictionsPda] = PublicKey.findProgramAddressSync(
+                                [Buffer.from('user_predictions'), userPubkey.toBuffer()],
+                                PROGRAM_ID
+                            );
+
+                            const instruction = new TransactionInstruction({
+                                programId: PROGRAM_ID,
+                                keys: [
+                                    { pubkey: userPredictionsPda, isSigner: false, isWritable: true },
+                                    { pubkey: globalStatePda, isSigner: false, isWritable: false },
+                                    { pubkey: adminKeypair.publicKey, isSigner: true, isWritable: false },
+                                ],
+                                data: ADMIN_CLEAR_USER_SILOS_IX,
+                            });
+
+                            instructions.push(instruction);
+                        }
+
+                        // Send single transaction with all instructions
+                        const transaction = new Transaction();
+                        instructions.forEach(ix => transaction.add(ix));
+                        
+                        const { blockhash } = await connection.getLatestBlockhash('confirmed');
+                        transaction.recentBlockhash = blockhash;
+                        transaction.feePayer = adminKeypair.publicKey;
+                        transaction.sign(adminKeypair);
+
+                        const signature = await connection.sendRawTransaction(transaction.serialize(), {
+                            skipPreflight: false,
+                            preflightCommitment: 'confirmed',
+                        });
+
+                        // Wait for confirmation
+                        await connection.confirmTransaction(signature, 'confirmed');
+
+                        console.log(`   ✅ Batch ${batchIndex + 1}/${batches.length}: Cleared ${batch.length} users | tx: ${signature.slice(0, 8)}...`);
+                        
+                        // Log individual users
+                        for (const walletAddress of batch) {
+                            console.log(`      • ${walletAddress.slice(0, 8)}... predictions cleared`);
+                            usersCleared++;
+                        }
+
+                        batchesProcessed++;
+
+                    } catch (error: any) {
+                        console.error(`   ❌ Error processing batch ${batchIndex + 1}: ${error.message}`);
+                        // Individual users in this batch failed, log them
+                        for (const walletAddress of batch) {
+                            console.error(`      Failed: ${walletAddress.slice(0, 8)}...`);
+                        }
+                    }
+                }
+            } catch (error: any) {
+                console.error(`   ❌ Error loading admin keypair: ${error.message}`);
+            }
+
+            console.log(`\n   ========================================`);
+            console.log(`   📊 Clear Predictions Summary:`);
+            console.log(`      Total users: ${processedUsers.length}`);
+            console.log(`      Successfully cleared: ${usersCleared}`);
+            console.log(`      Batches processed: ${batchesProcessed}`);
+            console.log(`   ========================================\n`);
+
+            return {
+                totalUsers: processedUsers.length,
+                usersCleared,
+                batchesProcessed,
             };
         });
 
@@ -838,6 +965,7 @@ export const cryptoSnapshot = inngest.createFunction(
         console.log(`   Cache records: ${cacheCount} records`);
         console.log(`   User predictions: ${userPredictionsCount.inserted} new/updated, ${userPredictionsCount.skipped} duplicates, ${userPredictionsCount.errors} errors, ${userPredictionsCount.totalProcessed} total`);
         console.log(`   Scoring: ${scoringResults.usersProcessed} users, ${scoringResults.totalPointsAwarded} points awarded`);
+        console.log(`   Clearing: ${clearResults.usersCleared}/${clearResults.totalUsers} users cleared in ${clearResults.batchesProcessed} batches`);
         console.log(`   Top gainer: ${filterAndRank.topGainers[0]?.name}`);
         console.log(`   Worst performer: ${filterAndRank.worstPerformers[0]?.name}`);
         console.log(`========================================\n`);
@@ -859,6 +987,11 @@ export const cryptoSnapshot = inngest.createFunction(
                 usersProcessed: scoringResults.usersProcessed,
                 totalPointsAwarded: scoringResults.totalPointsAwarded,
                 predictionsProcessed: scoringResults.predictionIds.length,
+            },
+            clearing: {
+                totalUsers: clearResults.totalUsers,
+                usersCleared: clearResults.usersCleared,
+                batchesProcessed: clearResults.batchesProcessed,
             },
             topGainer: filterAndRank.topGainers[0]?.name,
             worstPerformer: filterAndRank.worstPerformers[0]?.name,

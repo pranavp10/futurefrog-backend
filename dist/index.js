@@ -57377,6 +57377,124 @@ var coinSentimentRoutes = new Elysia().get("/coin-sentiment", async () => {
   }
 });
 
+// src/routes/user-predictions.ts
+var userPredictionsRoutes = new Elysia({ prefix: "/user-predictions" }).get("/:walletAddress/current", async ({ params }) => {
+  const { walletAddress } = params;
+  const snapshots = await db.select().from(userPredictionsSnapshots).where(eq(userPredictionsSnapshots.walletAddress, walletAddress)).orderBy(desc(userPredictionsSnapshots.snapshotTimestamp)).limit(10);
+  if (snapshots.length === 0) {
+    return {
+      walletAddress,
+      topPerformers: [],
+      worstPerformers: [],
+      points: 0,
+      lastUpdated: null,
+      snapshotTimestamp: null
+    };
+  }
+  const topPerformers = snapshots.filter((s) => s.predictionType === "top_performer").sort((a, b2) => a.rank - b2.rank).map((s) => ({
+    rank: s.rank,
+    symbol: s.symbol || "",
+    timestamp: s.predictionTimestamp,
+    pointsEarned: s.pointsEarned || 0,
+    processed: s.processed
+  }));
+  const worstPerformers = snapshots.filter((s) => s.predictionType === "worst_performer").sort((a, b2) => a.rank - b2.rank).map((s) => ({
+    rank: s.rank,
+    symbol: s.symbol || "",
+    timestamp: s.predictionTimestamp,
+    pointsEarned: s.pointsEarned || 0,
+    processed: s.processed
+  }));
+  return {
+    walletAddress,
+    topPerformers,
+    worstPerformers,
+    points: snapshots[0].points,
+    lastUpdated: snapshots[0].lastUpdated,
+    snapshotTimestamp: snapshots[0].snapshotTimestamp
+  };
+}, {
+  params: t.Object({
+    walletAddress: t.String()
+  })
+}).get("/:walletAddress/history", async ({ params, query }) => {
+  const { walletAddress } = params;
+  const limit = query.limit ? parseInt(query.limit) : 50;
+  const offset2 = query.offset ? parseInt(query.offset) : 0;
+  const snapshots = await db.select().from(userPredictionsSnapshots).where(eq(userPredictionsSnapshots.walletAddress, walletAddress)).orderBy(desc(userPredictionsSnapshots.snapshotTimestamp)).limit(limit).offset(offset2);
+  const groupedBySnapshot = new Map;
+  for (const snapshot of snapshots) {
+    const key = snapshot.snapshotTimestamp.toISOString();
+    if (!groupedBySnapshot.has(key)) {
+      groupedBySnapshot.set(key, []);
+    }
+    groupedBySnapshot.get(key).push(snapshot);
+  }
+  const history = Array.from(groupedBySnapshot.entries()).map(([timestamp2, predictions]) => {
+    const topPerformers = predictions.filter((p) => p.predictionType === "top_performer").sort((a, b2) => a.rank - b2.rank).map((p) => ({
+      rank: p.rank,
+      symbol: p.symbol || "",
+      timestamp: p.predictionTimestamp,
+      pointsEarned: p.pointsEarned || 0,
+      processed: p.processed
+    }));
+    const worstPerformers = predictions.filter((p) => p.predictionType === "worst_performer").sort((a, b2) => a.rank - b2.rank).map((p) => ({
+      rank: p.rank,
+      symbol: p.symbol || "",
+      timestamp: p.predictionTimestamp,
+      pointsEarned: p.pointsEarned || 0,
+      processed: p.processed
+    }));
+    return {
+      snapshotTimestamp: timestamp2,
+      points: predictions[0]?.points || 0,
+      lastUpdated: predictions[0]?.lastUpdated || null,
+      topPerformers,
+      worstPerformers,
+      totalPredictions: predictions.length
+    };
+  });
+  return {
+    walletAddress,
+    history,
+    total: history.length,
+    limit,
+    offset: offset2
+  };
+}, {
+  params: t.Object({
+    walletAddress: t.String()
+  }),
+  query: t.Object({
+    limit: t.Optional(t.String()),
+    offset: t.Optional(t.String())
+  })
+}).get("/:walletAddress/stats", async ({ params }) => {
+  const { walletAddress } = params;
+  const predictions = await db.select().from(userPredictionsSnapshots).where(and(eq(userPredictionsSnapshots.walletAddress, walletAddress), eq(userPredictionsSnapshots.processed, true)));
+  const totalPredictions = predictions.length;
+  const totalPointsEarned = predictions.reduce((sum, p) => sum + (p.pointsEarned || 0), 0);
+  const correctPredictions = predictions.filter((p) => (p.pointsEarned || 0) > 1).length;
+  const exactMatches = predictions.filter((p) => p.pointsEarned === 50).length;
+  const categoryMatches = predictions.filter((p) => p.pointsEarned === 10).length;
+  const latest = await db.select().from(userPredictionsSnapshots).where(eq(userPredictionsSnapshots.walletAddress, walletAddress)).orderBy(desc(userPredictionsSnapshots.snapshotTimestamp)).limit(1);
+  const currentPoints = latest[0]?.points || 0;
+  return {
+    walletAddress,
+    currentPoints,
+    totalPredictions,
+    totalPointsEarned,
+    correctPredictions,
+    exactMatches,
+    categoryMatches,
+    accuracy: totalPredictions > 0 ? (correctPredictions / totalPredictions * 100).toFixed(2) : "0.00"
+  };
+}, {
+  params: t.Object({
+    walletAddress: t.String()
+  })
+});
+
 // node_modules/inngest/index.js
 var exports_inngest = {};
 __export(exports_inngest, {
@@ -58678,14 +58796,16 @@ var cryptoSnapshot = inngest.createFunction({ id: "crypto-snapshot" }, process.e
     let usersProcessed = 0;
     let totalPointsAwarded = 0;
     const processedPredictionIds = [];
+    const processedUserAddresses = [];
     try {
       const adminKeypair = await getBuyBackKeypair();
       console.log(`   \uD83D\uDD11 Admin keypair loaded: ${adminKeypair.publicKey.toBase58()}`);
+      const userUpdates = [];
+      const [globalStatePda] = PublicKey.findProgramAddressSync([Buffer.from("global_state")], PROGRAM_ID2);
       for (const [walletAddress, userScore] of userScores.entries()) {
         try {
           const userPubkey = new PublicKey(walletAddress);
           const pointsToAdd = userScore.totalPoints;
-          const [globalStatePda] = PublicKey.findProgramAddressSync([Buffer.from("global_state")], PROGRAM_ID2);
           const [userPredictionsPda] = PublicKey.findProgramAddressSync([Buffer.from("user_predictions"), userPubkey.toBuffer()], PROGRAM_ID2);
           const userAccount = await connection2.getAccountInfo(userPredictionsPda);
           if (!userAccount) {
@@ -58694,19 +58814,46 @@ var cryptoSnapshot = inngest.createFunction({ id: "crypto-snapshot" }, process.e
           }
           const currentPoints = userAccount.data.readBigUInt64LE(8 + 32 + 140);
           const newPoints = Number(currentPoints) + pointsToAdd;
-          const pointsBuffer = Buffer.alloc(8);
-          pointsBuffer.writeBigUInt64LE(BigInt(newPoints));
-          const instructionData = Buffer.concat([UPDATE_USER_POINTS_IX, pointsBuffer]);
-          const instruction = new TransactionInstruction({
-            programId: PROGRAM_ID2,
-            keys: [
-              { pubkey: userPredictionsPda, isSigner: false, isWritable: true },
-              { pubkey: globalStatePda, isSigner: false, isWritable: false },
-              { pubkey: adminKeypair.publicKey, isSigner: true, isWritable: false }
-            ],
-            data: instructionData
+          userUpdates.push({
+            walletAddress,
+            userPubkey,
+            userScore,
+            userPredictionsPda,
+            currentPoints,
+            newPoints,
+            pointsToAdd
           });
-          const transaction = new Transaction().add(instruction);
+        } catch (error) {
+          console.error(`   \u274C Error preparing update for ${walletAddress.slice(0, 8)}...: ${error.message}`);
+        }
+      }
+      const BATCH_SIZE = 10;
+      const batches = [];
+      for (let i = 0;i < userUpdates.length; i += BATCH_SIZE) {
+        batches.push(userUpdates.slice(i, i + BATCH_SIZE));
+      }
+      console.log(`   \uD83D\uDCE6 Processing ${userUpdates.length} users in ${batches.length} batches (max ${BATCH_SIZE} per batch)`);
+      for (let batchIndex = 0;batchIndex < batches.length; batchIndex++) {
+        const batch = batches[batchIndex];
+        try {
+          const instructions = [];
+          for (const update of batch) {
+            const pointsBuffer = Buffer.alloc(8);
+            pointsBuffer.writeBigUInt64LE(BigInt(update.newPoints));
+            const instructionData = Buffer.concat([UPDATE_USER_POINTS_IX, pointsBuffer]);
+            const instruction = new TransactionInstruction({
+              programId: PROGRAM_ID2,
+              keys: [
+                { pubkey: update.userPredictionsPda, isSigner: false, isWritable: true },
+                { pubkey: globalStatePda, isSigner: false, isWritable: false },
+                { pubkey: adminKeypair.publicKey, isSigner: true, isWritable: false }
+              ],
+              data: instructionData
+            });
+            instructions.push(instruction);
+          }
+          const transaction = new Transaction;
+          instructions.forEach((ix) => transaction.add(ix));
           const { blockhash } = await connection2.getLatestBlockhash("confirmed");
           transaction.recentBlockhash = blockhash;
           transaction.feePayer = adminKeypair.publicKey;
@@ -58716,123 +58863,130 @@ var cryptoSnapshot = inngest.createFunction({ id: "crypto-snapshot" }, process.e
             preflightCommitment: "confirmed"
           });
           await connection2.confirmTransaction(signature, "confirmed");
-          console.log(`   \u2705 ${walletAddress.slice(0, 8)}... +${pointsToAdd} points (${currentPoints} \u2192 ${newPoints}) | tx: ${signature.slice(0, 8)}...`);
-          for (const prediction of userScore.predictions) {
-            let transactionType = "prediction_participation";
-            if (prediction.pointsEarned === 50) {
-              transactionType = "prediction_exact_match";
-            } else if (prediction.pointsEarned === 10) {
-              transactionType = "prediction_category_match";
+          console.log(`   \u2705 Batch ${batchIndex + 1}/${batches.length}: Updated ${batch.length} users | tx: ${signature.slice(0, 8)}...`);
+          for (const update of batch) {
+            console.log(`      \u2022 ${update.walletAddress.slice(0, 8)}... +${update.pointsToAdd} points (${update.currentPoints} \u2192 ${update.newPoints})`);
+            for (const prediction of update.userScore.predictions) {
+              let transactionType = "prediction_participation";
+              if (prediction.pointsEarned === 50) {
+                transactionType = "prediction_exact_match";
+              } else if (prediction.pointsEarned === 10) {
+                transactionType = "prediction_category_match";
+              }
+              await db.insert(userPointTransactions).values({
+                walletAddress: update.walletAddress,
+                roundId: filterAndRank.roundId,
+                transactionType,
+                pointsAmount: prediction.pointsEarned || 0,
+                solanaSignature: signature,
+                relatedPredictionIds: JSON.stringify([prediction.id]),
+                metadata: JSON.stringify({
+                  symbol: prediction.symbol,
+                  rank: prediction.rank,
+                  predictionType: prediction.predictionType
+                })
+              });
+              await db.update(userPredictionsSnapshots).set({ processed: true }).where(eq(userPredictionsSnapshots.id, prediction.id));
+              processedPredictionIds.push(prediction.id);
             }
-            await db.insert(userPointTransactions).values({
-              walletAddress,
-              roundId: filterAndRank.roundId,
-              transactionType,
-              pointsAmount: prediction.pointsEarned || 0,
-              solanaSignature: signature,
-              relatedPredictionIds: JSON.stringify([prediction.id]),
-              metadata: JSON.stringify({
-                symbol: prediction.symbol,
-                rank: prediction.rank,
-                predictionType: prediction.predictionType
-              })
-            });
-            await db.update(userPredictionsSnapshots).set({ processed: true }).where(eq(userPredictionsSnapshots.id, prediction.id));
-            processedPredictionIds.push(prediction.id);
-          }
-          const predictions = userScore.predictions;
-          const topPredictions = predictions.filter((p) => p.predictionType === "top_performer");
-          const worstPredictions = predictions.filter((p) => p.predictionType === "worst_performer");
-          const topCorrect = topPredictions.filter((p) => {
-            const symbol = p.symbol?.toLowerCase();
-            return symbol && topPerformerMap.has(symbol);
-          }).length;
-          const worstCorrect = worstPredictions.filter((p) => {
-            const symbol = p.symbol?.toLowerCase();
-            return symbol && worstPerformerMap.has(symbol);
-          }).length;
-          if (topCorrect >= 2) {
-            let topBonus = 0;
-            if (topCorrect >= 2)
-              topBonus += 25;
-            if (topCorrect >= 3)
-              topBonus += 50;
-            if (topCorrect >= 4)
-              topBonus += 125;
-            if (topCorrect === 5)
-              topBonus += 300;
-            const topPredictionIds = topPredictions.filter((p) => {
+            const predictions = update.userScore.predictions;
+            const topPredictions = predictions.filter((p) => p.predictionType === "top_performer");
+            const worstPredictions = predictions.filter((p) => p.predictionType === "worst_performer");
+            const topCorrect = topPredictions.filter((p) => {
               const symbol = p.symbol?.toLowerCase();
               return symbol && topPerformerMap.has(symbol);
-            }).map((p) => p.id);
-            await db.insert(userPointTransactions).values({
-              walletAddress,
-              roundId: filterAndRank.roundId,
-              transactionType: "parlay_bonus_top",
-              pointsAmount: topBonus,
-              solanaSignature: signature,
-              relatedPredictionIds: JSON.stringify(topPredictionIds),
-              metadata: JSON.stringify({
-                correctCount: topCorrect,
-                totalSlots: 5
-              })
-            });
-          }
-          if (worstCorrect >= 2) {
-            let worstBonus = 0;
-            if (worstCorrect >= 2)
-              worstBonus += 25;
-            if (worstCorrect >= 3)
-              worstBonus += 50;
-            if (worstCorrect >= 4)
-              worstBonus += 125;
-            if (worstCorrect === 5)
-              worstBonus += 300;
-            const worstPredictionIds = worstPredictions.filter((p) => {
+            }).length;
+            const worstCorrect = worstPredictions.filter((p) => {
               const symbol = p.symbol?.toLowerCase();
               return symbol && worstPerformerMap.has(symbol);
-            }).map((p) => p.id);
-            await db.insert(userPointTransactions).values({
-              walletAddress,
-              roundId: filterAndRank.roundId,
-              transactionType: "parlay_bonus_worst",
-              pointsAmount: worstBonus,
-              solanaSignature: signature,
-              relatedPredictionIds: JSON.stringify(worstPredictionIds),
-              metadata: JSON.stringify({
-                correctCount: worstCorrect,
-                totalSlots: 5
-              })
-            });
-          }
-          if (topCorrect > 0 && worstCorrect > 0) {
-            const allCorrectPredictionIds = [
-              ...topPredictions.filter((p) => {
+            }).length;
+            if (topCorrect >= 2) {
+              let topBonus = 0;
+              if (topCorrect >= 2)
+                topBonus += 25;
+              if (topCorrect >= 3)
+                topBonus += 50;
+              if (topCorrect >= 4)
+                topBonus += 125;
+              if (topCorrect === 5)
+                topBonus += 300;
+              const topPredictionIds = topPredictions.filter((p) => {
                 const symbol = p.symbol?.toLowerCase();
                 return symbol && topPerformerMap.has(symbol);
-              }).map((p) => p.id),
-              ...worstPredictions.filter((p) => {
+              }).map((p) => p.id);
+              await db.insert(userPointTransactions).values({
+                walletAddress: update.walletAddress,
+                roundId: filterAndRank.roundId,
+                transactionType: "parlay_bonus_top",
+                pointsAmount: topBonus,
+                solanaSignature: signature,
+                relatedPredictionIds: JSON.stringify(topPredictionIds),
+                metadata: JSON.stringify({
+                  correctCount: topCorrect,
+                  totalSlots: 5
+                })
+              });
+            }
+            if (worstCorrect >= 2) {
+              let worstBonus = 0;
+              if (worstCorrect >= 2)
+                worstBonus += 25;
+              if (worstCorrect >= 3)
+                worstBonus += 50;
+              if (worstCorrect >= 4)
+                worstBonus += 125;
+              if (worstCorrect === 5)
+                worstBonus += 300;
+              const worstPredictionIds = worstPredictions.filter((p) => {
                 const symbol = p.symbol?.toLowerCase();
                 return symbol && worstPerformerMap.has(symbol);
-              }).map((p) => p.id)
-            ];
-            await db.insert(userPointTransactions).values({
-              walletAddress,
-              roundId: filterAndRank.roundId,
-              transactionType: "cross_category_bonus",
-              pointsAmount: 50,
-              solanaSignature: signature,
-              relatedPredictionIds: JSON.stringify(allCorrectPredictionIds),
-              metadata: JSON.stringify({
-                topCorrect,
-                worstCorrect
-              })
-            });
+              }).map((p) => p.id);
+              await db.insert(userPointTransactions).values({
+                walletAddress: update.walletAddress,
+                roundId: filterAndRank.roundId,
+                transactionType: "parlay_bonus_worst",
+                pointsAmount: worstBonus,
+                solanaSignature: signature,
+                relatedPredictionIds: JSON.stringify(worstPredictionIds),
+                metadata: JSON.stringify({
+                  correctCount: worstCorrect,
+                  totalSlots: 5
+                })
+              });
+            }
+            if (topCorrect > 0 && worstCorrect > 0) {
+              const allCorrectPredictionIds = [
+                ...topPredictions.filter((p) => {
+                  const symbol = p.symbol?.toLowerCase();
+                  return symbol && topPerformerMap.has(symbol);
+                }).map((p) => p.id),
+                ...worstPredictions.filter((p) => {
+                  const symbol = p.symbol?.toLowerCase();
+                  return symbol && worstPerformerMap.has(symbol);
+                }).map((p) => p.id)
+              ];
+              await db.insert(userPointTransactions).values({
+                walletAddress: update.walletAddress,
+                roundId: filterAndRank.roundId,
+                transactionType: "cross_category_bonus",
+                pointsAmount: 50,
+                solanaSignature: signature,
+                relatedPredictionIds: JSON.stringify(allCorrectPredictionIds),
+                metadata: JSON.stringify({
+                  topCorrect,
+                  worstCorrect
+                })
+              });
+            }
+            usersProcessed++;
+            totalPointsAwarded += update.pointsToAdd;
+            processedUserAddresses.push(update.walletAddress);
           }
-          usersProcessed++;
-          totalPointsAwarded += pointsToAdd;
         } catch (error) {
-          console.error(`   \u274C Error updating ${walletAddress.slice(0, 8)}...: ${error.message}`);
+          console.error(`   \u274C Error processing batch ${batchIndex + 1}: ${error.message}`);
+          for (const update of batch) {
+            console.error(`      Failed: ${update.walletAddress.slice(0, 8)}...`);
+          }
         }
       }
     } catch (error) {
@@ -58851,7 +59005,99 @@ var cryptoSnapshot = inngest.createFunction({ id: "crypto-snapshot" }, process.e
       totalEligible: eligiblePredictions.length,
       usersProcessed,
       totalPointsAwarded,
-      predictionIds: processedPredictionIds
+      predictionIds: processedPredictionIds,
+      processedUserAddresses
+    };
+  });
+  const clearResults = await step2.run("clear-processed-predictions", async () => {
+    console.log(`
+   ========================================`);
+    console.log(`   \uD83E\uDDF9 Step 7: Clearing Processed Predictions`);
+    console.log(`   ========================================
+`);
+    const processedUsers = "processedUserAddresses" in scoringResults ? scoringResults.processedUserAddresses : [];
+    if (processedUsers.length === 0) {
+      console.log(`   \u2139\uFE0F  No users to clear (no predictions were processed)`);
+      return {
+        totalUsers: 0,
+        usersCleared: 0,
+        batchesProcessed: 0
+      };
+    }
+    console.log(`   \uD83D\uDCCB Found ${processedUsers.length} users to clear`);
+    const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+    const connection2 = new Connection2(rpcUrl, "confirmed");
+    const PROGRAM_ID2 = new PublicKey(process.env.PROGRAM_ID);
+    const ADMIN_CLEAR_USER_SILOS_IX = Buffer.from([114, 238, 109, 215, 247, 172, 60, 233]);
+    let usersCleared = 0;
+    let batchesProcessed = 0;
+    try {
+      const adminKeypair = await getBuyBackKeypair();
+      console.log(`   \uD83D\uDD11 Admin keypair loaded: ${adminKeypair.publicKey.toBase58()}`);
+      const [globalStatePda] = PublicKey.findProgramAddressSync([Buffer.from("global_state")], PROGRAM_ID2);
+      const BATCH_SIZE = 10;
+      const batches = [];
+      for (let i = 0;i < processedUsers.length; i += BATCH_SIZE) {
+        batches.push(processedUsers.slice(i, i + BATCH_SIZE));
+      }
+      console.log(`   \uD83D\uDCE6 Processing ${processedUsers.length} users in ${batches.length} batches (max ${BATCH_SIZE} per batch)`);
+      for (let batchIndex = 0;batchIndex < batches.length; batchIndex++) {
+        const batch = batches[batchIndex];
+        try {
+          const instructions = [];
+          for (const walletAddress of batch) {
+            const userPubkey = new PublicKey(walletAddress);
+            const [userPredictionsPda] = PublicKey.findProgramAddressSync([Buffer.from("user_predictions"), userPubkey.toBuffer()], PROGRAM_ID2);
+            const instruction = new TransactionInstruction({
+              programId: PROGRAM_ID2,
+              keys: [
+                { pubkey: userPredictionsPda, isSigner: false, isWritable: true },
+                { pubkey: globalStatePda, isSigner: false, isWritable: false },
+                { pubkey: adminKeypair.publicKey, isSigner: true, isWritable: false }
+              ],
+              data: ADMIN_CLEAR_USER_SILOS_IX
+            });
+            instructions.push(instruction);
+          }
+          const transaction = new Transaction;
+          instructions.forEach((ix) => transaction.add(ix));
+          const { blockhash } = await connection2.getLatestBlockhash("confirmed");
+          transaction.recentBlockhash = blockhash;
+          transaction.feePayer = adminKeypair.publicKey;
+          transaction.sign(adminKeypair);
+          const signature = await connection2.sendRawTransaction(transaction.serialize(), {
+            skipPreflight: false,
+            preflightCommitment: "confirmed"
+          });
+          await connection2.confirmTransaction(signature, "confirmed");
+          console.log(`   \u2705 Batch ${batchIndex + 1}/${batches.length}: Cleared ${batch.length} users | tx: ${signature.slice(0, 8)}...`);
+          for (const walletAddress of batch) {
+            console.log(`      \u2022 ${walletAddress.slice(0, 8)}... predictions cleared`);
+            usersCleared++;
+          }
+          batchesProcessed++;
+        } catch (error) {
+          console.error(`   \u274C Error processing batch ${batchIndex + 1}: ${error.message}`);
+          for (const walletAddress of batch) {
+            console.error(`      Failed: ${walletAddress.slice(0, 8)}...`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`   \u274C Error loading admin keypair: ${error.message}`);
+    }
+    console.log(`
+   ========================================`);
+    console.log(`   \uD83D\uDCCA Clear Predictions Summary:`);
+    console.log(`      Total users: ${processedUsers.length}`);
+    console.log(`      Successfully cleared: ${usersCleared}`);
+    console.log(`      Batches processed: ${batchesProcessed}`);
+    console.log(`   ========================================
+`);
+    return {
+      totalUsers: processedUsers.length,
+      usersCleared,
+      batchesProcessed
     };
   });
   const duration = Date.now() - startTime;
@@ -58863,6 +59109,7 @@ var cryptoSnapshot = inngest.createFunction({ id: "crypto-snapshot" }, process.e
   console.log(`   Cache records: ${cacheCount} records`);
   console.log(`   User predictions: ${userPredictionsCount.inserted} new/updated, ${userPredictionsCount.skipped} duplicates, ${userPredictionsCount.errors} errors, ${userPredictionsCount.totalProcessed} total`);
   console.log(`   Scoring: ${scoringResults.usersProcessed} users, ${scoringResults.totalPointsAwarded} points awarded`);
+  console.log(`   Clearing: ${clearResults.usersCleared}/${clearResults.totalUsers} users cleared in ${clearResults.batchesProcessed} batches`);
   console.log(`   Top gainer: ${filterAndRank.topGainers[0]?.name}`);
   console.log(`   Worst performer: ${filterAndRank.worstPerformers[0]?.name}`);
   console.log(`========================================
@@ -58885,6 +59132,11 @@ var cryptoSnapshot = inngest.createFunction({ id: "crypto-snapshot" }, process.e
       totalPointsAwarded: scoringResults.totalPointsAwarded,
       predictionsProcessed: scoringResults.predictionIds.length
     },
+    clearing: {
+      totalUsers: clearResults.totalUsers,
+      usersCleared: clearResults.usersCleared,
+      batchesProcessed: clearResults.batchesProcessed
+    },
     topGainer: filterAndRank.topGainers[0]?.name,
     worstPerformer: filterAndRank.worstPerformers[0]?.name
   };
@@ -58901,5 +59153,5 @@ var inngestHandler = serve2({
   client: inngest,
   functions
 });
-var app = new Elysia().use(cors()).use(getCoinsRoute).use(cryptoMoversRoutes).use(cryptoCacheRoutes).use(buybackWalletRoutes).use(triggerSnapshotRoute).use(commentsRoutes).use(activityRoutes).use(coinSentimentRoutes).all("/inngest", ({ request }) => inngestHandler(request)).get("/", () => "Hello Elysia").listen(process.env.PORT || 3000);
+var app = new Elysia().use(cors()).use(getCoinsRoute).use(cryptoMoversRoutes).use(cryptoCacheRoutes).use(buybackWalletRoutes).use(triggerSnapshotRoute).use(commentsRoutes).use(activityRoutes).use(coinSentimentRoutes).use(userPredictionsRoutes).all("/inngest", ({ request }) => inngestHandler(request)).get("/", () => "Hello Elysia").listen(process.env.PORT || 3000);
 console.log(`\uD83E\uDD8A Elysia is running at ${app.server?.hostname}:${app.server?.port}`);
