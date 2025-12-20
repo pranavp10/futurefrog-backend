@@ -9151,8 +9151,8 @@ var require_bn = __commonJS((exports, module) => {
       }
       return this._strip();
     };
-    function parseHex4Bits(string, index) {
-      var c = string.charCodeAt(index);
+    function parseHex4Bits(string, index2) {
+      var c = string.charCodeAt(index2);
       if (c >= 48 && c <= 57) {
         return c - 48;
       } else if (c >= 65 && c <= 70) {
@@ -9163,10 +9163,10 @@ var require_bn = __commonJS((exports, module) => {
         assert2(false, "Invalid character in " + string);
       }
     }
-    function parseHexByte(string, lowerBound, index) {
-      var r = parseHex4Bits(string, index);
-      if (index - 1 >= lowerBound) {
-        r |= parseHex4Bits(string, index - 1) << 4;
+    function parseHexByte(string, lowerBound, index2) {
+      var r = parseHex4Bits(string, index2);
+      if (index2 - 1 >= lowerBound) {
+        r |= parseHex4Bits(string, index2 - 1) << 4;
       }
       return r;
     }
@@ -42435,6 +42435,9 @@ class Index2 {
     this.config = { ...config, table };
   }
 }
+function index(name) {
+  return new IndexBuilderOn(false, name);
+}
 function uniqueIndex(name) {
   return new IndexBuilderOn(true, name);
 }
@@ -43027,8 +43030,8 @@ class PgDialect {
       return;
     }
     const joinsArray = [];
-    for (const [index, joinMeta] of joins.entries()) {
-      if (index === 0) {
+    for (const [index2, joinMeta] of joins.entries()) {
+      if (index2 === 0) {
         joinsArray.push(sql` `);
       }
       const table = joinMeta.table;
@@ -43049,7 +43052,7 @@ class PgDialect {
       } else {
         joinsArray.push(sql`${sql.raw(joinMeta.joinType)} join${lateralSql} ${table}${onSql}`);
       }
-      if (index < joins.length - 1) {
+      if (index2 < joins.length - 1) {
         joinsArray.push(sql` `);
       }
     }
@@ -44889,11 +44892,15 @@ function drizzle(...params) {
 var exports_schema = {};
 __export(exports_schema, {
   userPredictionsSnapshots: () => userPredictionsSnapshots,
+  userPointTransactions: () => userPointTransactions,
   performanceCategory: () => performanceCategory,
   globalParams: () => globalParams,
   cryptoPerformanceLogs: () => cryptoPerformanceLogs,
   cryptoMarketCache: () => cryptoMarketCache,
-  coins: () => coins
+  comments: () => comments,
+  commentHearts: () => commentHearts,
+  coins: () => coins,
+  coinMetadata: () => coinMetadata
 });
 
 // src/db/schema/coints.ts
@@ -44962,6 +44969,17 @@ var cryptoMarketCache = pgTable("crypto_market_cache", {
   snapshotTimestamp: timestamp("snapshot_timestamp").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
+// src/db/schema/coin_metadata.ts
+var coinMetadata = pgTable("coin_metadata", {
+  coingeckoId: varchar("coingecko_id", { length: 100 }).primaryKey(),
+  symbol: varchar("symbol", { length: 20 }).notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  imageUrl: varchar("image_url", { length: 500 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+}, (table) => ({
+  symbolIdx: uniqueIndex("coin_metadata_symbol_idx").on(table.symbol)
+}));
 // src/db/schema/user_predictions_snapshots.ts
 var userPredictionsSnapshots = pgTable("user_predictions_snapshots", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -44974,9 +44992,47 @@ var userPredictionsSnapshots = pgTable("user_predictions_snapshots", {
   lastUpdated: bigint("last_updated", { mode: "number" }),
   snapshotTimestamp: timestamp("snapshot_timestamp").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  processed: boolean("processed").notNull().default(false)
+  processed: boolean("processed").notNull().default(false),
+  pointsEarned: integer("points_earned").default(0)
 }, (table) => ({
   uniquePrediction: uniqueIndex("unique_prediction_idx").on(table.walletAddress, table.predictionType, table.rank, table.predictionTimestamp)
+}));
+// src/db/schema/user_point_transactions.ts
+var userPointTransactions = pgTable("user_point_transactions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  walletAddress: varchar("wallet_address", { length: 44 }).notNull(),
+  roundId: uuid("round_id").notNull(),
+  transactionType: varchar("transaction_type", { length: 30 }).notNull(),
+  pointsAmount: integer("points_amount").notNull(),
+  solanaSignature: varchar("solana_signature", { length: 88 }),
+  relatedPredictionIds: text("related_prediction_ids"),
+  metadata: text("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+// src/db/schema/comments.ts
+var comments = pgTable("comments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tokenSymbol: varchar("token_symbol", { length: 20 }).notNull(),
+  walletAddress: varchar("wallet_address", { length: 44 }).notNull(),
+  content: text("content").notNull(),
+  parentId: uuid("parent_id"),
+  heartCount: integer("heart_count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+}, (table) => ({
+  tokenSymbolIdx: index("comments_token_symbol_idx").on(table.tokenSymbol),
+  walletAddressIdx: index("comments_wallet_address_idx").on(table.walletAddress),
+  parentIdIdx: index("comments_parent_id_idx").on(table.parentId),
+  createdAtIdx: index("comments_created_at_idx").on(table.createdAt)
+}));
+// src/db/schema/comment_hearts.ts
+var commentHearts = pgTable("comment_hearts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  commentId: uuid("comment_id").notNull().references(() => comments.id, { onDelete: "cascade" }),
+  walletAddress: varchar("wallet_address", { length: 44 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+}, (table) => ({
+  uniqueHeart: uniqueIndex("unique_heart_idx").on(table.commentId, table.walletAddress)
 }));
 // src/db/index.ts
 var connectionString = process.env.DATABASE_URL;
@@ -50280,12 +50336,12 @@ class MessageAccountKeys {
     }
     return keySegments;
   }
-  get(index) {
+  get(index2) {
     for (const keySegment of this.keySegments()) {
-      if (index < keySegment.length) {
-        return keySegment[index];
+      if (index2 < keySegment.length) {
+        return keySegment[index2];
       } else {
-        index -= keySegment.length;
+        index2 -= keySegment.length;
       }
     }
     return;
@@ -50299,8 +50355,8 @@ class MessageAccountKeys {
       throw new Error("Account index overflow encountered during compilation");
     }
     const keyIndexMap = new Map;
-    this.keySegments().flat().forEach((key, index) => {
-      keyIndexMap.set(key.toBase58(), index);
+    this.keySegments().flat().forEach((key, index2) => {
+      keyIndexMap.set(key.toBase58(), index2);
     });
     const findKeyIndex = (key) => {
       const keyIndex = keyIndexMap.get(key.toBase58());
@@ -50560,29 +50616,29 @@ class Message {
       instructions
     });
   }
-  isAccountSigner(index) {
-    return index < this.header.numRequiredSignatures;
+  isAccountSigner(index2) {
+    return index2 < this.header.numRequiredSignatures;
   }
-  isAccountWritable(index) {
+  isAccountWritable(index2) {
     const numSignedAccounts = this.header.numRequiredSignatures;
-    if (index >= this.header.numRequiredSignatures) {
-      const unsignedAccountIndex = index - numSignedAccounts;
+    if (index2 >= this.header.numRequiredSignatures) {
+      const unsignedAccountIndex = index2 - numSignedAccounts;
       const numUnsignedAccounts = this.accountKeys.length - numSignedAccounts;
       const numWritableUnsignedAccounts = numUnsignedAccounts - this.header.numReadonlyUnsignedAccounts;
       return unsignedAccountIndex < numWritableUnsignedAccounts;
     } else {
       const numWritableSignedAccounts = numSignedAccounts - this.header.numReadonlySignedAccounts;
-      return index < numWritableSignedAccounts;
+      return index2 < numWritableSignedAccounts;
     }
   }
-  isProgramId(index) {
-    return this.indexToProgramIds.has(index);
+  isProgramId(index2) {
+    return this.indexToProgramIds.has(index2);
   }
   programIds() {
     return [...this.indexToProgramIds.values()];
   }
   nonProgramIds() {
-    return this.accountKeys.filter((_2, index) => !this.isProgramId(index));
+    return this.accountKeys.filter((_2, index2) => !this.isProgramId(index2));
   }
   serialize() {
     const numKeys = this.accountKeys.length;
@@ -50712,24 +50768,24 @@ class MessageV0 {
     }
     return new MessageAccountKeys(this.staticAccountKeys, accountKeysFromLookups);
   }
-  isAccountSigner(index) {
-    return index < this.header.numRequiredSignatures;
+  isAccountSigner(index2) {
+    return index2 < this.header.numRequiredSignatures;
   }
-  isAccountWritable(index) {
+  isAccountWritable(index2) {
     const numSignedAccounts = this.header.numRequiredSignatures;
     const numStaticAccountKeys = this.staticAccountKeys.length;
-    if (index >= numStaticAccountKeys) {
-      const lookupAccountKeysIndex = index - numStaticAccountKeys;
+    if (index2 >= numStaticAccountKeys) {
+      const lookupAccountKeysIndex = index2 - numStaticAccountKeys;
       const numWritableLookupAccountKeys = this.addressTableLookups.reduce((count, lookup) => count + lookup.writableIndexes.length, 0);
       return lookupAccountKeysIndex < numWritableLookupAccountKeys;
-    } else if (index >= this.header.numRequiredSignatures) {
-      const unsignedAccountIndex = index - numSignedAccounts;
+    } else if (index2 >= this.header.numRequiredSignatures) {
+      const unsignedAccountIndex = index2 - numSignedAccounts;
       const numUnsignedAccounts = numStaticAccountKeys - numSignedAccounts;
       const numWritableUnsignedAccounts = numUnsignedAccounts - this.header.numReadonlyUnsignedAccounts;
       return unsignedAccountIndex < numWritableUnsignedAccounts;
     } else {
       const numWritableSignedAccounts = numSignedAccounts - this.header.numReadonlySignedAccounts;
-      return index < numWritableSignedAccounts;
+      return index2 < numWritableSignedAccounts;
     }
   }
   resolveAddressTableLookups(addressLookupTableAccounts) {
@@ -50742,18 +50798,18 @@ class MessageV0 {
       if (!tableAccount) {
         throw new Error(`Failed to find address lookup table account for table key ${tableLookup.accountKey.toBase58()}`);
       }
-      for (const index of tableLookup.writableIndexes) {
-        if (index < tableAccount.state.addresses.length) {
-          accountKeysFromLookups.writable.push(tableAccount.state.addresses[index]);
+      for (const index2 of tableLookup.writableIndexes) {
+        if (index2 < tableAccount.state.addresses.length) {
+          accountKeysFromLookups.writable.push(tableAccount.state.addresses[index2]);
         } else {
-          throw new Error(`Failed to find address for index ${index} in address lookup table ${tableLookup.accountKey.toBase58()}`);
+          throw new Error(`Failed to find address for index ${index2} in address lookup table ${tableLookup.accountKey.toBase58()}`);
         }
       }
-      for (const index of tableLookup.readonlyIndexes) {
-        if (index < tableAccount.state.addresses.length) {
-          accountKeysFromLookups.readonly.push(tableAccount.state.addresses[index]);
+      for (const index2 of tableLookup.readonlyIndexes) {
+        if (index2 < tableAccount.state.addresses.length) {
+          accountKeysFromLookups.readonly.push(tableAccount.state.addresses[index2]);
         } else {
-          throw new Error(`Failed to find address for index ${index} in address lookup table ${tableLookup.accountKey.toBase58()}`);
+          throw new Error(`Failed to find address for index ${index2} in address lookup table ${tableLookup.accountKey.toBase58()}`);
         }
       }
     }
@@ -51195,8 +51251,8 @@ class Transaction {
     const message = this.compileMessage();
     const signedKeys = message.accountKeys.slice(0, message.header.numRequiredSignatures);
     if (this.signatures.length === signedKeys.length) {
-      const valid = this.signatures.every((pair, index) => {
-        return signedKeys[index].equals(pair.publicKey);
+      const valid = this.signatures.every((pair, index2) => {
+        return signedKeys[index2].equals(pair.publicKey);
       });
       if (valid)
         return message;
@@ -51284,11 +51340,11 @@ class Transaction {
   }
   _addSignature(pubkey, signature) {
     assert3(signature.length === 64);
-    const index = this.signatures.findIndex((sigpair) => pubkey.equals(sigpair.publicKey));
-    if (index < 0) {
+    const index2 = this.signatures.findIndex((sigpair) => pubkey.equals(sigpair.publicKey));
+    if (index2 < 0) {
       throw new Error(`unknown signer: ${pubkey.toString()}`);
     }
-    this.signatures[index].signature = Buffer2.from(signature);
+    this.signatures[index2].signature = Buffer2.from(signature);
   }
   verifySignatures(requireAllSignatures = true) {
     const signatureErrors = this._getMessageSignednessErrors(this.serializeMessage(), requireAllSignatures);
@@ -51350,10 +51406,10 @@ Missing signature for public key${sigErrors.missing.length === 1 ? "" : "(s)"} [
     Buffer2.from(signatureCount).copy(wireTransaction, 0);
     signatures.forEach(({
       signature
-    }, index) => {
+    }, index2) => {
       if (signature !== null) {
         assert3(signature.length === 64, `signature has invalid length`);
-        Buffer2.from(signature).copy(wireTransaction, signatureCount.length + index * 64);
+        Buffer2.from(signature).copy(wireTransaction, signatureCount.length + index2 * 64);
       }
     });
     signData.copy(wireTransaction, signatureCount.length + signatures.length * 64);
@@ -51388,10 +51444,10 @@ Missing signature for public key${sigErrors.missing.length === 1 ? "" : "(s)"} [
     if (message.header.numRequiredSignatures > 0) {
       transaction.feePayer = message.accountKeys[0];
     }
-    signatures.forEach((signature, index) => {
+    signatures.forEach((signature, index2) => {
       const sigPubkeyPair = {
         signature: signature == import_bs58.default.encode(DEFAULT_SIGNATURE) ? null : import_bs58.default.decode(signature),
-        publicKey: message.accountKeys[index]
+        publicKey: message.accountKeys[index2]
       };
       transaction.signatures.push(sigPubkeyPair);
     });
@@ -56020,17 +56076,17 @@ class Ed25519Program {
     const messageDataOffset = signatureOffset + signature.length;
     const numSignatures = 1;
     const instructionData = Buffer2.alloc(messageDataOffset + message.length);
-    const index = instructionIndex == null ? 65535 : instructionIndex;
+    const index2 = instructionIndex == null ? 65535 : instructionIndex;
     ED25519_INSTRUCTION_LAYOUT.encode({
       numSignatures,
       padding: 0,
       signatureOffset,
-      signatureInstructionIndex: index,
+      signatureInstructionIndex: index2,
       publicKeyOffset,
-      publicKeyInstructionIndex: index,
+      publicKeyInstructionIndex: index2,
       messageDataOffset,
       messageDataSize: message.length,
-      messageInstructionIndex: index
+      messageInstructionIndex: index2
     }, instructionData);
     instructionData.fill(publicKey2, publicKeyOffset);
     instructionData.fill(signature, signatureOffset);
@@ -57004,6 +57060,36 @@ var triggerSnapshotRoute = new Elysia({ prefix: "/api" }).post("/trigger-snapsho
       priceChangePercentage24h: coin.price_change_percentage_24h.toString(),
       snapshotTimestamp
     }));
+    console.log(`   \uD83E\uDE99 Checking coin metadata...`);
+    let newCoinsAdded = 0;
+    let coinsUpdated = 0;
+    for (const coin of filteredData) {
+      try {
+        const existingCoin = await db.select().from(coinMetadata).where(or(eq(coinMetadata.coingeckoId, coin.id), eq(coinMetadata.symbol, coin.symbol))).limit(1);
+        if (existingCoin.length === 0) {
+          await db.insert(coinMetadata).values({
+            coingeckoId: coin.id,
+            symbol: coin.symbol,
+            name: coin.name,
+            imageUrl: coin.image
+          });
+          newCoinsAdded++;
+        } else {
+          const existing = existingCoin[0];
+          if (existing.name !== coin.name || existing.imageUrl !== coin.image) {
+            await db.update(coinMetadata).set({
+              name: coin.name,
+              imageUrl: coin.image,
+              updatedAt: new Date
+            }).where(eq(coinMetadata.coingeckoId, coin.id));
+            coinsUpdated++;
+          }
+        }
+      } catch (error) {
+        console.error(`   \u26A0\uFE0F  Error processing metadata for ${coin.symbol}: ${error.message}`);
+      }
+    }
+    console.log(`   \u2728 Coin metadata: ${newCoinsAdded} new, ${coinsUpdated} updated`);
     await db.insert(cryptoMarketCache).values(cacheRecords);
     console.log(`   \uD83D\uDCBE Inserted ${cacheRecords.length} records into crypto_market_cache`);
     const records = [];
@@ -57081,6 +57167,212 @@ var triggerSnapshotRoute = new Elysia({ prefix: "/api" }).post("/trigger-snapsho
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to run snapshot"
+    };
+  }
+});
+
+// src/routes/comments.ts
+var commentsRoutes = new Elysia({ prefix: "/comments" }).get("/:symbol", async ({ params }) => {
+  const { symbol } = params;
+  const tokenSymbol = symbol.toUpperCase();
+  const topLevelComments = await db.select().from(comments).where(and(eq(comments.tokenSymbol, tokenSymbol), isNull(comments.parentId))).orderBy(desc(comments.createdAt)).limit(50);
+  const commentIds = topLevelComments.map((c) => c.id);
+  let replies = [];
+  if (commentIds.length > 0) {
+    replies = await db.select().from(comments).where(sql`${comments.parentId} IN (${sql.join(commentIds, sql`, `)})`).orderBy(comments.createdAt);
+  }
+  const commentsWithReplies = topLevelComments.map((comment) => ({
+    ...comment,
+    replies: replies.filter((r) => r.parentId === comment.id)
+  }));
+  return { comments: commentsWithReplies };
+}, {
+  params: t.Object({
+    symbol: t.String()
+  })
+}).post("/", async ({ body }) => {
+  const { tokenSymbol, walletAddress, content, parentId } = body;
+  if (!content.trim()) {
+    return { error: "Content cannot be empty" };
+  }
+  if (content.length > 500) {
+    return { error: "Content too long (max 500 characters)" };
+  }
+  if (parentId) {
+    const parent = await db.select().from(comments).where(eq(comments.id, parentId)).limit(1);
+    if (parent.length === 0) {
+      return { error: "Parent comment not found" };
+    }
+    if (parent[0].parentId) {
+      return { error: "Cannot reply to a reply" };
+    }
+  }
+  const [newComment] = await db.insert(comments).values({
+    tokenSymbol: tokenSymbol.toUpperCase(),
+    walletAddress,
+    content: content.trim(),
+    parentId: parentId || null
+  }).returning();
+  return { comment: newComment };
+}, {
+  body: t.Object({
+    tokenSymbol: t.String(),
+    walletAddress: t.String(),
+    content: t.String(),
+    parentId: t.Optional(t.String())
+  })
+}).post("/:id/heart", async ({ params, body }) => {
+  const { id } = params;
+  const { walletAddress } = body;
+  const existingHeart = await db.select().from(commentHearts).where(and(eq(commentHearts.commentId, id), eq(commentHearts.walletAddress, walletAddress))).limit(1);
+  if (existingHeart.length > 0) {
+    await db.delete(commentHearts).where(eq(commentHearts.id, existingHeart[0].id));
+    await db.update(comments).set({ heartCount: sql`${comments.heartCount} - 1` }).where(eq(comments.id, id));
+    return { hearted: false };
+  } else {
+    await db.insert(commentHearts).values({
+      commentId: id,
+      walletAddress
+    });
+    await db.update(comments).set({ heartCount: sql`${comments.heartCount} + 1` }).where(eq(comments.id, id));
+    return { hearted: true };
+  }
+}, {
+  params: t.Object({
+    id: t.String()
+  }),
+  body: t.Object({
+    walletAddress: t.String()
+  })
+}).get("/:symbol/hearts/:walletAddress", async ({ params }) => {
+  const { symbol, walletAddress } = params;
+  const tokenComments = await db.select({ id: comments.id }).from(comments).where(eq(comments.tokenSymbol, symbol.toUpperCase()));
+  if (tokenComments.length === 0) {
+    return { heartedCommentIds: [] };
+  }
+  const commentIds = tokenComments.map((c) => c.id);
+  const hearts = await db.select({ commentId: commentHearts.commentId }).from(commentHearts).where(and(sql`${commentHearts.commentId} IN (${sql.join(commentIds, sql`, `)})`, eq(commentHearts.walletAddress, walletAddress)));
+  return { heartedCommentIds: hearts.map((h) => h.commentId) };
+}, {
+  params: t.Object({
+    symbol: t.String(),
+    walletAddress: t.String()
+  })
+}).delete("/:id", async ({ params, body }) => {
+  const { id } = params;
+  const { walletAddress } = body;
+  const comment = await db.select().from(comments).where(eq(comments.id, id)).limit(1);
+  if (comment.length === 0) {
+    return { error: "Comment not found" };
+  }
+  if (comment[0].walletAddress !== walletAddress) {
+    return { error: "Not authorized" };
+  }
+  await db.delete(comments).where(eq(comments.id, id));
+  return { success: true };
+}, {
+  params: t.Object({
+    id: t.String()
+  }),
+  body: t.Object({
+    walletAddress: t.String()
+  })
+});
+
+// src/routes/activity.ts
+var activityRoutes = new Elysia({ prefix: "/activity" }).get("/:symbol", async ({ params }) => {
+  const { symbol } = params;
+  const tokenSymbol = symbol.toUpperCase();
+  const predictions = await db.select({
+    walletAddress: userPredictionsSnapshots.walletAddress,
+    predictionType: userPredictionsSnapshots.predictionType,
+    timestamp: userPredictionsSnapshots.snapshotTimestamp,
+    rank: userPredictionsSnapshots.rank
+  }).from(userPredictionsSnapshots).where(and(eq(userPredictionsSnapshots.symbol, tokenSymbol), isNotNull(userPredictionsSnapshots.symbol))).orderBy(desc(userPredictionsSnapshots.snapshotTimestamp)).limit(50);
+  const activity = predictions.map((p) => ({
+    walletAddress: p.walletAddress,
+    type: p.predictionType === "top_performer" ? "gainer" : "loser",
+    timestamp: p.timestamp
+  }));
+  return { activity };
+}, {
+  params: t.Object({
+    symbol: t.String()
+  })
+});
+
+// src/routes/coin-sentiment.ts
+var POINTS_MAP = {
+  top_performer: {
+    1: 100,
+    2: 60,
+    3: 40,
+    4: 20,
+    5: 10
+  },
+  worst_performer: {
+    1: -100,
+    2: -60,
+    3: -40,
+    4: -20,
+    5: -10
+  }
+};
+var coinSentimentRoutes = new Elysia().get("/coin-sentiment", async () => {
+  try {
+    const unprocessedPredictions = await db.select().from(userPredictionsSnapshots).where(and(eq(userPredictionsSnapshots.processed, false), isNotNull(userPredictionsSnapshots.symbol)));
+    const sentimentMap = new Map;
+    for (const prediction of unprocessedPredictions) {
+      const { symbol, predictionType, rank } = prediction;
+      if (!symbol)
+        continue;
+      const points = POINTS_MAP[predictionType]?.[rank] || 0;
+      if (!sentimentMap.has(symbol)) {
+        sentimentMap.set(symbol, {
+          score: 0,
+          total: 0,
+          topCount: 0,
+          worstCount: 0
+        });
+      }
+      const current = sentimentMap.get(symbol);
+      current.score += points;
+      current.total += 1;
+      if (predictionType === "top_performer") {
+        current.topCount += 1;
+      } else {
+        current.worstCount += 1;
+      }
+    }
+    const sentimentData = Array.from(sentimentMap.entries()).map(([symbol, data]) => ({
+      symbol,
+      sentimentScore: data.score,
+      totalPredictions: data.total,
+      topPerformerCount: data.topCount,
+      worstPerformerCount: data.worstCount
+    })).sort((a, b2) => b2.sentimentScore - a.sentimentScore);
+    const symbols = sentimentData.map((s) => s.symbol);
+    const symbolsLower = symbols.map((s) => s.toLowerCase());
+    const metadata = symbolsLower.length > 0 ? await db.select().from(coinMetadata).where(inArray(coinMetadata.symbol, symbolsLower)) : [];
+    const metadataMap = new Map(metadata.map((m) => [m.symbol.toUpperCase(), m]));
+    const sentimentDataWithMetadata = sentimentData.map((item) => ({
+      ...item,
+      metadata: metadataMap.has(item.symbol) ? {
+        coingeckoId: metadataMap.get(item.symbol).coingeckoId,
+        name: metadataMap.get(item.symbol).name,
+        imageUrl: metadataMap.get(item.symbol).imageUrl
+      } : undefined
+    }));
+    return {
+      success: true,
+      data: sentimentDataWithMetadata,
+      count: sentimentDataWithMetadata.length
+    };
+  } catch (error) {
+    console.error("Error calculating coin sentiment:", error);
+    return {
+      success: false,
+      error: "Failed to calculate coin sentiment"
     };
   }
 });
@@ -58065,6 +58357,36 @@ var cryptoSnapshot = inngest.createFunction({ id: "crypto-snapshot" }, process.e
       priceChangePercentage24h: coin.price_change_percentage_24h.toString(),
       snapshotTimestamp
     }));
+    console.log(`   \uD83E\uDE99 Checking coin metadata...`);
+    let newCoinsAdded = 0;
+    let coinsUpdated = 0;
+    for (const coin of filterAndRank.filteredData) {
+      try {
+        const existingCoin = await db.select().from(coinMetadata).where(or(eq(coinMetadata.coingeckoId, coin.id), eq(coinMetadata.symbol, coin.symbol))).limit(1);
+        if (existingCoin.length === 0) {
+          await db.insert(coinMetadata).values({
+            coingeckoId: coin.id,
+            symbol: coin.symbol,
+            name: coin.name,
+            imageUrl: coin.image
+          });
+          newCoinsAdded++;
+        } else {
+          const existing = existingCoin[0];
+          if (existing.name !== coin.name || existing.imageUrl !== coin.image) {
+            await db.update(coinMetadata).set({
+              name: coin.name,
+              imageUrl: coin.image,
+              updatedAt: new Date
+            }).where(eq(coinMetadata.coingeckoId, coin.id));
+            coinsUpdated++;
+          }
+        }
+      } catch (error) {
+        console.error(`   \u26A0\uFE0F  Error processing metadata for ${coin.symbol}: ${error.message}`);
+      }
+    }
+    console.log(`   \u2728 Coin metadata: ${newCoinsAdded} new, ${coinsUpdated} updated`);
     await db.insert(cryptoMarketCache).values(cacheRecords);
     console.log(`   \uD83D\uDCBE Inserted ${cacheRecords.length} records into crypto_market_cache`);
     return cacheRecords.length;
@@ -58235,6 +58557,303 @@ var cryptoSnapshot = inngest.createFunction({ id: "crypto-snapshot" }, process.e
       errors: errorCount
     };
   });
+  const scoringResults = await step2.run("score-and-reward-predictions", async () => {
+    console.log(`
+   ========================================`);
+    console.log(`   \uD83D\uDCB0 Step 6: Scoring Eligible Predictions`);
+    console.log(`   ========================================
+`);
+    const predictionIntervalMinutes = parseInt(process.env.PREDICTION_INTERVAL_MINUTES || "60");
+    const intervalMs = predictionIntervalMinutes * 60 * 1000;
+    const cutoffTime = new Date(Date.now() - intervalMs);
+    console.log(`   \u23F0 Prediction interval: ${predictionIntervalMinutes} minutes`);
+    console.log(`   \uD83D\uDCC5 Cutoff time: ${cutoffTime.toISOString()}`);
+    console.log(`
+   \uD83D\uDD0D Finding unprocessed predictions older than cutoff...`);
+    const eligiblePredictions = await db.select().from(userPredictionsSnapshots).where(and(eq(userPredictionsSnapshots.processed, false), lt(userPredictionsSnapshots.snapshotTimestamp, cutoffTime)));
+    if (eligiblePredictions.length === 0) {
+      console.log(`   \u2139\uFE0F  No eligible predictions found to process`);
+      return {
+        totalEligible: 0,
+        usersProcessed: 0,
+        totalPointsAwarded: 0,
+        predictionIds: []
+      };
+    }
+    console.log(`   \u2705 Found ${eligiblePredictions.length} eligible predictions to process`);
+    console.log(`
+   \uD83D\uDCCA Fetching latest round performance data...`);
+    const latestRoundData = await db.select().from(cryptoPerformanceLogs).where(eq(cryptoPerformanceLogs.roundId, filterAndRank.roundId));
+    if (latestRoundData.length === 0) {
+      console.log(`   \u26A0\uFE0F  No performance data found for current round`);
+      return {
+        totalEligible: eligiblePredictions.length,
+        usersProcessed: 0,
+        totalPointsAwarded: 0,
+        predictionIds: []
+      };
+    }
+    const topPerformers = latestRoundData.filter((r) => r.performanceCategory === "top_gainer").sort((a, b2) => a.performanceRank - b2.performanceRank);
+    const worstPerformers = latestRoundData.filter((r) => r.performanceCategory === "worst_performer").sort((a, b2) => a.performanceRank - b2.performanceRank);
+    const topPerformerMap = new Map(topPerformers.map((p) => [p.symbol.toLowerCase(), p.performanceRank]));
+    const worstPerformerMap = new Map(worstPerformers.map((p) => [p.symbol.toLowerCase(), p.performanceRank]));
+    console.log(`   \uD83D\uDCC8 Top performers: ${topPerformers.map((p) => `${p.symbol}(#${p.performanceRank})`).join(", ")}`);
+    console.log(`   \uD83D\uDCC9 Worst performers: ${worstPerformers.map((p) => `${p.symbol}(#${p.performanceRank})`).join(", ")}`);
+    console.log(`
+   \uD83C\uDFAF Scoring predictions...`);
+    const userScores = new Map;
+    for (const prediction of eligiblePredictions) {
+      if (!prediction.symbol || prediction.symbol.trim() === "") {
+        continue;
+      }
+      const symbol = prediction.symbol.toLowerCase();
+      let pointsEarned = 0;
+      const relevantMap = prediction.predictionType === "top_performer" ? topPerformerMap : worstPerformerMap;
+      const actualRank = relevantMap.get(symbol);
+      if (actualRank !== undefined) {
+        if (actualRank === prediction.rank) {
+          pointsEarned = 50;
+          console.log(`   \uD83C\uDFAF EXACT MATCH: ${prediction.walletAddress.slice(0, 8)}... predicted ${symbol} at rank ${prediction.rank} in ${prediction.predictionType} (+${pointsEarned})`);
+        } else {
+          pointsEarned = 10;
+          console.log(`   \u2713 Category match: ${prediction.walletAddress.slice(0, 8)}... predicted ${symbol} (rank ${prediction.rank}, actual ${actualRank}) in ${prediction.predictionType} (+${pointsEarned})`);
+        }
+      } else {
+        pointsEarned = 1;
+        console.log(`   \u2022 Participation: ${prediction.walletAddress.slice(0, 8)}... predicted ${symbol} in ${prediction.predictionType} (+${pointsEarned})`);
+      }
+      await db.update(userPredictionsSnapshots).set({ pointsEarned }).where(eq(userPredictionsSnapshots.id, prediction.id));
+      if (!userScores.has(prediction.walletAddress)) {
+        userScores.set(prediction.walletAddress, { totalPoints: 0, predictions: [] });
+      }
+      const userScore = userScores.get(prediction.walletAddress);
+      userScore.totalPoints += pointsEarned;
+      userScore.predictions.push(prediction);
+    }
+    console.log(`
+   \uD83D\uDC8E Calculating parlay bonuses...`);
+    for (const [walletAddress, userScore] of userScores.entries()) {
+      const predictions = userScore.predictions;
+      const topPredictions = predictions.filter((p) => p.predictionType === "top_performer");
+      const worstPredictions = predictions.filter((p) => p.predictionType === "worst_performer");
+      let parlayBonus = 0;
+      const topCorrect = topPredictions.filter((p) => {
+        const symbol = p.symbol?.toLowerCase();
+        return symbol && topPerformerMap.has(symbol);
+      }).length;
+      if (topCorrect >= 2)
+        parlayBonus += 25;
+      if (topCorrect >= 3)
+        parlayBonus += 50;
+      if (topCorrect >= 4)
+        parlayBonus += 125;
+      if (topCorrect === 5)
+        parlayBonus += 300;
+      const worstCorrect = worstPredictions.filter((p) => {
+        const symbol = p.symbol?.toLowerCase();
+        return symbol && worstPerformerMap.has(symbol);
+      }).length;
+      if (worstCorrect >= 2)
+        parlayBonus += 25;
+      if (worstCorrect >= 3)
+        parlayBonus += 50;
+      if (worstCorrect >= 4)
+        parlayBonus += 125;
+      if (worstCorrect === 5)
+        parlayBonus += 300;
+      if (topCorrect > 0 && worstCorrect > 0) {
+        parlayBonus += 50;
+      }
+      userScore.totalPoints += parlayBonus;
+      if (parlayBonus > 0) {
+        console.log(`   \uD83C\uDFB0 ${walletAddress.slice(0, 8)}... parlay bonus: +${parlayBonus} (top: ${topCorrect}/5, worst: ${worstCorrect}/5)`);
+      }
+    }
+    console.log(`
+   \uD83D\uDD17 Updating user points on Solana...`);
+    const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+    const connection2 = new Connection2(rpcUrl, "confirmed");
+    const PROGRAM_ID2 = new PublicKey(process.env.PROGRAM_ID);
+    const UPDATE_USER_POINTS_IX = Buffer.from([64, 4, 184, 126, 0, 46, 196, 159]);
+    let usersProcessed = 0;
+    let totalPointsAwarded = 0;
+    const processedPredictionIds = [];
+    try {
+      const adminKeypair = await getBuyBackKeypair();
+      console.log(`   \uD83D\uDD11 Admin keypair loaded: ${adminKeypair.publicKey.toBase58()}`);
+      for (const [walletAddress, userScore] of userScores.entries()) {
+        try {
+          const userPubkey = new PublicKey(walletAddress);
+          const pointsToAdd = userScore.totalPoints;
+          const [globalStatePda] = PublicKey.findProgramAddressSync([Buffer.from("global_state")], PROGRAM_ID2);
+          const [userPredictionsPda] = PublicKey.findProgramAddressSync([Buffer.from("user_predictions"), userPubkey.toBuffer()], PROGRAM_ID2);
+          const userAccount = await connection2.getAccountInfo(userPredictionsPda);
+          if (!userAccount) {
+            console.log(`   \u26A0\uFE0F  User ${walletAddress.slice(0, 8)}... account not found, skipping`);
+            continue;
+          }
+          const currentPoints = userAccount.data.readBigUInt64LE(8 + 32 + 140);
+          const newPoints = Number(currentPoints) + pointsToAdd;
+          const pointsBuffer = Buffer.alloc(8);
+          pointsBuffer.writeBigUInt64LE(BigInt(newPoints));
+          const instructionData = Buffer.concat([UPDATE_USER_POINTS_IX, pointsBuffer]);
+          const instruction = new TransactionInstruction({
+            programId: PROGRAM_ID2,
+            keys: [
+              { pubkey: userPredictionsPda, isSigner: false, isWritable: true },
+              { pubkey: globalStatePda, isSigner: false, isWritable: false },
+              { pubkey: adminKeypair.publicKey, isSigner: true, isWritable: false }
+            ],
+            data: instructionData
+          });
+          const transaction = new Transaction().add(instruction);
+          const { blockhash } = await connection2.getLatestBlockhash("confirmed");
+          transaction.recentBlockhash = blockhash;
+          transaction.feePayer = adminKeypair.publicKey;
+          transaction.sign(adminKeypair);
+          const signature = await connection2.sendRawTransaction(transaction.serialize(), {
+            skipPreflight: false,
+            preflightCommitment: "confirmed"
+          });
+          await connection2.confirmTransaction(signature, "confirmed");
+          console.log(`   \u2705 ${walletAddress.slice(0, 8)}... +${pointsToAdd} points (${currentPoints} \u2192 ${newPoints}) | tx: ${signature.slice(0, 8)}...`);
+          for (const prediction of userScore.predictions) {
+            let transactionType = "prediction_participation";
+            if (prediction.pointsEarned === 50) {
+              transactionType = "prediction_exact_match";
+            } else if (prediction.pointsEarned === 10) {
+              transactionType = "prediction_category_match";
+            }
+            await db.insert(userPointTransactions).values({
+              walletAddress,
+              roundId: filterAndRank.roundId,
+              transactionType,
+              pointsAmount: prediction.pointsEarned || 0,
+              solanaSignature: signature,
+              relatedPredictionIds: JSON.stringify([prediction.id]),
+              metadata: JSON.stringify({
+                symbol: prediction.symbol,
+                rank: prediction.rank,
+                predictionType: prediction.predictionType
+              })
+            });
+            await db.update(userPredictionsSnapshots).set({ processed: true }).where(eq(userPredictionsSnapshots.id, prediction.id));
+            processedPredictionIds.push(prediction.id);
+          }
+          const predictions = userScore.predictions;
+          const topPredictions = predictions.filter((p) => p.predictionType === "top_performer");
+          const worstPredictions = predictions.filter((p) => p.predictionType === "worst_performer");
+          const topCorrect = topPredictions.filter((p) => {
+            const symbol = p.symbol?.toLowerCase();
+            return symbol && topPerformerMap.has(symbol);
+          }).length;
+          const worstCorrect = worstPredictions.filter((p) => {
+            const symbol = p.symbol?.toLowerCase();
+            return symbol && worstPerformerMap.has(symbol);
+          }).length;
+          if (topCorrect >= 2) {
+            let topBonus = 0;
+            if (topCorrect >= 2)
+              topBonus += 25;
+            if (topCorrect >= 3)
+              topBonus += 50;
+            if (topCorrect >= 4)
+              topBonus += 125;
+            if (topCorrect === 5)
+              topBonus += 300;
+            const topPredictionIds = topPredictions.filter((p) => {
+              const symbol = p.symbol?.toLowerCase();
+              return symbol && topPerformerMap.has(symbol);
+            }).map((p) => p.id);
+            await db.insert(userPointTransactions).values({
+              walletAddress,
+              roundId: filterAndRank.roundId,
+              transactionType: "parlay_bonus_top",
+              pointsAmount: topBonus,
+              solanaSignature: signature,
+              relatedPredictionIds: JSON.stringify(topPredictionIds),
+              metadata: JSON.stringify({
+                correctCount: topCorrect,
+                totalSlots: 5
+              })
+            });
+          }
+          if (worstCorrect >= 2) {
+            let worstBonus = 0;
+            if (worstCorrect >= 2)
+              worstBonus += 25;
+            if (worstCorrect >= 3)
+              worstBonus += 50;
+            if (worstCorrect >= 4)
+              worstBonus += 125;
+            if (worstCorrect === 5)
+              worstBonus += 300;
+            const worstPredictionIds = worstPredictions.filter((p) => {
+              const symbol = p.symbol?.toLowerCase();
+              return symbol && worstPerformerMap.has(symbol);
+            }).map((p) => p.id);
+            await db.insert(userPointTransactions).values({
+              walletAddress,
+              roundId: filterAndRank.roundId,
+              transactionType: "parlay_bonus_worst",
+              pointsAmount: worstBonus,
+              solanaSignature: signature,
+              relatedPredictionIds: JSON.stringify(worstPredictionIds),
+              metadata: JSON.stringify({
+                correctCount: worstCorrect,
+                totalSlots: 5
+              })
+            });
+          }
+          if (topCorrect > 0 && worstCorrect > 0) {
+            const allCorrectPredictionIds = [
+              ...topPredictions.filter((p) => {
+                const symbol = p.symbol?.toLowerCase();
+                return symbol && topPerformerMap.has(symbol);
+              }).map((p) => p.id),
+              ...worstPredictions.filter((p) => {
+                const symbol = p.symbol?.toLowerCase();
+                return symbol && worstPerformerMap.has(symbol);
+              }).map((p) => p.id)
+            ];
+            await db.insert(userPointTransactions).values({
+              walletAddress,
+              roundId: filterAndRank.roundId,
+              transactionType: "cross_category_bonus",
+              pointsAmount: 50,
+              solanaSignature: signature,
+              relatedPredictionIds: JSON.stringify(allCorrectPredictionIds),
+              metadata: JSON.stringify({
+                topCorrect,
+                worstCorrect
+              })
+            });
+          }
+          usersProcessed++;
+          totalPointsAwarded += pointsToAdd;
+        } catch (error) {
+          console.error(`   \u274C Error updating ${walletAddress.slice(0, 8)}...: ${error.message}`);
+        }
+      }
+    } catch (error) {
+      console.error(`   \u274C Error loading admin keypair: ${error.message}`);
+    }
+    console.log(`
+   ========================================`);
+    console.log(`   \uD83D\uDCCA Scoring Summary:`);
+    console.log(`      Total eligible: ${eligiblePredictions.length}`);
+    console.log(`      Users processed: ${usersProcessed}`);
+    console.log(`      Total points awarded: ${totalPointsAwarded}`);
+    console.log(`      Predictions marked processed: ${processedPredictionIds.length}`);
+    console.log(`   ========================================
+`);
+    return {
+      totalEligible: eligiblePredictions.length,
+      usersProcessed,
+      totalPointsAwarded,
+      predictionIds: processedPredictionIds
+    };
+  });
   const duration = Date.now() - startTime;
   console.log(`
 ========================================`);
@@ -58243,6 +58862,7 @@ var cryptoSnapshot = inngest.createFunction({ id: "crypto-snapshot" }, process.e
   console.log(`   Performance logs: ${insertedCount} records`);
   console.log(`   Cache records: ${cacheCount} records`);
   console.log(`   User predictions: ${userPredictionsCount.inserted} new/updated, ${userPredictionsCount.skipped} duplicates, ${userPredictionsCount.errors} errors, ${userPredictionsCount.totalProcessed} total`);
+  console.log(`   Scoring: ${scoringResults.usersProcessed} users, ${scoringResults.totalPointsAwarded} points awarded`);
   console.log(`   Top gainer: ${filterAndRank.topGainers[0]?.name}`);
   console.log(`   Worst performer: ${filterAndRank.worstPerformers[0]?.name}`);
   console.log(`========================================
@@ -58258,6 +58878,12 @@ var cryptoSnapshot = inngest.createFunction({ id: "crypto-snapshot" }, process.e
       skipped: userPredictionsCount.skipped,
       errors: userPredictionsCount.errors,
       totalProcessed: userPredictionsCount.totalProcessed
+    },
+    scoring: {
+      totalEligible: scoringResults.totalEligible,
+      usersProcessed: scoringResults.usersProcessed,
+      totalPointsAwarded: scoringResults.totalPointsAwarded,
+      predictionsProcessed: scoringResults.predictionIds.length
     },
     topGainer: filterAndRank.topGainers[0]?.name,
     worstPerformer: filterAndRank.worstPerformers[0]?.name
@@ -58275,5 +58901,5 @@ var inngestHandler = serve2({
   client: inngest,
   functions
 });
-var app = new Elysia().use(cors()).use(getCoinsRoute).use(cryptoMoversRoutes).use(cryptoCacheRoutes).use(buybackWalletRoutes).use(triggerSnapshotRoute).all("/inngest", ({ request }) => inngestHandler(request)).get("/", () => "Hello Elysia").listen(process.env.PORT || 3000);
+var app = new Elysia().use(cors()).use(getCoinsRoute).use(cryptoMoversRoutes).use(cryptoCacheRoutes).use(buybackWalletRoutes).use(triggerSnapshotRoute).use(commentsRoutes).use(activityRoutes).use(coinSentimentRoutes).all("/inngest", ({ request }) => inngestHandler(request)).get("/", () => "Hello Elysia").listen(process.env.PORT || 3000);
 console.log(`\uD83E\uDD8A Elysia is running at ${app.server?.hostname}:${app.server?.port}`);

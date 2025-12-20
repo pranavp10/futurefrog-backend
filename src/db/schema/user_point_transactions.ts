@@ -43,3 +43,4 @@ export const userPointTransactions = pgTable("user_point_transactions", {
 // Type inference helpers
 export type UserPointTransaction = typeof userPointTransactions.$inferSelect;
 export type NewUserPointTransaction = typeof userPointTransactions.$inferInsert;
+

@@ -8,6 +8,7 @@ import { buybackWalletRoutes } from "./routes/buyback-wallet";
 import { triggerSnapshotRoute } from "./routes/trigger-snapshot";
 import { commentsRoutes } from "./routes/comments";
 import { activityRoutes } from "./routes/activity";
+import { coinSentimentRoutes } from "./routes/coin-sentiment";
 import { functions, inngest } from "./inngest";
 
 // Create Inngest handler
@@ -25,6 +26,7 @@ const app = new Elysia()
   .use(triggerSnapshotRoute)
   .use(commentsRoutes)
   .use(activityRoutes)
+  .use(coinSentimentRoutes)
   .all("/inngest", ({ request }) => inngestHandler(request))
   .get("/", () => "Hello Elysia")
   .listen(process.env.PORT || 3000);

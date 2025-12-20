@@ -1,12 +1,12 @@
 import { inngest } from "./client";
 import { db } from "../db";
-import { cryptoPerformanceLogs, cryptoMarketCache, userPredictionsSnapshots, userPointTransactions, type NewUserPredictionsSnapshot } from "../db/schema";
+import { cryptoPerformanceLogs, cryptoMarketCache, coinMetadata, userPredictionsSnapshots, userPointTransactions, type NewUserPredictionsSnapshot } from "../db/schema";
 import {
     CoinGeckoMarketData,
     filterAndRankCryptos,
 } from "../lib/crypto-filters";
 import { randomUUID } from "crypto";
-import { sql, eq, and, desc, lt } from "drizzle-orm";
+import { sql, eq, and, desc, lt, or } from "drizzle-orm";
 import { Connection, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { fetchAllUserPredictions } from "../lib/solana-predictions";
 import { getBuyBackKeypair } from "../lib/buyback-utils";
@@ -79,7 +79,7 @@ export const cryptoSnapshot = inngest.createFunction(
             return { roundId, topGainers, worstPerformers, filteredData };
         });
 
-        // Step 3: Purge and populate cache table
+        // Step 3: Purge and populate cache table + update coin metadata
         const cacheCount = await step.run("populate-cache", async () => {
             await db.execute(sql`TRUNCATE TABLE crypto_market_cache`);
             console.log(`   🗑️  Purged crypto_market_cache table`);
@@ -98,6 +98,56 @@ export const cryptoSnapshot = inngest.createFunction(
                 priceChangePercentage24h: coin.price_change_percentage_24h.toString(),
                 snapshotTimestamp,
             }));
+
+            // Update coin metadata table with new coins
+            console.log(`   🪙 Checking coin metadata...`);
+            let newCoinsAdded = 0;
+            let coinsUpdated = 0;
+            
+            for (const coin of filterAndRank.filteredData) {
+                try {
+                    // Check if coin exists in metadata table
+                    const existingCoin = await db
+                        .select()
+                        .from(coinMetadata)
+                        .where(
+                            or(
+                                eq(coinMetadata.coingeckoId, coin.id),
+                                eq(coinMetadata.symbol, coin.symbol)
+                            )
+                        )
+                        .limit(1);
+
+                    if (existingCoin.length === 0) {
+                        // Coin doesn't exist, insert it
+                        await db.insert(coinMetadata).values({
+                            coingeckoId: coin.id,
+                            symbol: coin.symbol,
+                            name: coin.name,
+                            imageUrl: coin.image,
+                        });
+                        newCoinsAdded++;
+                    } else {
+                        // Coin exists, update metadata if it changed
+                        const existing = existingCoin[0];
+                        if (existing.name !== coin.name || existing.imageUrl !== coin.image) {
+                            await db
+                                .update(coinMetadata)
+                                .set({
+                                    name: coin.name,
+                                    imageUrl: coin.image,
+                                    updatedAt: new Date(),
+                                })
+                                .where(eq(coinMetadata.coingeckoId, coin.id));
+                            coinsUpdated++;
+                        }
+                    }
+                } catch (error: any) {
+                    console.error(`   ⚠️  Error processing metadata for ${coin.symbol}: ${error.message}`);
+                }
+            }
+
+            console.log(`   ✨ Coin metadata: ${newCoinsAdded} new, ${coinsUpdated} updated`);
 
             await db.insert(cryptoMarketCache).values(cacheRecords);
             console.log(`   💾 Inserted ${cacheRecords.length} records into crypto_market_cache`);

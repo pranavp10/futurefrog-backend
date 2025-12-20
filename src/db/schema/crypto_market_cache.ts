@@ -46,3 +46,4 @@ export type NewCryptoMarketCache = typeof cryptoMarketCache.$inferInsert;
 
 
 
+

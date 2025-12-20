@@ -64,6 +64,13 @@
       "when": 1734660000000,
       "tag": "0008_create_user_point_transactions",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1734720000000,
+      "tag": "0009_create_coin_metadata",
+      "breakpoints": true
     }
   ]
 }
