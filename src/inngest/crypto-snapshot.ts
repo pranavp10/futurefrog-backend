@@ -553,16 +553,29 @@ export const cryptoSnapshot = inngest.createFunction(
                 const adminKeypair = await getBuyBackKeypair();
                 console.log(`   🔑 Admin keypair loaded: ${adminKeypair.publicKey.toBase58()}`);
 
+                // Prepare all user data first
+                type UserUpdateData = {
+                    walletAddress: string;
+                    userPubkey: PublicKey;
+                    userScore: typeof userScores extends Map<string, infer V> ? V : never;
+                    userPredictionsPda: PublicKey;
+                    currentPoints: bigint;
+                    newPoints: number;
+                    pointsToAdd: number;
+                };
+                
+                const userUpdates: UserUpdateData[] = [];
+                
+                const [globalStatePda] = PublicKey.findProgramAddressSync(
+                    [Buffer.from('global_state')],
+                    PROGRAM_ID
+                );
+
+                // Prepare all user updates
                 for (const [walletAddress, userScore] of userScores.entries()) {
                     try {
                         const userPubkey = new PublicKey(walletAddress);
                         const pointsToAdd = userScore.totalPoints;
-
-                        // Derive PDAs
-                        const [globalStatePda] = PublicKey.findProgramAddressSync(
-                            [Buffer.from('global_state')],
-                            PROGRAM_ID
-                        );
 
                         const [userPredictionsPda] = PublicKey.findProgramAddressSync(
                             [Buffer.from('user_predictions'), userPubkey.toBuffer()],
@@ -580,23 +593,58 @@ export const cryptoSnapshot = inngest.createFunction(
                         const currentPoints = userAccount.data.readBigUInt64LE(8 + 32 + 140);
                         const newPoints = Number(currentPoints) + pointsToAdd;
 
-                        // Create instruction
-                        const pointsBuffer = Buffer.alloc(8);
-                        pointsBuffer.writeBigUInt64LE(BigInt(newPoints));
-                        const instructionData = Buffer.concat([UPDATE_USER_POINTS_IX, pointsBuffer]);
-
-                        const instruction = new TransactionInstruction({
-                            programId: PROGRAM_ID,
-                            keys: [
-                                { pubkey: userPredictionsPda, isSigner: false, isWritable: true },
-                                { pubkey: globalStatePda, isSigner: false, isWritable: false },
-                                { pubkey: adminKeypair.publicKey, isSigner: true, isWritable: false },
-                            ],
-                            data: instructionData,
+                        userUpdates.push({
+                            walletAddress,
+                            userPubkey,
+                            userScore,
+                            userPredictionsPda,
+                            currentPoints,
+                            newPoints,
+                            pointsToAdd,
                         });
+                    } catch (error: any) {
+                        console.error(`   ❌ Error preparing update for ${walletAddress.slice(0, 8)}...: ${error.message}`);
+                    }
+                }
 
-                        // Send transaction
-                        const transaction = new Transaction().add(instruction);
+                // Process in batches of up to 10
+                const BATCH_SIZE = 10;
+                const batches: UserUpdateData[][] = [];
+                for (let i = 0; i < userUpdates.length; i += BATCH_SIZE) {
+                    batches.push(userUpdates.slice(i, i + BATCH_SIZE));
+                }
+
+                console.log(`   📦 Processing ${userUpdates.length} users in ${batches.length} batches (max ${BATCH_SIZE} per batch)`);
+
+                // Process each batch
+                for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+                    const batch = batches[batchIndex];
+                    try {
+                        // Create instructions for all users in this batch
+                        const instructions: TransactionInstruction[] = [];
+                        
+                        for (const update of batch) {
+                            const pointsBuffer = Buffer.alloc(8);
+                            pointsBuffer.writeBigUInt64LE(BigInt(update.newPoints));
+                            const instructionData = Buffer.concat([UPDATE_USER_POINTS_IX, pointsBuffer]);
+
+                            const instruction = new TransactionInstruction({
+                                programId: PROGRAM_ID,
+                                keys: [
+                                    { pubkey: update.userPredictionsPda, isSigner: false, isWritable: true },
+                                    { pubkey: globalStatePda, isSigner: false, isWritable: false },
+                                    { pubkey: adminKeypair.publicKey, isSigner: true, isWritable: false },
+                                ],
+                                data: instructionData,
+                            });
+
+                            instructions.push(instruction);
+                        }
+
+                        // Send single transaction with all instructions
+                        const transaction = new Transaction();
+                        instructions.forEach(ix => transaction.add(ix));
+                        
                         const { blockhash } = await connection.getLatestBlockhash('confirmed');
                         transaction.recentBlockhash = blockhash;
                         transaction.feePayer = adminKeypair.publicKey;
@@ -610,146 +658,155 @@ export const cryptoSnapshot = inngest.createFunction(
                         // Wait for confirmation
                         await connection.confirmTransaction(signature, 'confirmed');
 
-                        console.log(`   ✅ ${walletAddress.slice(0, 8)}... +${pointsToAdd} points (${currentPoints} → ${newPoints}) | tx: ${signature.slice(0, 8)}...`);
+                        console.log(`   ✅ Batch ${batchIndex + 1}/${batches.length}: Updated ${batch.length} users | tx: ${signature.slice(0, 8)}...`);
 
-                        // Record individual prediction reward transactions
-                        for (const prediction of userScore.predictions) {
-                            // Determine transaction type based on points earned
-                            let transactionType = 'prediction_participation';
-                            if (prediction.pointsEarned === 50) {
-                                transactionType = 'prediction_exact_match';
-                            } else if (prediction.pointsEarned === 10) {
-                                transactionType = 'prediction_category_match';
+                        // Record database entries for all users in this batch
+                        for (const update of batch) {
+                            console.log(`      • ${update.walletAddress.slice(0, 8)}... +${update.pointsToAdd} points (${update.currentPoints} → ${update.newPoints})`);
+
+                            // Record individual prediction reward transactions
+                            for (const prediction of update.userScore.predictions) {
+                                // Determine transaction type based on points earned
+                                let transactionType = 'prediction_participation';
+                                if (prediction.pointsEarned === 50) {
+                                    transactionType = 'prediction_exact_match';
+                                } else if (prediction.pointsEarned === 10) {
+                                    transactionType = 'prediction_category_match';
+                                }
+
+                                await db.insert(userPointTransactions).values({
+                                    walletAddress: update.walletAddress,
+                                    roundId: filterAndRank.roundId,
+                                    transactionType,
+                                    pointsAmount: prediction.pointsEarned || 0,
+                                    solanaSignature: signature,
+                                    relatedPredictionIds: JSON.stringify([prediction.id]),
+                                    metadata: JSON.stringify({
+                                        symbol: prediction.symbol,
+                                        rank: prediction.rank,
+                                        predictionType: prediction.predictionType,
+                                    }),
+                                });
+
+                                // Mark prediction as processed
+                                await db
+                                    .update(userPredictionsSnapshots)
+                                    .set({ processed: true })
+                                    .where(eq(userPredictionsSnapshots.id, prediction.id));
+                                processedPredictionIds.push(prediction.id);
                             }
 
-                            await db.insert(userPointTransactions).values({
-                                walletAddress,
-                                roundId: filterAndRank.roundId,
-                                transactionType,
-                                pointsAmount: prediction.pointsEarned || 0,
-                                solanaSignature: signature,
-                                relatedPredictionIds: JSON.stringify([prediction.id]),
-                                metadata: JSON.stringify({
-                                    symbol: prediction.symbol,
-                                    rank: prediction.rank,
-                                    predictionType: prediction.predictionType,
-                                }),
-                            });
+                            // Record parlay bonus transactions if applicable
+                            const predictions = update.userScore.predictions;
+                            const topPredictions = predictions.filter(p => p.predictionType === 'top_performer');
+                            const worstPredictions = predictions.filter(p => p.predictionType === 'worst_performer');
 
-                            // Mark prediction as processed
-                            await db
-                                .update(userPredictionsSnapshots)
-                                .set({ processed: true })
-                                .where(eq(userPredictionsSnapshots.id, prediction.id));
-                            processedPredictionIds.push(prediction.id);
+                            // Calculate individual bonus components for recording
+                            const topCorrect = topPredictions.filter(p => {
+                                const symbol = p.symbol?.toLowerCase();
+                                return symbol && topPerformerMap.has(symbol);
+                            }).length;
+
+                            const worstCorrect = worstPredictions.filter(p => {
+                                const symbol = p.symbol?.toLowerCase();
+                                return symbol && worstPerformerMap.has(symbol);
+                            }).length;
+
+                            // Record top performer parlay bonus
+                            if (topCorrect >= 2) {
+                                let topBonus = 0;
+                                if (topCorrect >= 2) topBonus += 25;
+                                if (topCorrect >= 3) topBonus += 50;
+                                if (topCorrect >= 4) topBonus += 125;
+                                if (topCorrect === 5) topBonus += 300;
+
+                                const topPredictionIds = topPredictions
+                                    .filter(p => {
+                                        const symbol = p.symbol?.toLowerCase();
+                                        return symbol && topPerformerMap.has(symbol);
+                                    })
+                                    .map(p => p.id);
+
+                                await db.insert(userPointTransactions).values({
+                                    walletAddress: update.walletAddress,
+                                    roundId: filterAndRank.roundId,
+                                    transactionType: 'parlay_bonus_top',
+                                    pointsAmount: topBonus,
+                                    solanaSignature: signature,
+                                    relatedPredictionIds: JSON.stringify(topPredictionIds),
+                                    metadata: JSON.stringify({
+                                        correctCount: topCorrect,
+                                        totalSlots: 5,
+                                    }),
+                                });
+                            }
+
+                            // Record worst performer parlay bonus
+                            if (worstCorrect >= 2) {
+                                let worstBonus = 0;
+                                if (worstCorrect >= 2) worstBonus += 25;
+                                if (worstCorrect >= 3) worstBonus += 50;
+                                if (worstCorrect >= 4) worstBonus += 125;
+                                if (worstCorrect === 5) worstBonus += 300;
+
+                                const worstPredictionIds = worstPredictions
+                                    .filter(p => {
+                                        const symbol = p.symbol?.toLowerCase();
+                                        return symbol && worstPerformerMap.has(symbol);
+                                    })
+                                    .map(p => p.id);
+
+                                await db.insert(userPointTransactions).values({
+                                    walletAddress: update.walletAddress,
+                                    roundId: filterAndRank.roundId,
+                                    transactionType: 'parlay_bonus_worst',
+                                    pointsAmount: worstBonus,
+                                    solanaSignature: signature,
+                                    relatedPredictionIds: JSON.stringify(worstPredictionIds),
+                                    metadata: JSON.stringify({
+                                        correctCount: worstCorrect,
+                                        totalSlots: 5,
+                                    }),
+                                });
+                            }
+
+                            // Record cross-category bonus
+                            if (topCorrect > 0 && worstCorrect > 0) {
+                                const allCorrectPredictionIds = [
+                                    ...topPredictions.filter(p => {
+                                        const symbol = p.symbol?.toLowerCase();
+                                        return symbol && topPerformerMap.has(symbol);
+                                    }).map(p => p.id),
+                                    ...worstPredictions.filter(p => {
+                                        const symbol = p.symbol?.toLowerCase();
+                                        return symbol && worstPerformerMap.has(symbol);
+                                    }).map(p => p.id),
+                                ];
+
+                                await db.insert(userPointTransactions).values({
+                                    walletAddress: update.walletAddress,
+                                    roundId: filterAndRank.roundId,
+                                    transactionType: 'cross_category_bonus',
+                                    pointsAmount: 50,
+                                    solanaSignature: signature,
+                                    relatedPredictionIds: JSON.stringify(allCorrectPredictionIds),
+                                    metadata: JSON.stringify({
+                                        topCorrect,
+                                        worstCorrect,
+                                    }),
+                                });
+                            }
+
+                            usersProcessed++;
+                            totalPointsAwarded += update.pointsToAdd;
                         }
-
-                        // Record parlay bonus transactions if applicable
-                        const predictions = userScore.predictions;
-                        const topPredictions = predictions.filter(p => p.predictionType === 'top_performer');
-                        const worstPredictions = predictions.filter(p => p.predictionType === 'worst_performer');
-
-                        // Calculate individual bonus components for recording
-                        const topCorrect = topPredictions.filter(p => {
-                            const symbol = p.symbol?.toLowerCase();
-                            return symbol && topPerformerMap.has(symbol);
-                        }).length;
-
-                        const worstCorrect = worstPredictions.filter(p => {
-                            const symbol = p.symbol?.toLowerCase();
-                            return symbol && worstPerformerMap.has(symbol);
-                        }).length;
-
-                        // Record top performer parlay bonus
-                        if (topCorrect >= 2) {
-                            let topBonus = 0;
-                            if (topCorrect >= 2) topBonus += 25;
-                            if (topCorrect >= 3) topBonus += 50;
-                            if (topCorrect >= 4) topBonus += 125;
-                            if (topCorrect === 5) topBonus += 300;
-
-                            const topPredictionIds = topPredictions
-                                .filter(p => {
-                                    const symbol = p.symbol?.toLowerCase();
-                                    return symbol && topPerformerMap.has(symbol);
-                                })
-                                .map(p => p.id);
-
-                            await db.insert(userPointTransactions).values({
-                                walletAddress,
-                                roundId: filterAndRank.roundId,
-                                transactionType: 'parlay_bonus_top',
-                                pointsAmount: topBonus,
-                                solanaSignature: signature,
-                                relatedPredictionIds: JSON.stringify(topPredictionIds),
-                                metadata: JSON.stringify({
-                                    correctCount: topCorrect,
-                                    totalSlots: 5,
-                                }),
-                            });
-                        }
-
-                        // Record worst performer parlay bonus
-                        if (worstCorrect >= 2) {
-                            let worstBonus = 0;
-                            if (worstCorrect >= 2) worstBonus += 25;
-                            if (worstCorrect >= 3) worstBonus += 50;
-                            if (worstCorrect >= 4) worstBonus += 125;
-                            if (worstCorrect === 5) worstBonus += 300;
-
-                            const worstPredictionIds = worstPredictions
-                                .filter(p => {
-                                    const symbol = p.symbol?.toLowerCase();
-                                    return symbol && worstPerformerMap.has(symbol);
-                                })
-                                .map(p => p.id);
-
-                            await db.insert(userPointTransactions).values({
-                                walletAddress,
-                                roundId: filterAndRank.roundId,
-                                transactionType: 'parlay_bonus_worst',
-                                pointsAmount: worstBonus,
-                                solanaSignature: signature,
-                                relatedPredictionIds: JSON.stringify(worstPredictionIds),
-                                metadata: JSON.stringify({
-                                    correctCount: worstCorrect,
-                                    totalSlots: 5,
-                                }),
-                            });
-                        }
-
-                        // Record cross-category bonus
-                        if (topCorrect > 0 && worstCorrect > 0) {
-                            const allCorrectPredictionIds = [
-                                ...topPredictions.filter(p => {
-                                    const symbol = p.symbol?.toLowerCase();
-                                    return symbol && topPerformerMap.has(symbol);
-                                }).map(p => p.id),
-                                ...worstPredictions.filter(p => {
-                                    const symbol = p.symbol?.toLowerCase();
-                                    return symbol && worstPerformerMap.has(symbol);
-                                }).map(p => p.id),
-                            ];
-
-                            await db.insert(userPointTransactions).values({
-                                walletAddress,
-                                roundId: filterAndRank.roundId,
-                                transactionType: 'cross_category_bonus',
-                                pointsAmount: 50,
-                                solanaSignature: signature,
-                                relatedPredictionIds: JSON.stringify(allCorrectPredictionIds),
-                                metadata: JSON.stringify({
-                                    topCorrect,
-                                    worstCorrect,
-                                }),
-                            });
-                        }
-
-                        usersProcessed++;
-                        totalPointsAwarded += pointsToAdd;
 
                     } catch (error: any) {
-                        console.error(`   ❌ Error updating ${walletAddress.slice(0, 8)}...: ${error.message}`);
+                        console.error(`   ❌ Error processing batch ${batchIndex + 1}: ${error.message}`);
+                        // Individual users in this batch failed, log them
+                        for (const update of batch) {
+                            console.error(`      Failed: ${update.walletAddress.slice(0, 8)}...`);
+                        }
                     }
                 }
             } catch (error: any) {
