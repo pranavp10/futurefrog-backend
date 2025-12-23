@@ -10,6 +10,7 @@ import { commentsRoutes } from "./routes/comments";
 import { activityRoutes } from "./routes/activity";
 import { coinSentimentRoutes } from "./routes/coin-sentiment";
 import { userPredictionsRoutes } from "./routes/user-predictions";
+import { resultsRoutes } from "./routes/results";
 import { functions, inngest } from "./inngest";
 
 // Create Inngest handler
@@ -29,6 +30,7 @@ const app = new Elysia()
   .use(activityRoutes)
   .use(coinSentimentRoutes)
   .use(userPredictionsRoutes)
+  .use(resultsRoutes)
   .all("/inngest", ({ request }) => inngestHandler(request))
   .get("/", () => "Hello Elysia")
   .listen(process.env.PORT || 3000);
