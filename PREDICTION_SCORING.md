@@ -251,3 +251,4 @@ Potential improvements:
 - Difficulty multiplier: Predicting underdog coins worth more
 - Streak bonuses: Consecutive correct rounds earn multipliers
 - Leaderboard integration: Track top performers
+

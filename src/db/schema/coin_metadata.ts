@@ -32,3 +32,4 @@ export const coinMetadata = pgTable("coin_metadata", {
 export type CoinMetadata = typeof coinMetadata.$inferSelect;
 export type NewCoinMetadata = typeof coinMetadata.$inferInsert;
 
+

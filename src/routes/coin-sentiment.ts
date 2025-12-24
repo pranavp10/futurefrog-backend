@@ -131,3 +131,4 @@ export const coinSentimentRoutes = new Elysia().get("/coin-sentiment", async () 
         };
     }
 });
+

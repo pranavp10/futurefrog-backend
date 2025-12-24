@@ -11,3 +11,4 @@ CREATE TABLE "coin_metadata" (
 -- Create unique index on symbol for quick lookups
 CREATE UNIQUE INDEX "coin_metadata_symbol_idx" ON "coin_metadata"("symbol");
 
+

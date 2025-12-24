@@ -332,3 +332,4 @@ This feature provides:
 
 The key insight is that **user predictions operate on their own timeline**, separate from the CoinGecko oracle snapshots. We simply capture the current state periodically for historical tracking.
 
+

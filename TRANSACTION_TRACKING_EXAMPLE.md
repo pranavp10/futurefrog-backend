@@ -210,3 +210,4 @@ SELECT
     THEN wallet_address END) / COUNT(DISTINCT wallet_address), 2) as parlay_rate
 FROM user_point_transactions;
 ```
+

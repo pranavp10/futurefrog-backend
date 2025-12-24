@@ -228,3 +228,4 @@ For issues or questions:
 - Verify environment variables are correctly set
 - Ensure the user account exists on-chain
 - Check Solana Explorer for transaction details
+

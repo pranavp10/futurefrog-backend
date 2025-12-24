@@ -284,3 +284,4 @@ export const dailyPredictionReset = inngest.createFunction(
 - `BUYBACK_KEY_SETUP.md` - For admin keypair setup
 - `USER_PREDICTIONS_FEATURE.md` - For understanding prediction structure
 - `EXAMPLE_USAGE.md` - For point update examples
+

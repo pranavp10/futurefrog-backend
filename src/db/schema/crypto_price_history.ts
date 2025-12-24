@@ -9,11 +9,11 @@ import {
 } from "drizzle-orm/pg-core";
 
 /**
- * Crypto Market Cache table - stores the latest full dataset from CoinGecko
- * This table is purged and overwritten on each snapshot run
- * Acts as a cache to avoid repeated CoinGecko API calls from the UI
+ * Crypto Price History table - stores historical price data from CoinGecko
+ * This table accumulates data over time and is never purged
+ * Used for tracking price trends and historical analysis
  */
-export const cryptoMarketCache = pgTable("crypto_market_cache", {
+export const cryptoPriceHistory = pgTable("crypto_price_history", {
     // Primary identifier
     id: uuid("id").defaultRandom().primaryKey(),
     
@@ -40,11 +40,6 @@ export const cryptoMarketCache = pgTable("crypto_market_cache", {
 });
 
 // Type inference helpers
-export type CryptoMarketCache = typeof cryptoMarketCache.$inferSelect;
-export type NewCryptoMarketCache = typeof cryptoMarketCache.$inferInsert;
-
-
-
-
-
+export type CryptoPriceHistory = typeof cryptoPriceHistory.$inferSelect;
+export type NewCryptoPriceHistory = typeof cryptoPriceHistory.$inferInsert;
 
