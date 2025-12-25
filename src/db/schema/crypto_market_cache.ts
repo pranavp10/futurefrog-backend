@@ -10,7 +10,7 @@ import {
 
 /**
  * Crypto Market Cache table - stores the latest full dataset from CoinGecko
- * This table is purged and overwritten on each snapshot run
+ * New data is inserted first, then old rounds are cleaned up (never empty)
  * Acts as a cache to avoid repeated CoinGecko API calls from the UI
  */
 export const cryptoMarketCache = pgTable("crypto_market_cache", {

@@ -51,10 +51,7 @@ export const triggerSnapshotRoute = new Elysia({ prefix: '/api' })
             console.log(`   🚀 Top gainer: ${topGainers[0]?.name} (${topGainers[0]?.price_change_percentage_24h}%)`);
             console.log(`   📉 Worst performer: ${worstPerformers[0]?.name} (${worstPerformers[0]?.price_change_percentage_24h}%)`);
 
-            // Step 3: Purge and populate cache table with all filtered data + update coin metadata
-            await db.execute(sql`TRUNCATE TABLE crypto_market_cache`);
-            console.log(`   🗑️  Purged crypto_market_cache table`);
-
+            // Step 3: Populate cache table (insert first, then cleanup old data) + update coin metadata
             const cacheRecords = filteredData.map(coin => ({
                 roundId,
                 coingeckoId: coin.id,
@@ -69,6 +66,17 @@ export const triggerSnapshotRoute = new Elysia({ prefix: '/api' })
                 priceChangePercentage24h: coin.price_change_percentage_24h.toString(),
                 snapshotTimestamp,
             }));
+
+            // Insert new records FIRST (ensures cache is never empty)
+            await db.insert(cryptoMarketCache).values(cacheRecords);
+            console.log(`   💾 Inserted ${cacheRecords.length} new records into crypto_market_cache (roundId: ${roundId})`);
+
+            // Delete old records from previous rounds (keep only current round)
+            await db
+                .delete(cryptoMarketCache)
+                .where(sql`${cryptoMarketCache.roundId} != ${roundId}`);
+            
+            console.log(`   🗑️  Cleaned up old records from previous rounds`);
 
             // Update coin metadata table with new coins
             console.log(`   🪙 Checking coin metadata...`);
@@ -119,9 +127,6 @@ export const triggerSnapshotRoute = new Elysia({ prefix: '/api' })
             }
 
             console.log(`   ✨ Coin metadata: ${newCoinsAdded} new, ${coinsUpdated} updated`);
-
-            await db.insert(cryptoMarketCache).values(cacheRecords);
-            console.log(`   💾 Inserted ${cacheRecords.length} records into crypto_market_cache`);
 
             // Step 4: Insert top 5 and worst 5 into performance logs
             const records = [];

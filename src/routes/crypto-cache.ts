@@ -1,7 +1,7 @@
 import { Elysia } from 'elysia';
 import { db } from '../db';
 import { cryptoMarketCache } from '../db/schema';
-import { desc } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 
 /**
  * Crypto cache routes
@@ -11,19 +11,39 @@ import { desc } from 'drizzle-orm';
 export const cryptoCacheRoutes = new Elysia({ prefix: '/api/crypto-cache' })
     .get('/', async ({ set }) => {
         try {
-            // Get all cached crypto data (latest snapshot only)
-            // Since we TRUNCATE on each run, all records are from the latest snapshot
+            // Get the latest roundId first (by most recent snapshotTimestamp)
+            const latestRound = await db
+                .select({
+                    roundId: cryptoMarketCache.roundId,
+                    snapshotTimestamp: cryptoMarketCache.snapshotTimestamp,
+                })
+                .from(cryptoMarketCache)
+                .orderBy(desc(cryptoMarketCache.snapshotTimestamp))
+                .limit(1);
+
+            if (latestRound.length === 0) {
+                set.status = 404;
+                return {
+                    success: false,
+                    error: 'No cached data available. Please run a snapshot first.',
+                    message: 'Trigger a snapshot via POST /api/trigger-snapshot',
+                };
+            }
+
+            const latestRoundId = latestRound[0].roundId;
+
+            // Get all cached crypto data for the latest round only
             const cachedData = await db
                 .select()
                 .from(cryptoMarketCache)
+                .where(eq(cryptoMarketCache.roundId, latestRoundId))
                 .orderBy(desc(cryptoMarketCache.volumeRank));
 
             if (cachedData.length === 0) {
                 set.status = 404;
                 return {
                     success: false,
-                    error: 'No cached data available. Please run a snapshot first.',
-                    message: 'Trigger a snapshot via POST /api/trigger-snapshot',
+                    error: 'No cached data available for latest round.',
                 };
             }
 
@@ -63,7 +83,7 @@ export const cryptoCacheRoutes = new Elysia({ prefix: '/api/crypto-cache' })
     })
     .get('/metadata', async ({ set }) => {
         try {
-            // Get metadata about the cached data
+            // Get metadata about the latest cached data
             const firstRecord = await db
                 .select({
                     roundId: cryptoMarketCache.roundId,
@@ -71,6 +91,7 @@ export const cryptoCacheRoutes = new Elysia({ prefix: '/api/crypto-cache' })
                     createdAt: cryptoMarketCache.createdAt,
                 })
                 .from(cryptoMarketCache)
+                .orderBy(desc(cryptoMarketCache.snapshotTimestamp))
                 .limit(1);
 
             if (firstRecord.length === 0) {
@@ -81,16 +102,20 @@ export const cryptoCacheRoutes = new Elysia({ prefix: '/api/crypto-cache' })
                 };
             }
 
-            const totalCount = await db
+            const latestRoundId = firstRecord[0].roundId;
+
+            // Count records in latest round only
+            const roundRecords = await db
                 .select()
-                .from(cryptoMarketCache);
+                .from(cryptoMarketCache)
+                .where(eq(cryptoMarketCache.roundId, latestRoundId));
 
             return {
                 success: true,
                 roundId: firstRecord[0].roundId,
                 snapshotTimestamp: firstRecord[0].snapshotTimestamp.toISOString(),
                 cacheCreatedAt: firstRecord[0].createdAt.toISOString(),
-                totalRecords: totalCount.length,
+                totalRecords: roundRecords.length,
             };
         } catch (error) {
             console.error('Error fetching cache metadata:', error);

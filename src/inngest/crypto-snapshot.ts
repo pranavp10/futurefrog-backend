@@ -79,11 +79,8 @@ export const cryptoSnapshot = inngest.createFunction(
             return { roundId, topGainers, worstPerformers, filteredData };
         });
 
-        // Step 3: Purge and populate cache table + update coin metadata
+        // Step 3: Populate cache table (insert first, then cleanup old data) + update coin metadata
         const cacheCount = await step.run("populate-cache", async () => {
-            await db.execute(sql`TRUNCATE TABLE crypto_market_cache`);
-            console.log(`   🗑️  Purged crypto_market_cache table`);
-
             const cacheRecords = filterAndRank.filteredData.map(coin => ({
                 roundId: filterAndRank.roundId,
                 coingeckoId: coin.id,
@@ -98,6 +95,17 @@ export const cryptoSnapshot = inngest.createFunction(
                 priceChangePercentage24h: coin.price_change_percentage_24h.toString(),
                 snapshotTimestamp,
             }));
+
+            // Insert new records FIRST (ensures cache is never empty)
+            await db.insert(cryptoMarketCache).values(cacheRecords);
+            console.log(`   💾 Inserted ${cacheRecords.length} new records into crypto_market_cache (roundId: ${filterAndRank.roundId})`);
+
+            // Delete old records from previous rounds (keep only current round)
+            const deleteResult = await db
+                .delete(cryptoMarketCache)
+                .where(sql`${cryptoMarketCache.roundId} != ${filterAndRank.roundId}`);
+            
+            console.log(`   🗑️  Cleaned up old records from previous rounds`);
 
             // Update coin metadata table with new coins
             console.log(`   🪙 Checking coin metadata...`);
@@ -148,10 +156,6 @@ export const cryptoSnapshot = inngest.createFunction(
             }
 
             console.log(`   ✨ Coin metadata: ${newCoinsAdded} new, ${coinsUpdated} updated`);
-
-            // Insert into crypto_market_cache (purged and replaced each time)
-            await db.insert(cryptoMarketCache).values(cacheRecords);
-            console.log(`   💾 Inserted ${cacheRecords.length} records into crypto_market_cache`);
 
             // Insert into crypto_price_history (accumulates over time, never purged)
             await db.insert(cryptoPriceHistory).values(cacheRecords);
