@@ -1294,8 +1294,7 @@ var require_browser = __commonJS((exports, module) => {
     });
     args.splice(lastC, 0, c);
   }
-  exports.log = console.debug || console.log || (() => {
-  });
+  exports.log = console.debug || console.log || (() => {});
   function save(namespaces) {
     try {
       if (namespaces) {
@@ -1303,15 +1302,13 @@ var require_browser = __commonJS((exports, module) => {
       } else {
         exports.storage.removeItem("debug");
       }
-    } catch (error) {
-    }
+    } catch (error) {}
   }
   function load() {
     let r;
     try {
       r = exports.storage.getItem("debug") || exports.storage.getItem("DEBUG");
-    } catch (error) {
-    }
+    } catch (error) {}
     if (!r && typeof process !== "undefined" && "env" in process) {
       r = process.env.DEBUG;
     }
@@ -1320,8 +1317,7 @@ var require_browser = __commonJS((exports, module) => {
   function localstorage() {
     try {
       return localStorage;
-    } catch (error) {
-    }
+    } catch (error) {}
   }
   module.exports = require_common()(exports);
   var { formatters } = module.exports;
@@ -1453,8 +1449,7 @@ var require_node = __commonJS((exports, module) => {
   exports.save = save;
   exports.load = load;
   exports.useColors = useColors;
-  exports.destroy = util.deprecate(() => {
-  }, "Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.");
+  exports.destroy = util.deprecate(() => {}, "Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.");
   exports.colors = [6, 2, 3, 4, 5, 1];
   try {
     const supportsColor = require_supports_color();
@@ -1538,8 +1533,7 @@ var require_node = __commonJS((exports, module) => {
         221
       ];
     }
-  } catch (error) {
-  }
+  } catch (error) {}
   exports.inspectOpts = Object.keys(process.env).filter((key) => {
     return /^debug_/i.test(key);
   }).reduce((obj, key) => {
@@ -1906,8 +1900,8 @@ function mergeArrays(chunks) {
 var import_debug, debug, syncBufferSize, ddSignatureArray, eocdSignatureBytes;
 var init_ZipHandler = __esm(() => {
   init_lib3();
-  import_debug = __toESM(require_src(), 1);
   init_ZipToken();
+  import_debug = __toESM(require_src(), 1);
   debug = import_debug.default("tokenizer:inflate");
   syncBufferSize = 256 * 1024;
   ddSignatureArray = signatureToArray(Signature.DataDescriptor);
@@ -3610,8 +3604,7 @@ class FileTypeParser {
               mime: "application/x-asar"
             };
           }
-        } catch {
-        }
+        } catch {}
       }
     }
     if (this.check([6, 14, 43, 52, 2, 5, 1, 1, 13, 1, 2, 1, 1, 2])) {
@@ -3920,8 +3913,7 @@ var init_file_type = __esm(() => {
           (async () => {
             try {
               const pass = new PassThrough;
-              const outputStream = pipeline ? pipeline(readableStream, pass, () => {
-              }) : readableStream.pipe(pass);
+              const outputStream = pipeline ? pipeline(readableStream, pass, () => {}) : readableStream.pipe(pass);
               const chunk = readableStream.read(sampleSize) ?? readableStream.read() ?? new Uint8Array(0);
               try {
                 pass.fileType = await this.fromBuffer(chunk);
@@ -5262,8 +5254,7 @@ var require_source = __commonJS((exports, module) => {
       }
     };
   }
-  var proto = Object.defineProperties(() => {
-  }, {
+  var proto = Object.defineProperties(() => {}, {
     ...styles,
     level: {
       enumerable: true,
@@ -5559,8 +5550,7 @@ var require_inherits_browser = __commonJS((exports, module) => {
     module.exports = function inherits(ctor, superCtor) {
       if (superCtor) {
         ctor.super_ = superCtor;
-        var TempCtor = function() {
-        };
+        var TempCtor = function() {};
         TempCtor.prototype = superCtor.prototype;
         ctor.prototype = new TempCtor;
         ctor.prototype.constructor = ctor;
@@ -7235,22 +7225,19 @@ var require_env = __commonJS((exports) => {
       if (process.env) {
         return process.env;
       }
-    } catch (_err) {
-    }
+    } catch (_err) {}
     try {
       const env3 = Deno.env.toObject();
       if (env3) {
         return env3;
       }
-    } catch (_err) {
-    }
+    } catch (_err) {}
     try {
       const env3 = Netlify.env.toObject();
       if (env3) {
         return env3;
       }
-    } catch (_err) {
-    }
+    } catch (_err) {}
     return {};
   };
   exports.allProcessEnv = allProcessEnv2;
@@ -7825,8 +7812,7 @@ var require_logLevelLogger = __commonJS((exports) => {
       if (typeof theFunc === "function" && maxLevel >= theLevel) {
         return theFunc.bind(logger);
       }
-      return function() {
-      };
+      return function() {};
     }
     return {
       error: _filterFunc("error", types_1.DiagLogLevel.ERROR),
@@ -8051,8 +8037,7 @@ var require_NoopMeter = __commonJS((exports) => {
   exports.createNoopMeter = exports.NOOP_OBSERVABLE_UP_DOWN_COUNTER_METRIC = exports.NOOP_OBSERVABLE_GAUGE_METRIC = exports.NOOP_OBSERVABLE_COUNTER_METRIC = exports.NOOP_UP_DOWN_COUNTER_METRIC = exports.NOOP_HISTOGRAM_METRIC = exports.NOOP_GAUGE_METRIC = exports.NOOP_COUNTER_METRIC = exports.NOOP_METER = exports.NoopObservableUpDownCounterMetric = exports.NoopObservableGaugeMetric = exports.NoopObservableCounterMetric = exports.NoopObservableMetric = exports.NoopHistogramMetric = exports.NoopGaugeMetric = exports.NoopUpDownCounterMetric = exports.NoopCounterMetric = exports.NoopMetric = exports.NoopMeter = undefined;
 
   class NoopMeter {
-    constructor() {
-    }
+    constructor() {}
     createGauge(_name, _options) {
       return exports.NOOP_GAUGE_METRIC;
     }
@@ -8074,10 +8059,8 @@ var require_NoopMeter = __commonJS((exports) => {
     createObservableUpDownCounter(_name, _options) {
       return exports.NOOP_OBSERVABLE_UP_DOWN_COUNTER_METRIC;
     }
-    addBatchObservableCallback(_callback, _observables) {
-    }
-    removeBatchObservableCallback(_callback) {
-    }
+    addBatchObservableCallback(_callback, _observables) {}
+    removeBatchObservableCallback(_callback) {}
   }
   exports.NoopMeter = NoopMeter;
 
@@ -8086,34 +8069,28 @@ var require_NoopMeter = __commonJS((exports) => {
   exports.NoopMetric = NoopMetric;
 
   class NoopCounterMetric extends NoopMetric {
-    add(_value, _attributes) {
-    }
+    add(_value, _attributes) {}
   }
   exports.NoopCounterMetric = NoopCounterMetric;
 
   class NoopUpDownCounterMetric extends NoopMetric {
-    add(_value, _attributes) {
-    }
+    add(_value, _attributes) {}
   }
   exports.NoopUpDownCounterMetric = NoopUpDownCounterMetric;
 
   class NoopGaugeMetric extends NoopMetric {
-    record(_value, _attributes) {
-    }
+    record(_value, _attributes) {}
   }
   exports.NoopGaugeMetric = NoopGaugeMetric;
 
   class NoopHistogramMetric extends NoopMetric {
-    record(_value, _attributes) {
-    }
+    record(_value, _attributes) {}
   }
   exports.NoopHistogramMetric = NoopHistogramMetric;
 
   class NoopObservableMetric {
-    addCallback(_callback) {
-    }
-    removeCallback(_callback) {
-    }
+    addCallback(_callback) {}
+    removeCallback(_callback) {}
   }
   exports.NoopObservableMetric = NoopObservableMetric;
 
@@ -8218,8 +8195,7 @@ var require_context2 = __commonJS((exports) => {
   var NOOP_CONTEXT_MANAGER = new NoopContextManager_1.NoopContextManager;
 
   class ContextAPI {
-    constructor() {
-    }
+    constructor() {}
     static getInstance() {
       if (!this._instance) {
         this._instance = new ContextAPI;
@@ -8308,13 +8284,11 @@ var require_NonRecordingSpan = __commonJS((exports) => {
     updateName(_name) {
       return this;
     }
-    end(_endTime) {
-    }
+    end(_endTime) {}
     isRecording() {
       return false;
     }
-    recordException(_exception, _time) {
-    }
+    recordException(_exception, _time) {}
   }
   exports.NonRecordingSpan = NonRecordingSpan;
 });
@@ -8616,8 +8590,7 @@ var require_tracestate_impl = __commonJS((exports) => {
           const value = listMember.slice(i + 1, part.length);
           if ((0, tracestate_validators_1.validateKey)(key) && (0, tracestate_validators_1.validateValue)(value)) {
             agg.set(key, value);
-          } else {
-          }
+          } else {}
         }
         return agg;
       }, new Map);
@@ -8689,8 +8662,7 @@ var require_metrics = __commonJS((exports) => {
   var API_NAME = "metrics";
 
   class MetricsAPI {
-    constructor() {
-    }
+    constructor() {}
     static getInstance() {
       if (!this._instance) {
         this._instance = new MetricsAPI;
@@ -8727,8 +8699,7 @@ var require_NoopTextMapPropagator = __commonJS((exports) => {
   exports.NoopTextMapPropagator = undefined;
 
   class NoopTextMapPropagator {
-    inject(_context, _carrier) {
-    }
+    inject(_context, _carrier) {}
     extract(context, _carrier) {
       return context;
     }
@@ -9003,8 +8974,7 @@ var require_bn = __commonJS((exports, module) => {
     }
     function inherits(ctor, superCtor) {
       ctor.super_ = superCtor;
-      var TempCtor = function() {
-      };
+      var TempCtor = function() {};
       TempCtor.prototype = superCtor.prototype;
       ctor.prototype = new TempCtor;
       ctor.prototype.constructor = ctor;
@@ -9039,8 +9009,7 @@ var require_bn = __commonJS((exports, module) => {
       } else {
         Buffer2 = __require("buffer").Buffer;
       }
-    } catch (e) {
-    }
+    } catch (e) {}
     BN.isBN = function isBN(num) {
       if (num instanceof BN) {
         return true;
@@ -10814,8 +10783,7 @@ var require_bn = __commonJS((exports, module) => {
         }
         maskedWords.length = s;
       }
-      if (s === 0) {
-      } else if (this.length > s) {
+      if (s === 0) {} else if (this.length > s) {
         this.length -= s;
         for (i = 0;i < this.length; i++) {
           this.words[i] = this.words[i + s];
@@ -13272,8 +13240,7 @@ var require_Layout = __commonJS((exports) => {
       let span = -1;
       try {
         span = fields.reduce((span2, fd) => span2 + fd.getSpan(), 0);
-      } catch (e) {
-      }
+      } catch (e) {}
       super(span, property);
       this.fields = fields;
       this.decodePrefixes = !!decodePrefixes;
@@ -14166,8 +14133,7 @@ var require_v35 = __commonJS((exports) => {
     }
     try {
       generateUUID.name = name;
-    } catch (err2) {
-    }
+    } catch (err2) {}
     generateUUID.DNS = DNS;
     generateUUID.URL = URL2;
     return generateUUID;
@@ -14525,8 +14491,7 @@ var require_browser2 = __commonJS((exports, module) => {
 var require_eventemitter3 = __commonJS((exports, module) => {
   var has = Object.prototype.hasOwnProperty;
   var prefix = "~";
-  function Events() {
-  }
+  function Events() {}
   if (Object.create) {
     Events.prototype = Object.create(null);
     if (!new Events().__proto__)
@@ -14698,6 +14663,8575 @@ var require_eventemitter3 = __commonJS((exports, module) => {
   if (typeof module !== "undefined") {
     module.exports = EventEmitter;
   }
+});
+
+// node_modules/@ioredis/commands/built/commands.json
+var require_commands = __commonJS((exports, module) => {
+  module.exports = {
+    acl: {
+      arity: -2,
+      flags: [],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    append: {
+      arity: 3,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    asking: {
+      arity: 1,
+      flags: [
+        "fast"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    auth: {
+      arity: -2,
+      flags: [
+        "noscript",
+        "loading",
+        "stale",
+        "fast",
+        "no_auth",
+        "allow_busy"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    bgrewriteaof: {
+      arity: 1,
+      flags: [
+        "admin",
+        "noscript",
+        "no_async_loading"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    bgsave: {
+      arity: -1,
+      flags: [
+        "admin",
+        "noscript",
+        "no_async_loading"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    bitcount: {
+      arity: -2,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    bitfield: {
+      arity: -2,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    bitfield_ro: {
+      arity: -2,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    bitop: {
+      arity: -4,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 2,
+      keyStop: -1,
+      step: 1
+    },
+    bitpos: {
+      arity: -3,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    blmove: {
+      arity: 6,
+      flags: [
+        "write",
+        "denyoom",
+        "noscript",
+        "blocking"
+      ],
+      keyStart: 1,
+      keyStop: 2,
+      step: 1
+    },
+    blmpop: {
+      arity: -5,
+      flags: [
+        "write",
+        "blocking",
+        "movablekeys"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    blpop: {
+      arity: -3,
+      flags: [
+        "write",
+        "noscript",
+        "blocking"
+      ],
+      keyStart: 1,
+      keyStop: -2,
+      step: 1
+    },
+    brpop: {
+      arity: -3,
+      flags: [
+        "write",
+        "noscript",
+        "blocking"
+      ],
+      keyStart: 1,
+      keyStop: -2,
+      step: 1
+    },
+    brpoplpush: {
+      arity: 4,
+      flags: [
+        "write",
+        "denyoom",
+        "noscript",
+        "blocking"
+      ],
+      keyStart: 1,
+      keyStop: 2,
+      step: 1
+    },
+    bzmpop: {
+      arity: -5,
+      flags: [
+        "write",
+        "blocking",
+        "movablekeys"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    bzpopmax: {
+      arity: -3,
+      flags: [
+        "write",
+        "noscript",
+        "blocking",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: -2,
+      step: 1
+    },
+    bzpopmin: {
+      arity: -3,
+      flags: [
+        "write",
+        "noscript",
+        "blocking",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: -2,
+      step: 1
+    },
+    client: {
+      arity: -2,
+      flags: [],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    cluster: {
+      arity: -2,
+      flags: [],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    command: {
+      arity: -1,
+      flags: [
+        "loading",
+        "stale"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    config: {
+      arity: -2,
+      flags: [],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    copy: {
+      arity: -3,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: 2,
+      step: 1
+    },
+    dbsize: {
+      arity: 1,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    debug: {
+      arity: -2,
+      flags: [
+        "admin",
+        "noscript",
+        "loading",
+        "stale"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    decr: {
+      arity: 2,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    decrby: {
+      arity: 3,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    del: {
+      arity: -2,
+      flags: [
+        "write"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 1
+    },
+    discard: {
+      arity: 1,
+      flags: [
+        "noscript",
+        "loading",
+        "stale",
+        "fast",
+        "allow_busy"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    dump: {
+      arity: 2,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    echo: {
+      arity: 2,
+      flags: [
+        "fast"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    eval: {
+      arity: -3,
+      flags: [
+        "noscript",
+        "stale",
+        "skip_monitor",
+        "no_mandatory_keys",
+        "movablekeys"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    eval_ro: {
+      arity: -3,
+      flags: [
+        "readonly",
+        "noscript",
+        "stale",
+        "skip_monitor",
+        "no_mandatory_keys",
+        "movablekeys"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    evalsha: {
+      arity: -3,
+      flags: [
+        "noscript",
+        "stale",
+        "skip_monitor",
+        "no_mandatory_keys",
+        "movablekeys"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    evalsha_ro: {
+      arity: -3,
+      flags: [
+        "readonly",
+        "noscript",
+        "stale",
+        "skip_monitor",
+        "no_mandatory_keys",
+        "movablekeys"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    exec: {
+      arity: 1,
+      flags: [
+        "noscript",
+        "loading",
+        "stale",
+        "skip_slowlog"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    exists: {
+      arity: -2,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 1
+    },
+    expire: {
+      arity: -3,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    expireat: {
+      arity: -3,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    expiretime: {
+      arity: 2,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    failover: {
+      arity: -1,
+      flags: [
+        "admin",
+        "noscript",
+        "stale"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    fcall: {
+      arity: -3,
+      flags: [
+        "noscript",
+        "stale",
+        "skip_monitor",
+        "no_mandatory_keys",
+        "movablekeys"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    fcall_ro: {
+      arity: -3,
+      flags: [
+        "readonly",
+        "noscript",
+        "stale",
+        "skip_monitor",
+        "no_mandatory_keys",
+        "movablekeys"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    flushall: {
+      arity: -1,
+      flags: [
+        "write"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    flushdb: {
+      arity: -1,
+      flags: [
+        "write"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    function: {
+      arity: -2,
+      flags: [],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    geoadd: {
+      arity: -5,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    geodist: {
+      arity: -4,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    geohash: {
+      arity: -2,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    geopos: {
+      arity: -2,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    georadius: {
+      arity: -6,
+      flags: [
+        "write",
+        "denyoom",
+        "movablekeys"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    georadius_ro: {
+      arity: -6,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    georadiusbymember: {
+      arity: -5,
+      flags: [
+        "write",
+        "denyoom",
+        "movablekeys"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    georadiusbymember_ro: {
+      arity: -5,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    geosearch: {
+      arity: -7,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    geosearchstore: {
+      arity: -8,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: 2,
+      step: 1
+    },
+    get: {
+      arity: 2,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    getbit: {
+      arity: 3,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    getdel: {
+      arity: 2,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    getex: {
+      arity: -2,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    getrange: {
+      arity: 4,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    getset: {
+      arity: 3,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hdel: {
+      arity: -3,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hello: {
+      arity: -1,
+      flags: [
+        "noscript",
+        "loading",
+        "stale",
+        "fast",
+        "no_auth",
+        "allow_busy"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    hexists: {
+      arity: 3,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hexpire: {
+      arity: -6,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hpexpire: {
+      arity: -6,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hget: {
+      arity: 3,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hgetall: {
+      arity: 2,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hincrby: {
+      arity: 4,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hincrbyfloat: {
+      arity: 4,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hkeys: {
+      arity: 2,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hlen: {
+      arity: 2,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hmget: {
+      arity: -3,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hmset: {
+      arity: -4,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hrandfield: {
+      arity: -2,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hscan: {
+      arity: -3,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hset: {
+      arity: -4,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hsetnx: {
+      arity: 4,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hstrlen: {
+      arity: 3,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    hvals: {
+      arity: 2,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    incr: {
+      arity: 2,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    incrby: {
+      arity: 3,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    incrbyfloat: {
+      arity: 3,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    info: {
+      arity: -1,
+      flags: [
+        "loading",
+        "stale"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    keys: {
+      arity: 2,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    lastsave: {
+      arity: 1,
+      flags: [
+        "loading",
+        "stale",
+        "fast"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    latency: {
+      arity: -2,
+      flags: [],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    lcs: {
+      arity: -3,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 2,
+      step: 1
+    },
+    lindex: {
+      arity: 3,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    linsert: {
+      arity: 5,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    llen: {
+      arity: 2,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    lmove: {
+      arity: 5,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: 2,
+      step: 1
+    },
+    lmpop: {
+      arity: -4,
+      flags: [
+        "write",
+        "movablekeys"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    lolwut: {
+      arity: -1,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    lpop: {
+      arity: -2,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    lpos: {
+      arity: -3,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    lpush: {
+      arity: -3,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    lpushx: {
+      arity: -3,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    lrange: {
+      arity: 4,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    lrem: {
+      arity: 4,
+      flags: [
+        "write"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    lset: {
+      arity: 4,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    ltrim: {
+      arity: 4,
+      flags: [
+        "write"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    memory: {
+      arity: -2,
+      flags: [],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    mget: {
+      arity: -2,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 1
+    },
+    migrate: {
+      arity: -6,
+      flags: [
+        "write",
+        "movablekeys"
+      ],
+      keyStart: 3,
+      keyStop: 3,
+      step: 1
+    },
+    module: {
+      arity: -2,
+      flags: [],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    monitor: {
+      arity: 1,
+      flags: [
+        "admin",
+        "noscript",
+        "loading",
+        "stale"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    move: {
+      arity: 3,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    mset: {
+      arity: -3,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 2
+    },
+    msetnx: {
+      arity: -3,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 2
+    },
+    multi: {
+      arity: 1,
+      flags: [
+        "noscript",
+        "loading",
+        "stale",
+        "fast",
+        "allow_busy"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    object: {
+      arity: -2,
+      flags: [],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    persist: {
+      arity: 2,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    pexpire: {
+      arity: -3,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    pexpireat: {
+      arity: -3,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    pexpiretime: {
+      arity: 2,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    pfadd: {
+      arity: -2,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    pfcount: {
+      arity: -2,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 1
+    },
+    pfdebug: {
+      arity: 3,
+      flags: [
+        "write",
+        "denyoom",
+        "admin"
+      ],
+      keyStart: 2,
+      keyStop: 2,
+      step: 1
+    },
+    pfmerge: {
+      arity: -2,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 1
+    },
+    pfselftest: {
+      arity: 1,
+      flags: [
+        "admin"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    ping: {
+      arity: -1,
+      flags: [
+        "fast"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    psetex: {
+      arity: 4,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    psubscribe: {
+      arity: -2,
+      flags: [
+        "pubsub",
+        "noscript",
+        "loading",
+        "stale"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    psync: {
+      arity: -3,
+      flags: [
+        "admin",
+        "noscript",
+        "no_async_loading",
+        "no_multi"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    pttl: {
+      arity: 2,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    publish: {
+      arity: 3,
+      flags: [
+        "pubsub",
+        "loading",
+        "stale",
+        "fast"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    pubsub: {
+      arity: -2,
+      flags: [],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    punsubscribe: {
+      arity: -1,
+      flags: [
+        "pubsub",
+        "noscript",
+        "loading",
+        "stale"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    quit: {
+      arity: -1,
+      flags: [
+        "noscript",
+        "loading",
+        "stale",
+        "fast",
+        "no_auth",
+        "allow_busy"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    randomkey: {
+      arity: 1,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    readonly: {
+      arity: 1,
+      flags: [
+        "loading",
+        "stale",
+        "fast"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    readwrite: {
+      arity: 1,
+      flags: [
+        "loading",
+        "stale",
+        "fast"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    rename: {
+      arity: 3,
+      flags: [
+        "write"
+      ],
+      keyStart: 1,
+      keyStop: 2,
+      step: 1
+    },
+    renamenx: {
+      arity: 3,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 2,
+      step: 1
+    },
+    replconf: {
+      arity: -1,
+      flags: [
+        "admin",
+        "noscript",
+        "loading",
+        "stale",
+        "allow_busy"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    replicaof: {
+      arity: 3,
+      flags: [
+        "admin",
+        "noscript",
+        "stale",
+        "no_async_loading"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    reset: {
+      arity: 1,
+      flags: [
+        "noscript",
+        "loading",
+        "stale",
+        "fast",
+        "no_auth",
+        "allow_busy"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    restore: {
+      arity: -4,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    "restore-asking": {
+      arity: -4,
+      flags: [
+        "write",
+        "denyoom",
+        "asking"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    role: {
+      arity: 1,
+      flags: [
+        "noscript",
+        "loading",
+        "stale",
+        "fast"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    rpop: {
+      arity: -2,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    rpoplpush: {
+      arity: 3,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: 2,
+      step: 1
+    },
+    rpush: {
+      arity: -3,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    rpushx: {
+      arity: -3,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    sadd: {
+      arity: -3,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    save: {
+      arity: 1,
+      flags: [
+        "admin",
+        "noscript",
+        "no_async_loading",
+        "no_multi"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    scan: {
+      arity: -2,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    scard: {
+      arity: 2,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    script: {
+      arity: -2,
+      flags: [],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    sdiff: {
+      arity: -2,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 1
+    },
+    sdiffstore: {
+      arity: -3,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 1
+    },
+    select: {
+      arity: 2,
+      flags: [
+        "loading",
+        "stale",
+        "fast"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    set: {
+      arity: -3,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    setbit: {
+      arity: 4,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    setex: {
+      arity: 4,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    setnx: {
+      arity: 3,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    setrange: {
+      arity: 4,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    shutdown: {
+      arity: -1,
+      flags: [
+        "admin",
+        "noscript",
+        "loading",
+        "stale",
+        "no_multi",
+        "allow_busy"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    sinter: {
+      arity: -2,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 1
+    },
+    sintercard: {
+      arity: -3,
+      flags: [
+        "readonly",
+        "movablekeys"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    sinterstore: {
+      arity: -3,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 1
+    },
+    sismember: {
+      arity: 3,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    slaveof: {
+      arity: 3,
+      flags: [
+        "admin",
+        "noscript",
+        "stale",
+        "no_async_loading"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    slowlog: {
+      arity: -2,
+      flags: [],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    smembers: {
+      arity: 2,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    smismember: {
+      arity: -3,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    smove: {
+      arity: 4,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 2,
+      step: 1
+    },
+    sort: {
+      arity: -2,
+      flags: [
+        "write",
+        "denyoom",
+        "movablekeys"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    sort_ro: {
+      arity: -2,
+      flags: [
+        "readonly",
+        "movablekeys"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    spop: {
+      arity: -2,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    spublish: {
+      arity: 3,
+      flags: [
+        "pubsub",
+        "loading",
+        "stale",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    srandmember: {
+      arity: -2,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    srem: {
+      arity: -3,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    sscan: {
+      arity: -3,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    ssubscribe: {
+      arity: -2,
+      flags: [
+        "pubsub",
+        "noscript",
+        "loading",
+        "stale"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 1
+    },
+    strlen: {
+      arity: 2,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    subscribe: {
+      arity: -2,
+      flags: [
+        "pubsub",
+        "noscript",
+        "loading",
+        "stale"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    substr: {
+      arity: 4,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    sunion: {
+      arity: -2,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 1
+    },
+    sunionstore: {
+      arity: -3,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 1
+    },
+    sunsubscribe: {
+      arity: -1,
+      flags: [
+        "pubsub",
+        "noscript",
+        "loading",
+        "stale"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 1
+    },
+    swapdb: {
+      arity: 3,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    sync: {
+      arity: 1,
+      flags: [
+        "admin",
+        "noscript",
+        "no_async_loading",
+        "no_multi"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    time: {
+      arity: 1,
+      flags: [
+        "loading",
+        "stale",
+        "fast"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    touch: {
+      arity: -2,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 1
+    },
+    ttl: {
+      arity: 2,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    type: {
+      arity: 2,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    unlink: {
+      arity: -2,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 1
+    },
+    unsubscribe: {
+      arity: -1,
+      flags: [
+        "pubsub",
+        "noscript",
+        "loading",
+        "stale"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    unwatch: {
+      arity: 1,
+      flags: [
+        "noscript",
+        "loading",
+        "stale",
+        "fast",
+        "allow_busy"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    wait: {
+      arity: 3,
+      flags: [
+        "noscript"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    watch: {
+      arity: -2,
+      flags: [
+        "noscript",
+        "loading",
+        "stale",
+        "fast",
+        "allow_busy"
+      ],
+      keyStart: 1,
+      keyStop: -1,
+      step: 1
+    },
+    xack: {
+      arity: -4,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    xadd: {
+      arity: -5,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    xautoclaim: {
+      arity: -6,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    xclaim: {
+      arity: -6,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    xdel: {
+      arity: -3,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    xdelex: {
+      arity: -5,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    xgroup: {
+      arity: -2,
+      flags: [],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    xinfo: {
+      arity: -2,
+      flags: [],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    xlen: {
+      arity: 2,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    xpending: {
+      arity: -3,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    xrange: {
+      arity: -4,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    xread: {
+      arity: -4,
+      flags: [
+        "readonly",
+        "blocking",
+        "movablekeys"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    xreadgroup: {
+      arity: -7,
+      flags: [
+        "write",
+        "blocking",
+        "movablekeys"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    xrevrange: {
+      arity: -4,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    xsetid: {
+      arity: -3,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    xtrim: {
+      arity: -4,
+      flags: [
+        "write"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zadd: {
+      arity: -4,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zcard: {
+      arity: 2,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zcount: {
+      arity: 4,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zdiff: {
+      arity: -3,
+      flags: [
+        "readonly",
+        "movablekeys"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    zdiffstore: {
+      arity: -4,
+      flags: [
+        "write",
+        "denyoom",
+        "movablekeys"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zincrby: {
+      arity: 4,
+      flags: [
+        "write",
+        "denyoom",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zinter: {
+      arity: -3,
+      flags: [
+        "readonly",
+        "movablekeys"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    zintercard: {
+      arity: -3,
+      flags: [
+        "readonly",
+        "movablekeys"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    zinterstore: {
+      arity: -4,
+      flags: [
+        "write",
+        "denyoom",
+        "movablekeys"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zlexcount: {
+      arity: 4,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zmpop: {
+      arity: -4,
+      flags: [
+        "write",
+        "movablekeys"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    zmscore: {
+      arity: -3,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zpopmax: {
+      arity: -2,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zpopmin: {
+      arity: -2,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zrandmember: {
+      arity: -2,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zrange: {
+      arity: -4,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zrangebylex: {
+      arity: -4,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zrangebyscore: {
+      arity: -4,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zrangestore: {
+      arity: -5,
+      flags: [
+        "write",
+        "denyoom"
+      ],
+      keyStart: 1,
+      keyStop: 2,
+      step: 1
+    },
+    zrank: {
+      arity: 3,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zrem: {
+      arity: -3,
+      flags: [
+        "write",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zremrangebylex: {
+      arity: 4,
+      flags: [
+        "write"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zremrangebyrank: {
+      arity: 4,
+      flags: [
+        "write"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zremrangebyscore: {
+      arity: 4,
+      flags: [
+        "write"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zrevrange: {
+      arity: -4,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zrevrangebylex: {
+      arity: -4,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zrevrangebyscore: {
+      arity: -4,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zrevrank: {
+      arity: 3,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zscan: {
+      arity: -3,
+      flags: [
+        "readonly"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zscore: {
+      arity: 3,
+      flags: [
+        "readonly",
+        "fast"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    },
+    zunion: {
+      arity: -3,
+      flags: [
+        "readonly",
+        "movablekeys"
+      ],
+      keyStart: 0,
+      keyStop: 0,
+      step: 0
+    },
+    zunionstore: {
+      arity: -4,
+      flags: [
+        "write",
+        "denyoom",
+        "movablekeys"
+      ],
+      keyStart: 1,
+      keyStop: 1,
+      step: 1
+    }
+  };
+});
+
+// node_modules/@ioredis/commands/built/index.js
+var require_built = __commonJS((exports) => {
+  var __importDefault = exports && exports.__importDefault || function(mod2) {
+    return mod2 && mod2.__esModule ? mod2 : { default: mod2 };
+  };
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.getKeyIndexes = exports.hasFlag = exports.exists = exports.list = undefined;
+  var commands_json_1 = __importDefault(require_commands());
+  exports.list = Object.keys(commands_json_1.default);
+  var flags = {};
+  exports.list.forEach((commandName) => {
+    flags[commandName] = commands_json_1.default[commandName].flags.reduce(function(flags2, flag) {
+      flags2[flag] = true;
+      return flags2;
+    }, {});
+  });
+  function exists2(commandName) {
+    return Boolean(commands_json_1.default[commandName]);
+  }
+  exports.exists = exists2;
+  function hasFlag(commandName, flag) {
+    if (!flags[commandName]) {
+      throw new Error("Unknown command " + commandName);
+    }
+    return Boolean(flags[commandName][flag]);
+  }
+  exports.hasFlag = hasFlag;
+  function getKeyIndexes(commandName, args, options) {
+    const command = commands_json_1.default[commandName];
+    if (!command) {
+      throw new Error("Unknown command " + commandName);
+    }
+    if (!Array.isArray(args)) {
+      throw new Error("Expect args to be an array");
+    }
+    const keys = [];
+    const parseExternalKey = Boolean(options && options.parseExternalKey);
+    const takeDynamicKeys = (args2, startIndex) => {
+      const keys2 = [];
+      const keyStop = Number(args2[startIndex]);
+      for (let i = 0;i < keyStop; i++) {
+        keys2.push(i + startIndex + 1);
+      }
+      return keys2;
+    };
+    const takeKeyAfterToken = (args2, startIndex, token) => {
+      for (let i = startIndex;i < args2.length - 1; i += 1) {
+        if (String(args2[i]).toLowerCase() === token.toLowerCase()) {
+          return i + 1;
+        }
+      }
+      return null;
+    };
+    switch (commandName) {
+      case "zunionstore":
+      case "zinterstore":
+      case "zdiffstore":
+        keys.push(0, ...takeDynamicKeys(args, 1));
+        break;
+      case "eval":
+      case "evalsha":
+      case "eval_ro":
+      case "evalsha_ro":
+      case "fcall":
+      case "fcall_ro":
+      case "blmpop":
+      case "bzmpop":
+        keys.push(...takeDynamicKeys(args, 1));
+        break;
+      case "sintercard":
+      case "lmpop":
+      case "zunion":
+      case "zinter":
+      case "zmpop":
+      case "zintercard":
+      case "zdiff": {
+        keys.push(...takeDynamicKeys(args, 0));
+        break;
+      }
+      case "georadius": {
+        keys.push(0);
+        const storeKey = takeKeyAfterToken(args, 5, "STORE");
+        if (storeKey)
+          keys.push(storeKey);
+        const distKey = takeKeyAfterToken(args, 5, "STOREDIST");
+        if (distKey)
+          keys.push(distKey);
+        break;
+      }
+      case "georadiusbymember": {
+        keys.push(0);
+        const storeKey = takeKeyAfterToken(args, 4, "STORE");
+        if (storeKey)
+          keys.push(storeKey);
+        const distKey = takeKeyAfterToken(args, 4, "STOREDIST");
+        if (distKey)
+          keys.push(distKey);
+        break;
+      }
+      case "sort":
+      case "sort_ro":
+        keys.push(0);
+        for (let i = 1;i < args.length - 1; i++) {
+          let arg = args[i];
+          if (typeof arg !== "string") {
+            continue;
+          }
+          const directive = arg.toUpperCase();
+          if (directive === "GET") {
+            i += 1;
+            arg = args[i];
+            if (arg !== "#") {
+              if (parseExternalKey) {
+                keys.push([i, getExternalKeyNameLength(arg)]);
+              } else {
+                keys.push(i);
+              }
+            }
+          } else if (directive === "BY") {
+            i += 1;
+            if (parseExternalKey) {
+              keys.push([i, getExternalKeyNameLength(args[i])]);
+            } else {
+              keys.push(i);
+            }
+          } else if (directive === "STORE") {
+            i += 1;
+            keys.push(i);
+          }
+        }
+        break;
+      case "migrate":
+        if (args[2] === "") {
+          for (let i = 5;i < args.length - 1; i++) {
+            const arg = args[i];
+            if (typeof arg === "string" && arg.toUpperCase() === "KEYS") {
+              for (let j = i + 1;j < args.length; j++) {
+                keys.push(j);
+              }
+              break;
+            }
+          }
+        } else {
+          keys.push(2);
+        }
+        break;
+      case "xreadgroup":
+      case "xread":
+        for (let i = commandName === "xread" ? 0 : 3;i < args.length - 1; i++) {
+          if (String(args[i]).toUpperCase() === "STREAMS") {
+            for (let j = i + 1;j <= i + (args.length - 1 - i) / 2; j++) {
+              keys.push(j);
+            }
+            break;
+          }
+        }
+        break;
+      default:
+        if (command.step > 0) {
+          const keyStart = command.keyStart - 1;
+          const keyStop = command.keyStop > 0 ? command.keyStop : args.length + command.keyStop + 1;
+          for (let i = keyStart;i < keyStop; i += command.step) {
+            keys.push(i);
+          }
+        }
+        break;
+    }
+    return keys;
+  }
+  exports.getKeyIndexes = getKeyIndexes;
+  function getExternalKeyNameLength(key) {
+    if (typeof key !== "string") {
+      key = String(key);
+    }
+    const hashPos = key.indexOf("->");
+    return hashPos === -1 ? key.length : hashPos;
+  }
+});
+
+// node_modules/standard-as-callback/built/utils.js
+var require_utils4 = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.tryCatch = exports.errorObj = undefined;
+  exports.errorObj = { e: {} };
+  var tryCatchTarget;
+  function tryCatcher(err2, val) {
+    try {
+      const target = tryCatchTarget;
+      tryCatchTarget = null;
+      return target.apply(this, arguments);
+    } catch (e) {
+      exports.errorObj.e = e;
+      return exports.errorObj;
+    }
+  }
+  function tryCatch(fn) {
+    tryCatchTarget = fn;
+    return tryCatcher;
+  }
+  exports.tryCatch = tryCatch;
+});
+
+// node_modules/standard-as-callback/built/index.js
+var require_built2 = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var utils_1 = require_utils4();
+  function throwLater(e) {
+    setTimeout(function() {
+      throw e;
+    }, 0);
+  }
+  function asCallback(promise, nodeback, options) {
+    if (typeof nodeback === "function") {
+      promise.then((val) => {
+        let ret;
+        if (options !== undefined && Object(options).spread && Array.isArray(val)) {
+          ret = utils_1.tryCatch(nodeback).apply(undefined, [null].concat(val));
+        } else {
+          ret = val === undefined ? utils_1.tryCatch(nodeback)(null) : utils_1.tryCatch(nodeback)(null, val);
+        }
+        if (ret === utils_1.errorObj) {
+          throwLater(ret.e);
+        }
+      }, (cause) => {
+        if (!cause) {
+          const newReason = new Error(cause + "");
+          Object.assign(newReason, { cause });
+          cause = newReason;
+        }
+        const ret = utils_1.tryCatch(nodeback)(cause);
+        if (ret === utils_1.errorObj) {
+          throwLater(ret.e);
+        }
+      });
+    }
+    return promise;
+  }
+  exports.default = asCallback;
+});
+
+// node_modules/redis-errors/lib/old.js
+var require_old = __commonJS((exports, module) => {
+  var assert4 = __require("assert");
+  var util3 = __require("util");
+  function RedisError(message) {
+    Object.defineProperty(this, "message", {
+      value: message || "",
+      configurable: true,
+      writable: true
+    });
+    Error.captureStackTrace(this, this.constructor);
+  }
+  util3.inherits(RedisError, Error);
+  Object.defineProperty(RedisError.prototype, "name", {
+    value: "RedisError",
+    configurable: true,
+    writable: true
+  });
+  function ParserError(message, buffer2, offset2) {
+    assert4(buffer2);
+    assert4.strictEqual(typeof offset2, "number");
+    Object.defineProperty(this, "message", {
+      value: message || "",
+      configurable: true,
+      writable: true
+    });
+    const tmp = Error.stackTraceLimit;
+    Error.stackTraceLimit = 2;
+    Error.captureStackTrace(this, this.constructor);
+    Error.stackTraceLimit = tmp;
+    this.offset = offset2;
+    this.buffer = buffer2;
+  }
+  util3.inherits(ParserError, RedisError);
+  Object.defineProperty(ParserError.prototype, "name", {
+    value: "ParserError",
+    configurable: true,
+    writable: true
+  });
+  function ReplyError(message) {
+    Object.defineProperty(this, "message", {
+      value: message || "",
+      configurable: true,
+      writable: true
+    });
+    const tmp = Error.stackTraceLimit;
+    Error.stackTraceLimit = 2;
+    Error.captureStackTrace(this, this.constructor);
+    Error.stackTraceLimit = tmp;
+  }
+  util3.inherits(ReplyError, RedisError);
+  Object.defineProperty(ReplyError.prototype, "name", {
+    value: "ReplyError",
+    configurable: true,
+    writable: true
+  });
+  function AbortError2(message) {
+    Object.defineProperty(this, "message", {
+      value: message || "",
+      configurable: true,
+      writable: true
+    });
+    Error.captureStackTrace(this, this.constructor);
+  }
+  util3.inherits(AbortError2, RedisError);
+  Object.defineProperty(AbortError2.prototype, "name", {
+    value: "AbortError",
+    configurable: true,
+    writable: true
+  });
+  function InterruptError(message) {
+    Object.defineProperty(this, "message", {
+      value: message || "",
+      configurable: true,
+      writable: true
+    });
+    Error.captureStackTrace(this, this.constructor);
+  }
+  util3.inherits(InterruptError, AbortError2);
+  Object.defineProperty(InterruptError.prototype, "name", {
+    value: "InterruptError",
+    configurable: true,
+    writable: true
+  });
+  module.exports = {
+    RedisError,
+    ParserError,
+    ReplyError,
+    AbortError: AbortError2,
+    InterruptError
+  };
+});
+
+// node_modules/redis-errors/lib/modern.js
+var require_modern = __commonJS((exports, module) => {
+  var assert4 = __require("assert");
+
+  class RedisError extends Error {
+    get name() {
+      return this.constructor.name;
+    }
+  }
+
+  class ParserError extends RedisError {
+    constructor(message, buffer2, offset2) {
+      assert4(buffer2);
+      assert4.strictEqual(typeof offset2, "number");
+      const tmp = Error.stackTraceLimit;
+      Error.stackTraceLimit = 2;
+      super(message);
+      Error.stackTraceLimit = tmp;
+      this.offset = offset2;
+      this.buffer = buffer2;
+    }
+    get name() {
+      return this.constructor.name;
+    }
+  }
+
+  class ReplyError extends RedisError {
+    constructor(message) {
+      const tmp = Error.stackTraceLimit;
+      Error.stackTraceLimit = 2;
+      super(message);
+      Error.stackTraceLimit = tmp;
+    }
+    get name() {
+      return this.constructor.name;
+    }
+  }
+
+  class AbortError2 extends RedisError {
+    get name() {
+      return this.constructor.name;
+    }
+  }
+
+  class InterruptError extends AbortError2 {
+    get name() {
+      return this.constructor.name;
+    }
+  }
+  module.exports = {
+    RedisError,
+    ParserError,
+    ReplyError,
+    AbortError: AbortError2,
+    InterruptError
+  };
+});
+
+// node_modules/redis-errors/index.js
+var require_redis_errors = __commonJS((exports, module) => {
+  var Errors3 = process.version.charCodeAt(1) < 55 && process.version.charCodeAt(2) === 46 ? require_old() : require_modern();
+  module.exports = Errors3;
+});
+
+// node_modules/cluster-key-slot/lib/index.js
+var require_lib2 = __commonJS((exports, module) => {
+  var lookup = [
+    0,
+    4129,
+    8258,
+    12387,
+    16516,
+    20645,
+    24774,
+    28903,
+    33032,
+    37161,
+    41290,
+    45419,
+    49548,
+    53677,
+    57806,
+    61935,
+    4657,
+    528,
+    12915,
+    8786,
+    21173,
+    17044,
+    29431,
+    25302,
+    37689,
+    33560,
+    45947,
+    41818,
+    54205,
+    50076,
+    62463,
+    58334,
+    9314,
+    13379,
+    1056,
+    5121,
+    25830,
+    29895,
+    17572,
+    21637,
+    42346,
+    46411,
+    34088,
+    38153,
+    58862,
+    62927,
+    50604,
+    54669,
+    13907,
+    9842,
+    5649,
+    1584,
+    30423,
+    26358,
+    22165,
+    18100,
+    46939,
+    42874,
+    38681,
+    34616,
+    63455,
+    59390,
+    55197,
+    51132,
+    18628,
+    22757,
+    26758,
+    30887,
+    2112,
+    6241,
+    10242,
+    14371,
+    51660,
+    55789,
+    59790,
+    63919,
+    35144,
+    39273,
+    43274,
+    47403,
+    23285,
+    19156,
+    31415,
+    27286,
+    6769,
+    2640,
+    14899,
+    10770,
+    56317,
+    52188,
+    64447,
+    60318,
+    39801,
+    35672,
+    47931,
+    43802,
+    27814,
+    31879,
+    19684,
+    23749,
+    11298,
+    15363,
+    3168,
+    7233,
+    60846,
+    64911,
+    52716,
+    56781,
+    44330,
+    48395,
+    36200,
+    40265,
+    32407,
+    28342,
+    24277,
+    20212,
+    15891,
+    11826,
+    7761,
+    3696,
+    65439,
+    61374,
+    57309,
+    53244,
+    48923,
+    44858,
+    40793,
+    36728,
+    37256,
+    33193,
+    45514,
+    41451,
+    53516,
+    49453,
+    61774,
+    57711,
+    4224,
+    161,
+    12482,
+    8419,
+    20484,
+    16421,
+    28742,
+    24679,
+    33721,
+    37784,
+    41979,
+    46042,
+    49981,
+    54044,
+    58239,
+    62302,
+    689,
+    4752,
+    8947,
+    13010,
+    16949,
+    21012,
+    25207,
+    29270,
+    46570,
+    42443,
+    38312,
+    34185,
+    62830,
+    58703,
+    54572,
+    50445,
+    13538,
+    9411,
+    5280,
+    1153,
+    29798,
+    25671,
+    21540,
+    17413,
+    42971,
+    47098,
+    34713,
+    38840,
+    59231,
+    63358,
+    50973,
+    55100,
+    9939,
+    14066,
+    1681,
+    5808,
+    26199,
+    30326,
+    17941,
+    22068,
+    55628,
+    51565,
+    63758,
+    59695,
+    39368,
+    35305,
+    47498,
+    43435,
+    22596,
+    18533,
+    30726,
+    26663,
+    6336,
+    2273,
+    14466,
+    10403,
+    52093,
+    56156,
+    60223,
+    64286,
+    35833,
+    39896,
+    43963,
+    48026,
+    19061,
+    23124,
+    27191,
+    31254,
+    2801,
+    6864,
+    10931,
+    14994,
+    64814,
+    60687,
+    56684,
+    52557,
+    48554,
+    44427,
+    40424,
+    36297,
+    31782,
+    27655,
+    23652,
+    19525,
+    15522,
+    11395,
+    7392,
+    3265,
+    61215,
+    65342,
+    53085,
+    57212,
+    44955,
+    49082,
+    36825,
+    40952,
+    28183,
+    32310,
+    20053,
+    24180,
+    11923,
+    16050,
+    3793,
+    7920
+  ];
+  var toUTF8Array = function toUTF8Array(str) {
+    var char2;
+    var i = 0;
+    var p = 0;
+    var utf8 = [];
+    var len = str.length;
+    for (;i < len; i++) {
+      char2 = str.charCodeAt(i);
+      if (char2 < 128) {
+        utf8[p++] = char2;
+      } else if (char2 < 2048) {
+        utf8[p++] = char2 >> 6 | 192;
+        utf8[p++] = char2 & 63 | 128;
+      } else if ((char2 & 64512) === 55296 && i + 1 < str.length && (str.charCodeAt(i + 1) & 64512) === 56320) {
+        char2 = 65536 + ((char2 & 1023) << 10) + (str.charCodeAt(++i) & 1023);
+        utf8[p++] = char2 >> 18 | 240;
+        utf8[p++] = char2 >> 12 & 63 | 128;
+        utf8[p++] = char2 >> 6 & 63 | 128;
+        utf8[p++] = char2 & 63 | 128;
+      } else {
+        utf8[p++] = char2 >> 12 | 224;
+        utf8[p++] = char2 >> 6 & 63 | 128;
+        utf8[p++] = char2 & 63 | 128;
+      }
+    }
+    return utf8;
+  };
+  var generate = module.exports = function generate(str) {
+    var char2;
+    var i = 0;
+    var start = -1;
+    var result = 0;
+    var resultHash = 0;
+    var utf8 = typeof str === "string" ? toUTF8Array(str) : str;
+    var len = utf8.length;
+    while (i < len) {
+      char2 = utf8[i++];
+      if (start === -1) {
+        if (char2 === 123) {
+          start = i;
+        }
+      } else if (char2 !== 125) {
+        resultHash = lookup[(char2 ^ resultHash >> 8) & 255] ^ resultHash << 8;
+      } else if (i - 1 !== start) {
+        return resultHash & 16383;
+      }
+      result = lookup[(char2 ^ result >> 8) & 255] ^ result << 8;
+    }
+    return result & 16383;
+  };
+  module.exports.generateMulti = function generateMulti(keys) {
+    var i = 1;
+    var len = keys.length;
+    var base = generate(keys[0]);
+    while (i < len) {
+      if (generate(keys[i++]) !== base)
+        return -1;
+    }
+    return base;
+  };
+});
+
+// node_modules/lodash.defaults/index.js
+var require_lodash = __commonJS((exports, module) => {
+  var MAX_SAFE_INTEGER = 9007199254740991;
+  var argsTag = "[object Arguments]";
+  var funcTag = "[object Function]";
+  var genTag = "[object GeneratorFunction]";
+  var reIsUint = /^(?:0|[1-9]\d*)$/;
+  function apply(func, thisArg, args) {
+    switch (args.length) {
+      case 0:
+        return func.call(thisArg);
+      case 1:
+        return func.call(thisArg, args[0]);
+      case 2:
+        return func.call(thisArg, args[0], args[1]);
+      case 3:
+        return func.call(thisArg, args[0], args[1], args[2]);
+    }
+    return func.apply(thisArg, args);
+  }
+  function baseTimes(n, iteratee) {
+    var index2 = -1, result = Array(n);
+    while (++index2 < n) {
+      result[index2] = iteratee(index2);
+    }
+    return result;
+  }
+  var objectProto = Object.prototype;
+  var hasOwnProperty = objectProto.hasOwnProperty;
+  var objectToString = objectProto.toString;
+  var propertyIsEnumerable = objectProto.propertyIsEnumerable;
+  var nativeMax = Math.max;
+  function arrayLikeKeys(value, inherited) {
+    var result = isArray(value) || isArguments(value) ? baseTimes(value.length, String) : [];
+    var length = result.length, skipIndexes = !!length;
+    for (var key in value) {
+      if ((inherited || hasOwnProperty.call(value, key)) && !(skipIndexes && (key == "length" || isIndex(key, length)))) {
+        result.push(key);
+      }
+    }
+    return result;
+  }
+  function assignInDefaults(objValue, srcValue, key, object) {
+    if (objValue === undefined || eq2(objValue, objectProto[key]) && !hasOwnProperty.call(object, key)) {
+      return srcValue;
+    }
+    return objValue;
+  }
+  function assignValue(object, key, value) {
+    var objValue = object[key];
+    if (!(hasOwnProperty.call(object, key) && eq2(objValue, value)) || value === undefined && !(key in object)) {
+      object[key] = value;
+    }
+  }
+  function baseKeysIn(object) {
+    if (!isObject3(object)) {
+      return nativeKeysIn(object);
+    }
+    var isProto = isPrototype(object), result = [];
+    for (var key in object) {
+      if (!(key == "constructor" && (isProto || !hasOwnProperty.call(object, key)))) {
+        result.push(key);
+      }
+    }
+    return result;
+  }
+  function baseRest(func, start) {
+    start = nativeMax(start === undefined ? func.length - 1 : start, 0);
+    return function() {
+      var args = arguments, index2 = -1, length = nativeMax(args.length - start, 0), array2 = Array(length);
+      while (++index2 < length) {
+        array2[index2] = args[start + index2];
+      }
+      index2 = -1;
+      var otherArgs = Array(start + 1);
+      while (++index2 < start) {
+        otherArgs[index2] = args[index2];
+      }
+      otherArgs[start] = array2;
+      return apply(func, this, otherArgs);
+    };
+  }
+  function copyObject(source, props, object, customizer) {
+    object || (object = {});
+    var index2 = -1, length = props.length;
+    while (++index2 < length) {
+      var key = props[index2];
+      var newValue = customizer ? customizer(object[key], source[key], key, object, source) : undefined;
+      assignValue(object, key, newValue === undefined ? source[key] : newValue);
+    }
+    return object;
+  }
+  function createAssigner(assigner) {
+    return baseRest(function(object, sources) {
+      var index2 = -1, length = sources.length, customizer = length > 1 ? sources[length - 1] : undefined, guard2 = length > 2 ? sources[2] : undefined;
+      customizer = assigner.length > 3 && typeof customizer == "function" ? (length--, customizer) : undefined;
+      if (guard2 && isIterateeCall(sources[0], sources[1], guard2)) {
+        customizer = length < 3 ? undefined : customizer;
+        length = 1;
+      }
+      object = Object(object);
+      while (++index2 < length) {
+        var source = sources[index2];
+        if (source) {
+          assigner(object, source, index2, customizer);
+        }
+      }
+      return object;
+    });
+  }
+  function isIndex(value, length) {
+    length = length == null ? MAX_SAFE_INTEGER : length;
+    return !!length && (typeof value == "number" || reIsUint.test(value)) && (value > -1 && value % 1 == 0 && value < length);
+  }
+  function isIterateeCall(value, index2, object) {
+    if (!isObject3(object)) {
+      return false;
+    }
+    var type2 = typeof index2;
+    if (type2 == "number" ? isArrayLike(object) && isIndex(index2, object.length) : type2 == "string" && (index2 in object)) {
+      return eq2(object[index2], value);
+    }
+    return false;
+  }
+  function isPrototype(value) {
+    var Ctor = value && value.constructor, proto = typeof Ctor == "function" && Ctor.prototype || objectProto;
+    return value === proto;
+  }
+  function nativeKeysIn(object) {
+    var result = [];
+    if (object != null) {
+      for (var key in Object(object)) {
+        result.push(key);
+      }
+    }
+    return result;
+  }
+  function eq2(value, other) {
+    return value === other || value !== value && other !== other;
+  }
+  function isArguments(value) {
+    return isArrayLikeObject(value) && hasOwnProperty.call(value, "callee") && (!propertyIsEnumerable.call(value, "callee") || objectToString.call(value) == argsTag);
+  }
+  var isArray = Array.isArray;
+  function isArrayLike(value) {
+    return value != null && isLength(value.length) && !isFunction(value);
+  }
+  function isArrayLikeObject(value) {
+    return isObjectLike(value) && isArrayLike(value);
+  }
+  function isFunction(value) {
+    var tag = isObject3(value) ? objectToString.call(value) : "";
+    return tag == funcTag || tag == genTag;
+  }
+  function isLength(value) {
+    return typeof value == "number" && value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
+  }
+  function isObject3(value) {
+    var type2 = typeof value;
+    return !!value && (type2 == "object" || type2 == "function");
+  }
+  function isObjectLike(value) {
+    return !!value && typeof value == "object";
+  }
+  var assignInWith = createAssigner(function(object, source, srcIndex, customizer) {
+    copyObject(source, keysIn(source), object, customizer);
+  });
+  var defaults = baseRest(function(args) {
+    args.push(undefined, assignInDefaults);
+    return apply(assignInWith, undefined, args);
+  });
+  function keysIn(object) {
+    return isArrayLike(object) ? arrayLikeKeys(object, true) : baseKeysIn(object);
+  }
+  module.exports = defaults;
+});
+
+// node_modules/lodash.isarguments/index.js
+var require_lodash2 = __commonJS((exports, module) => {
+  var MAX_SAFE_INTEGER = 9007199254740991;
+  var argsTag = "[object Arguments]";
+  var funcTag = "[object Function]";
+  var genTag = "[object GeneratorFunction]";
+  var objectProto = Object.prototype;
+  var hasOwnProperty = objectProto.hasOwnProperty;
+  var objectToString = objectProto.toString;
+  var propertyIsEnumerable = objectProto.propertyIsEnumerable;
+  function isArguments(value) {
+    return isArrayLikeObject(value) && hasOwnProperty.call(value, "callee") && (!propertyIsEnumerable.call(value, "callee") || objectToString.call(value) == argsTag);
+  }
+  function isArrayLike(value) {
+    return value != null && isLength(value.length) && !isFunction(value);
+  }
+  function isArrayLikeObject(value) {
+    return isObjectLike(value) && isArrayLike(value);
+  }
+  function isFunction(value) {
+    var tag = isObject3(value) ? objectToString.call(value) : "";
+    return tag == funcTag || tag == genTag;
+  }
+  function isLength(value) {
+    return typeof value == "number" && value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
+  }
+  function isObject3(value) {
+    var type2 = typeof value;
+    return !!value && (type2 == "object" || type2 == "function");
+  }
+  function isObjectLike(value) {
+    return !!value && typeof value == "object";
+  }
+  module.exports = isArguments;
+});
+
+// node_modules/ioredis/built/utils/lodash.js
+var require_lodash3 = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.isArguments = exports.defaults = exports.noop = undefined;
+  var defaults = require_lodash();
+  exports.defaults = defaults;
+  var isArguments = require_lodash2();
+  exports.isArguments = isArguments;
+  function noop3() {}
+  exports.noop = noop3;
+});
+
+// node_modules/ioredis/built/utils/debug.js
+var require_debug = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.genRedactedString = exports.getStringValue = exports.MAX_ARGUMENT_LENGTH = undefined;
+  var debug_1 = require_src();
+  var MAX_ARGUMENT_LENGTH = 200;
+  exports.MAX_ARGUMENT_LENGTH = MAX_ARGUMENT_LENGTH;
+  var NAMESPACE_PREFIX = "ioredis";
+  function getStringValue(v) {
+    if (v === null) {
+      return;
+    }
+    switch (typeof v) {
+      case "boolean":
+        return;
+      case "number":
+        return;
+      case "object":
+        if (Buffer.isBuffer(v)) {
+          return v.toString("hex");
+        }
+        if (Array.isArray(v)) {
+          return v.join(",");
+        }
+        try {
+          return JSON.stringify(v);
+        } catch (e) {
+          return;
+        }
+      case "string":
+        return v;
+    }
+  }
+  exports.getStringValue = getStringValue;
+  function genRedactedString(str, maxLen) {
+    const { length } = str;
+    return length <= maxLen ? str : str.slice(0, maxLen) + ' ... <REDACTED full-length="' + length + '">';
+  }
+  exports.genRedactedString = genRedactedString;
+  function genDebugFunction(namespace) {
+    const fn = (0, debug_1.default)(`${NAMESPACE_PREFIX}:${namespace}`);
+    function wrappedDebug(...args) {
+      if (!fn.enabled) {
+        return;
+      }
+      for (let i = 1;i < args.length; i++) {
+        const str = getStringValue(args[i]);
+        if (typeof str === "string" && str.length > MAX_ARGUMENT_LENGTH) {
+          args[i] = genRedactedString(str, MAX_ARGUMENT_LENGTH);
+        }
+      }
+      return fn.apply(null, args);
+    }
+    Object.defineProperties(wrappedDebug, {
+      namespace: {
+        get() {
+          return fn.namespace;
+        }
+      },
+      enabled: {
+        get() {
+          return fn.enabled;
+        }
+      },
+      destroy: {
+        get() {
+          return fn.destroy;
+        }
+      },
+      log: {
+        get() {
+          return fn.log;
+        },
+        set(l) {
+          fn.log = l;
+        }
+      }
+    });
+    return wrappedDebug;
+  }
+  exports.default = genDebugFunction;
+});
+
+// node_modules/ioredis/built/constants/TLSProfiles.js
+var require_TLSProfiles = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var RedisCloudCA = `-----BEGIN CERTIFICATE-----
+MIIDTzCCAjegAwIBAgIJAKSVpiDswLcwMA0GCSqGSIb3DQEBBQUAMD4xFjAUBgNV
+BAoMDUdhcmFudGlhIERhdGExJDAiBgNVBAMMG1NTTCBDZXJ0aWZpY2F0aW9uIEF1
+dGhvcml0eTAeFw0xMzEwMDExMjE0NTVaFw0yMzA5MjkxMjE0NTVaMD4xFjAUBgNV
+BAoMDUdhcmFudGlhIERhdGExJDAiBgNVBAMMG1NTTCBDZXJ0aWZpY2F0aW9uIEF1
+dGhvcml0eTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALZqkh/DczWP
+JnxnHLQ7QL0T4B4CDKWBKCcisriGbA6ZePWVNo4hfKQC6JrzfR+081NeD6VcWUiz
+rmd+jtPhIY4c+WVQYm5PKaN6DT1imYdxQw7aqO5j2KUCEh/cznpLxeSHoTxlR34E
+QwF28Wl3eg2vc5ct8LjU3eozWVk3gb7alx9mSA2SgmuX5lEQawl++rSjsBStemY2
+BDwOpAMXIrdEyP/cVn8mkvi/BDs5M5G+09j0gfhyCzRWMQ7Hn71u1eolRxwVxgi3
+TMn+/vTaFSqxKjgck6zuAYjBRPaHe7qLxHNr1So/Mc9nPy+3wHebFwbIcnUojwbp
+4nctkWbjb2cCAwEAAaNQME4wHQYDVR0OBBYEFP1whtcrydmW3ZJeuSoKZIKjze3w
+MB8GA1UdIwQYMBaAFP1whtcrydmW3ZJeuSoKZIKjze3wMAwGA1UdEwQFMAMBAf8w
+DQYJKoZIhvcNAQEFBQADggEBAG2erXhwRAa7+ZOBs0B6X57Hwyd1R4kfmXcs0rta
+lbPpvgULSiB+TCbf3EbhJnHGyvdCY1tvlffLjdA7HJ0PCOn+YYLBA0pTU/dyvrN6
+Su8NuS5yubnt9mb13nDGYo1rnt0YRfxN+8DM3fXIVr038A30UlPX2Ou1ExFJT0MZ
+uFKY6ZvLdI6/1cbgmguMlAhM+DhKyV6Sr5699LM3zqeI816pZmlREETYkGr91q7k
+BpXJu/dtHaGxg1ZGu6w/PCsYGUcECWENYD4VQPd8N32JjOfu6vEgoEAwfPP+3oGp
+Z4m3ewACcWOAenqflb+cQYC4PsF7qbXDmRaWrbKntOlZ3n0=
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+MIIGMTCCBBmgAwIBAgICEAAwDQYJKoZIhvcNAQELBQAwajELMAkGA1UEBhMCVVMx
+CzAJBgNVBAgMAkNBMQswCQYDVQQHDAJDQTESMBAGA1UECgwJUmVkaXNMYWJzMS0w
+KwYDVQQDDCRSZWRpc0xhYnMgUm9vdCBDZXJ0aWZpY2F0ZSBBdXRob3JpdHkwHhcN
+MTgwMjI1MTUzNzM3WhcNMjgwMjIzMTUzNzM3WjBfMQswCQYDVQQGEwJVUzELMAkG
+A1UECAwCQ0ExEjAQBgNVBAoMCVJlZGlzTGFiczEvMC0GA1UEAwwmUkNQIEludGVy
+bWVkaWF0ZSBDZXJ0aWZpY2F0ZSBBdXRob3JpdHkwggIiMA0GCSqGSIb3DQEBAQUA
+A4ICDwAwggIKAoICAQDf9dqbxc8Bq7Ctq9rWcxrGNKKHivqLAFpPq02yLPx6fsOv
+Tq7GsDChAYBBc4v7Y2Ap9RD5Vs3dIhEANcnolf27QwrG9RMnnvzk8pCvp1o6zSU4
+VuOE1W66/O1/7e2rVxyrnTcP7UgK43zNIXu7+tiAqWsO92uSnuMoGPGpeaUm1jym
+hjWKtkAwDFSqvHY+XL5qDVBEjeUe+WHkYUg40cAXjusAqgm2hZt29c2wnVrxW25W
+P0meNlzHGFdA2AC5z54iRiqj57dTfBTkHoBczQxcyw6hhzxZQ4e5I5zOKjXXEhZN
+r0tA3YC14CTabKRus/JmZieyZzRgEy2oti64tmLYTqSlAD78pRL40VNoaSYetXLw
+hhNsXCHgWaY6d5bLOc/aIQMAV5oLvZQKvuXAF1IDmhPA+bZbpWipp0zagf1P1H3s
+UzsMdn2KM0ejzgotbtNlj5TcrVwpmvE3ktvUAuA+hi3FkVx1US+2Gsp5x4YOzJ7u
+P1WPk6ShF0JgnJH2ILdj6kttTWwFzH17keSFICWDfH/+kM+k7Y1v3EXMQXE7y0T9
+MjvJskz6d/nv+sQhY04xt64xFMGTnZjlJMzfQNi7zWFLTZnDD0lPowq7l3YiPoTT
+t5Xky83lu0KZsZBo0WlWaDG00gLVdtRgVbcuSWxpi5BdLb1kRab66JptWjxwXQID
+AQABo4HrMIHoMDoGA1UdHwQzMDEwL6AtoCuGKWh0dHBzOi8vcmwtY2Etc2VydmVy
+LnJlZGlzbGFicy5jb20vdjEvY3JsMEYGCCsGAQUFBwEBBDowODA2BggrBgEFBQcw
+AYYqaHR0cHM6Ly9ybC1jYS1zZXJ2ZXIucmVkaXNsYWJzLmNvbS92MS9vY3NwMB0G
+A1UdDgQWBBQHar5OKvQUpP2qWt6mckzToeCOHDAfBgNVHSMEGDAWgBQi42wH6hM4
+L2sujEvLM0/u8lRXTzASBgNVHRMBAf8ECDAGAQH/AgEAMA4GA1UdDwEB/wQEAwIB
+hjANBgkqhkiG9w0BAQsFAAOCAgEAirEn/iTsAKyhd+pu2W3Z5NjCko4NPU0EYUbr
+AP7+POK2rzjIrJO3nFYQ/LLuC7KCXG+2qwan2SAOGmqWst13Y+WHp44Kae0kaChW
+vcYLXXSoGQGC8QuFSNUdaeg3RbMDYFT04dOkqufeWVccoHVxyTSg9eD8LZuHn5jw
+7QDLiEECBmIJHk5Eeo2TAZrx4Yx6ufSUX5HeVjlAzqwtAqdt99uCJ/EL8bgpWbe+
+XoSpvUv0SEC1I1dCAhCKAvRlIOA6VBcmzg5Am12KzkqTul12/VEFIgzqu0Zy2Jbc
+AUPrYVu/+tOGXQaijy7YgwH8P8n3s7ZeUa1VABJHcxrxYduDDJBLZi+MjheUDaZ1
+jQRHYevI2tlqeSBqdPKG4zBY5lS0GiAlmuze5oENt0P3XboHoZPHiqcK3VECgTVh
+/BkJcuudETSJcZDmQ8YfoKfBzRQNg2sv/hwvUv73Ss51Sco8GEt2lD8uEdib1Q6z
+zDT5lXJowSzOD5ZA9OGDjnSRL+2riNtKWKEqvtEG3VBJoBzu9GoxbAc7wIZLxmli
+iF5a/Zf5X+UXD3s4TMmy6C4QZJpAA2egsSQCnraWO2ULhh7iXMysSkF/nzVfZn43
+iqpaB8++9a37hWq14ZmOv0TJIDz//b2+KC4VFXWQ5W5QC6whsjT+OlG4p5ZYG0jo
+616pxqo=
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+MIIFujCCA6KgAwIBAgIJAJ1aTT1lu2ScMA0GCSqGSIb3DQEBCwUAMGoxCzAJBgNV
+BAYTAlVTMQswCQYDVQQIDAJDQTELMAkGA1UEBwwCQ0ExEjAQBgNVBAoMCVJlZGlz
+TGFiczEtMCsGA1UEAwwkUmVkaXNMYWJzIFJvb3QgQ2VydGlmaWNhdGUgQXV0aG9y
+aXR5MB4XDTE4MDIyNTE1MjA0MloXDTM4MDIyMDE1MjA0MlowajELMAkGA1UEBhMC
+VVMxCzAJBgNVBAgMAkNBMQswCQYDVQQHDAJDQTESMBAGA1UECgwJUmVkaXNMYWJz
+MS0wKwYDVQQDDCRSZWRpc0xhYnMgUm9vdCBDZXJ0aWZpY2F0ZSBBdXRob3JpdHkw
+ggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDLEjXy7YrbN5Waau5cd6g1
+G5C2tMmeTpZ0duFAPxNU4oE3RHS5gGiok346fUXuUxbZ6QkuzeN2/2Z+RmRcJhQY
+Dm0ZgdG4x59An1TJfnzKKoWj8ISmoHS/TGNBdFzXV7FYNLBuqZouqePI6ReC6Qhl
+pp45huV32Q3a6IDrrvx7Wo5ZczEQeFNbCeCOQYNDdTmCyEkHqc2AGo8eoIlSTutT
+ULOC7R5gzJVTS0e1hesQ7jmqHjbO+VQS1NAL4/5K6cuTEqUl+XhVhPdLWBXJQ5ag
+54qhX4v+ojLzeU1R/Vc6NjMvVtptWY6JihpgplprN0Yh2556ewcXMeturcKgXfGJ
+xeYzsjzXerEjrVocX5V8BNrg64NlifzTMKNOOv4fVZszq1SIHR8F9ROrqiOdh8iC
+JpUbLpXH9hWCSEO6VRMB2xJoKu3cgl63kF30s77x7wLFMEHiwsQRKxooE1UhgS9K
+2sO4TlQ1eWUvFvHSTVDQDlGQ6zu4qjbOpb3Q8bQwoK+ai2alkXVR4Ltxe9QlgYK3
+StsnPhruzZGA0wbXdpw0bnM+YdlEm5ffSTpNIfgHeaa7Dtb801FtA71ZlH7A6TaI
+SIQuUST9EKmv7xrJyx0W1pGoPOLw5T029aTjnICSLdtV9bLwysrLhIYG5bnPq78B
+cS+jZHFGzD7PUVGQD01nOQIDAQABo2MwYTAdBgNVHQ4EFgQUIuNsB+oTOC9rLoxL
+yzNP7vJUV08wHwYDVR0jBBgwFoAUIuNsB+oTOC9rLoxLyzNP7vJUV08wDwYDVR0T
+AQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAYYwDQYJKoZIhvcNAQELBQADggIBAHfg
+z5pMNUAKdMzK1aS1EDdK9yKz4qicILz5czSLj1mC7HKDRy8cVADUxEICis++CsCu
+rYOvyCVergHQLREcxPq4rc5Nq1uj6J6649NEeh4WazOOjL4ZfQ1jVznMbGy+fJm3
+3Hoelv6jWRG9iqeJZja7/1s6YC6bWymI/OY1e4wUKeNHAo+Vger7MlHV+RuabaX+
+hSJ8bJAM59NCM7AgMTQpJCncrcdLeceYniGy5Q/qt2b5mJkQVkIdy4TPGGB+AXDJ
+D0q3I/JDRkDUFNFdeW0js7fHdsvCR7O3tJy5zIgEV/o/BCkmJVtuwPYOrw/yOlKj
+TY/U7ATAx9VFF6/vYEOMYSmrZlFX+98L6nJtwDqfLB5VTltqZ4H/KBxGE3IRSt9l
+FXy40U+LnXzhhW+7VBAvyYX8GEXhHkKU8Gqk1xitrqfBXY74xKgyUSTolFSfFVgj
+mcM/X4K45bka+qpkj7Kfv/8D4j6aZekwhN2ly6hhC1SmQ8qjMjpG/mrWOSSHZFmf
+ybu9iD2AYHeIOkshIl6xYIa++Q/00/vs46IzAbQyriOi0XxlSMMVtPx0Q3isp+ji
+n8Mq9eOuxYOEQ4of8twUkUDd528iwGtEdwf0Q01UyT84S62N8AySl1ZBKXJz6W4F
+UhWfa/HQYOAPDdEjNgnVwLI23b8t0TozyCWw7q8h
+-----END CERTIFICATE-----
+
+-----BEGIN CERTIFICATE-----
+MIIEjzCCA3egAwIBAgIQe55B/ALCKJDZtdNT8kD6hTANBgkqhkiG9w0BAQsFADBM
+MSAwHgYDVQQLExdHbG9iYWxTaWduIFJvb3QgQ0EgLSBSMzETMBEGA1UEChMKR2xv
+YmFsU2lnbjETMBEGA1UEAxMKR2xvYmFsU2lnbjAeFw0yMjAxMjYxMjAwMDBaFw0y
+NTAxMjYwMDAwMDBaMFgxCzAJBgNVBAYTAkJFMRkwFwYDVQQKExBHbG9iYWxTaWdu
+IG52LXNhMS4wLAYDVQQDEyVHbG9iYWxTaWduIEF0bGFzIFIzIE9WIFRMUyBDQSAy
+MDIyIFEyMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmGmg1LW9b7Lf
+8zDD83yBDTEkt+FOxKJZqF4veWc5KZsQj9HfnUS2e5nj/E+JImlGPsQuoiosLuXD
+BVBNAMcUFa11buFMGMeEMwiTmCXoXRrXQmH0qjpOfKgYc5gHG3BsRGaRrf7VR4eg
+ofNMG9wUBw4/g/TT7+bQJdA4NfE7Y4d5gEryZiBGB/swaX6Jp/8MF4TgUmOWmalK
+dZCKyb4sPGQFRTtElk67F7vU+wdGcrcOx1tDcIB0ncjLPMnaFicagl+daWGsKqTh
+counQb6QJtYHa91KvCfKWocMxQ7OIbB5UARLPmC4CJ1/f8YFm35ebfzAeULYdGXu
+jE9CLor0OwIDAQABo4IBXzCCAVswDgYDVR0PAQH/BAQDAgGGMB0GA1UdJQQWMBQG
+CCsGAQUFBwMBBggrBgEFBQcDAjASBgNVHRMBAf8ECDAGAQH/AgEAMB0GA1UdDgQW
+BBSH5Zq7a7B/t95GfJWkDBpA8HHqdjAfBgNVHSMEGDAWgBSP8Et/qC5FJK5NUPpj
+move4t0bvDB7BggrBgEFBQcBAQRvMG0wLgYIKwYBBQUHMAGGImh0dHA6Ly9vY3Nw
+Mi5nbG9iYWxzaWduLmNvbS9yb290cjMwOwYIKwYBBQUHMAKGL2h0dHA6Ly9zZWN1
+cmUuZ2xvYmFsc2lnbi5jb20vY2FjZXJ0L3Jvb3QtcjMuY3J0MDYGA1UdHwQvMC0w
+K6ApoCeGJWh0dHA6Ly9jcmwuZ2xvYmFsc2lnbi5jb20vcm9vdC1yMy5jcmwwIQYD
+VR0gBBowGDAIBgZngQwBAgIwDAYKKwYBBAGgMgoBAjANBgkqhkiG9w0BAQsFAAOC
+AQEAKRic9/f+nmhQU/wz04APZLjgG5OgsuUOyUEZjKVhNGDwxGTvKhyXGGAMW2B/
+3bRi+aElpXwoxu3pL6fkElbX3B0BeS5LoDtxkyiVEBMZ8m+sXbocwlPyxrPbX6mY
+0rVIvnuUeBH8X0L5IwfpNVvKnBIilTbcebfHyXkPezGwz7E1yhUULjJFm2bt0SdX
+y+4X/WeiiYIv+fTVgZZgl+/2MKIsu/qdBJc3f3TvJ8nz+Eax1zgZmww+RSQWeOj3
+15Iw6Z5FX+NwzY/Ab+9PosR5UosSeq+9HhtaxZttXG1nVh+avYPGYddWmiMT90J5
+ZgKnO/Fx2hBgTxhOTMYaD312kg==
+-----END CERTIFICATE-----
+
+-----BEGIN CERTIFICATE-----
+MIIDXzCCAkegAwIBAgILBAAAAAABIVhTCKIwDQYJKoZIhvcNAQELBQAwTDEgMB4G
+A1UECxMXR2xvYmFsU2lnbiBSb290IENBIC0gUjMxEzARBgNVBAoTCkdsb2JhbFNp
+Z24xEzARBgNVBAMTCkdsb2JhbFNpZ24wHhcNMDkwMzE4MTAwMDAwWhcNMjkwMzE4
+MTAwMDAwWjBMMSAwHgYDVQQLExdHbG9iYWxTaWduIFJvb3QgQ0EgLSBSMzETMBEG
+A1UEChMKR2xvYmFsU2lnbjETMBEGA1UEAxMKR2xvYmFsU2lnbjCCASIwDQYJKoZI
+hvcNAQEBBQADggEPADCCAQoCggEBAMwldpB5BngiFvXAg7aEyiie/QV2EcWtiHL8
+RgJDx7KKnQRfJMsuS+FggkbhUqsMgUdwbN1k0ev1LKMPgj0MK66X17YUhhB5uzsT
+gHeMCOFJ0mpiLx9e+pZo34knlTifBtc+ycsmWQ1z3rDI6SYOgxXG71uL0gRgykmm
+KPZpO/bLyCiR5Z2KYVc3rHQU3HTgOu5yLy6c+9C7v/U9AOEGM+iCK65TpjoWc4zd
+QQ4gOsC0p6Hpsk+QLjJg6VfLuQSSaGjlOCZgdbKfd/+RFO+uIEn8rUAVSNECMWEZ
+XriX7613t2Saer9fwRPvm2L7DWzgVGkWqQPabumDk3F2xmmFghcCAwEAAaNCMEAw
+DgYDVR0PAQH/BAQDAgEGMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFI/wS3+o
+LkUkrk1Q+mOai97i3Ru8MA0GCSqGSIb3DQEBCwUAA4IBAQBLQNvAUKr+yAzv95ZU
+RUm7lgAJQayzE4aGKAczymvmdLm6AC2upArT9fHxD4q/c2dKg8dEe3jgr25sbwMp
+jjM5RcOO5LlXbKr8EpbsU8Yt5CRsuZRj+9xTaGdWPoO4zzUhw8lo/s7awlOqzJCK
+6fBdRoyV3XpYKBovHd7NADdBj+1EbddTKJd+82cEHhXXipa0095MJ6RMG3NzdvQX
+mcIfeg7jLQitChws/zyrVQ4PkX4268NXSb7hLi18YIvDQVETI53O9zJrlAGomecs
+Mx86OyXShkDOOyyGeMlhLxS67ttVb9+E7gUJTb0o2HLO02JQZR7rkpeDMdmztcpH
+WD9f
+-----END CERTIFICATE-----`;
+  var TLSProfiles = {
+    RedisCloudFixed: { ca: RedisCloudCA },
+    RedisCloudFlexible: { ca: RedisCloudCA }
+  };
+  exports.default = TLSProfiles;
+});
+
+// node_modules/ioredis/built/utils/index.js
+var require_utils5 = __commonJS((exports) => {
+  var __dirname = "/Users/pranavpatel/Downloads/ff/futurefrog-backend/node_modules/ioredis/built/utils";
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.noop = exports.defaults = exports.Debug = exports.getPackageMeta = exports.zipMap = exports.CONNECTION_CLOSED_ERROR_MSG = exports.shuffle = exports.sample = exports.resolveTLSProfile = exports.parseURL = exports.optimizeErrorStack = exports.toArg = exports.convertMapToArray = exports.convertObjectToArray = exports.timeout = exports.packObject = exports.isInt = exports.wrapMultiResult = exports.convertBufferToString = undefined;
+  var fs_1 = __require("fs");
+  var path_1 = __require("path");
+  var url_1 = __require("url");
+  var lodash_1 = require_lodash3();
+  Object.defineProperty(exports, "defaults", { enumerable: true, get: function() {
+    return lodash_1.defaults;
+  } });
+  Object.defineProperty(exports, "noop", { enumerable: true, get: function() {
+    return lodash_1.noop;
+  } });
+  var debug_1 = require_debug();
+  exports.Debug = debug_1.default;
+  var TLSProfiles_1 = require_TLSProfiles();
+  function convertBufferToString(value, encoding) {
+    if (value instanceof Buffer) {
+      return value.toString(encoding);
+    }
+    if (Array.isArray(value)) {
+      const length = value.length;
+      const res = Array(length);
+      for (let i = 0;i < length; ++i) {
+        res[i] = value[i] instanceof Buffer && encoding === "utf8" ? value[i].toString() : convertBufferToString(value[i], encoding);
+      }
+      return res;
+    }
+    return value;
+  }
+  exports.convertBufferToString = convertBufferToString;
+  function wrapMultiResult(arr) {
+    if (!arr) {
+      return null;
+    }
+    const result = [];
+    const length = arr.length;
+    for (let i = 0;i < length; ++i) {
+      const item = arr[i];
+      if (item instanceof Error) {
+        result.push([item]);
+      } else {
+        result.push([null, item]);
+      }
+    }
+    return result;
+  }
+  exports.wrapMultiResult = wrapMultiResult;
+  function isInt(value) {
+    const x = parseFloat(value);
+    return !isNaN(value) && (x | 0) === x;
+  }
+  exports.isInt = isInt;
+  function packObject(array2) {
+    const result = {};
+    const length = array2.length;
+    for (let i = 1;i < length; i += 2) {
+      result[array2[i - 1]] = array2[i];
+    }
+    return result;
+  }
+  exports.packObject = packObject;
+  function timeout(callback, timeout2) {
+    let timer2 = null;
+    const run2 = function() {
+      if (timer2) {
+        clearTimeout(timer2);
+        timer2 = null;
+        callback.apply(this, arguments);
+      }
+    };
+    timer2 = setTimeout(run2, timeout2, new Error("timeout"));
+    return run2;
+  }
+  exports.timeout = timeout;
+  function convertObjectToArray(obj) {
+    const result = [];
+    const keys = Object.keys(obj);
+    for (let i = 0, l = keys.length;i < l; i++) {
+      result.push(keys[i], obj[keys[i]]);
+    }
+    return result;
+  }
+  exports.convertObjectToArray = convertObjectToArray;
+  function convertMapToArray(map3) {
+    const result = [];
+    let pos = 0;
+    map3.forEach(function(value, key) {
+      result[pos] = key;
+      result[pos + 1] = value;
+      pos += 2;
+    });
+    return result;
+  }
+  exports.convertMapToArray = convertMapToArray;
+  function toArg(arg) {
+    if (arg === null || typeof arg === "undefined") {
+      return "";
+    }
+    return String(arg);
+  }
+  exports.toArg = toArg;
+  function optimizeErrorStack(error, friendlyStack, filterPath) {
+    const stacks = friendlyStack.split(`
+`);
+    let lines = "";
+    let i;
+    for (i = 1;i < stacks.length; ++i) {
+      if (stacks[i].indexOf(filterPath) === -1) {
+        break;
+      }
+    }
+    for (let j = i;j < stacks.length; ++j) {
+      lines += `
+` + stacks[j];
+    }
+    if (error.stack) {
+      const pos = error.stack.indexOf(`
+`);
+      error.stack = error.stack.slice(0, pos) + lines;
+    }
+    return error;
+  }
+  exports.optimizeErrorStack = optimizeErrorStack;
+  function parseURL(url) {
+    if (isInt(url)) {
+      return { port: url };
+    }
+    let parsed = (0, url_1.parse)(url, true, true);
+    if (!parsed.slashes && url[0] !== "/") {
+      url = "//" + url;
+      parsed = (0, url_1.parse)(url, true, true);
+    }
+    const options = parsed.query || {};
+    const result = {};
+    if (parsed.auth) {
+      const index2 = parsed.auth.indexOf(":");
+      result.username = index2 === -1 ? parsed.auth : parsed.auth.slice(0, index2);
+      result.password = index2 === -1 ? "" : parsed.auth.slice(index2 + 1);
+    }
+    if (parsed.pathname) {
+      if (parsed.protocol === "redis:" || parsed.protocol === "rediss:") {
+        if (parsed.pathname.length > 1) {
+          result.db = parsed.pathname.slice(1);
+        }
+      } else {
+        result.path = parsed.pathname;
+      }
+    }
+    if (parsed.host) {
+      result.host = parsed.hostname;
+    }
+    if (parsed.port) {
+      result.port = parsed.port;
+    }
+    if (typeof options.family === "string") {
+      const intFamily = Number.parseInt(options.family, 10);
+      if (!Number.isNaN(intFamily)) {
+        result.family = intFamily;
+      }
+    }
+    (0, lodash_1.defaults)(result, options);
+    return result;
+  }
+  exports.parseURL = parseURL;
+  function resolveTLSProfile(options) {
+    let tls2 = options === null || options === undefined ? undefined : options.tls;
+    if (typeof tls2 === "string")
+      tls2 = { profile: tls2 };
+    const profile = TLSProfiles_1.default[tls2 === null || tls2 === undefined ? undefined : tls2.profile];
+    if (profile) {
+      tls2 = Object.assign({}, profile, tls2);
+      delete tls2.profile;
+      options = Object.assign({}, options, { tls: tls2 });
+    }
+    return options;
+  }
+  exports.resolveTLSProfile = resolveTLSProfile;
+  function sample(array2, from = 0) {
+    const length = array2.length;
+    if (from >= length) {
+      return null;
+    }
+    return array2[from + Math.floor(Math.random() * (length - from))];
+  }
+  exports.sample = sample;
+  function shuffle(array2) {
+    let counter = array2.length;
+    while (counter > 0) {
+      const index2 = Math.floor(Math.random() * counter);
+      counter--;
+      [array2[counter], array2[index2]] = [array2[index2], array2[counter]];
+    }
+    return array2;
+  }
+  exports.shuffle = shuffle;
+  exports.CONNECTION_CLOSED_ERROR_MSG = "Connection is closed.";
+  function zipMap(keys, values2) {
+    const map3 = new Map;
+    keys.forEach((key, index2) => {
+      map3.set(key, values2[index2]);
+    });
+    return map3;
+  }
+  exports.zipMap = zipMap;
+  var cachedPackageMeta = null;
+  async function getPackageMeta() {
+    if (cachedPackageMeta) {
+      return cachedPackageMeta;
+    }
+    try {
+      const filePath = (0, path_1.resolve)(__dirname, "..", "..", "package.json");
+      const data = await fs_1.promises.readFile(filePath, "utf8");
+      const parsed = JSON.parse(data);
+      cachedPackageMeta = {
+        version: parsed.version
+      };
+      return cachedPackageMeta;
+    } catch (err2) {
+      cachedPackageMeta = {
+        version: "error-fetching-version"
+      };
+      return cachedPackageMeta;
+    }
+  }
+  exports.getPackageMeta = getPackageMeta;
+});
+
+// node_modules/ioredis/built/Command.js
+var require_Command = __commonJS((exports) => {
+  var __dirname = "/Users/pranavpatel/Downloads/ff/futurefrog-backend/node_modules/ioredis/built";
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var commands_1 = require_built();
+  var calculateSlot = require_lib2();
+  var standard_as_callback_1 = require_built2();
+  var utils_1 = require_utils5();
+
+  class Command {
+    constructor(name, args = [], options = {}, callback) {
+      this.name = name;
+      this.inTransaction = false;
+      this.isResolved = false;
+      this.transformed = false;
+      this.replyEncoding = options.replyEncoding;
+      this.errorStack = options.errorStack;
+      this.args = args.flat();
+      this.callback = callback;
+      this.initPromise();
+      if (options.keyPrefix) {
+        const isBufferKeyPrefix = options.keyPrefix instanceof Buffer;
+        let keyPrefixBuffer = isBufferKeyPrefix ? options.keyPrefix : null;
+        this._iterateKeys((key) => {
+          if (key instanceof Buffer) {
+            if (keyPrefixBuffer === null) {
+              keyPrefixBuffer = Buffer.from(options.keyPrefix);
+            }
+            return Buffer.concat([keyPrefixBuffer, key]);
+          } else if (isBufferKeyPrefix) {
+            return Buffer.concat([options.keyPrefix, Buffer.from(String(key))]);
+          }
+          return options.keyPrefix + key;
+        });
+      }
+      if (options.readOnly) {
+        this.isReadOnly = true;
+      }
+    }
+    static checkFlag(flagName, commandName) {
+      return !!this.getFlagMap()[flagName][commandName];
+    }
+    static setArgumentTransformer(name, func) {
+      this._transformer.argument[name] = func;
+    }
+    static setReplyTransformer(name, func) {
+      this._transformer.reply[name] = func;
+    }
+    static getFlagMap() {
+      if (!this.flagMap) {
+        this.flagMap = Object.keys(Command.FLAGS).reduce((map3, flagName) => {
+          map3[flagName] = {};
+          Command.FLAGS[flagName].forEach((commandName) => {
+            map3[flagName][commandName] = true;
+          });
+          return map3;
+        }, {});
+      }
+      return this.flagMap;
+    }
+    getSlot() {
+      if (typeof this.slot === "undefined") {
+        const key = this.getKeys()[0];
+        this.slot = key == null ? null : calculateSlot(key);
+      }
+      return this.slot;
+    }
+    getKeys() {
+      return this._iterateKeys();
+    }
+    toWritable(_socket) {
+      let result;
+      const commandStr = "*" + (this.args.length + 1) + `\r
+$` + Buffer.byteLength(this.name) + `\r
+` + this.name + `\r
+`;
+      if (this.bufferMode) {
+        const buffers = new MixedBuffers;
+        buffers.push(commandStr);
+        for (let i = 0;i < this.args.length; ++i) {
+          const arg = this.args[i];
+          if (arg instanceof Buffer) {
+            if (arg.length === 0) {
+              buffers.push(`$0\r
+\r
+`);
+            } else {
+              buffers.push("$" + arg.length + `\r
+`);
+              buffers.push(arg);
+              buffers.push(`\r
+`);
+            }
+          } else {
+            buffers.push("$" + Buffer.byteLength(arg) + `\r
+` + arg + `\r
+`);
+          }
+        }
+        result = buffers.toBuffer();
+      } else {
+        result = commandStr;
+        for (let i = 0;i < this.args.length; ++i) {
+          const arg = this.args[i];
+          result += "$" + Buffer.byteLength(arg) + `\r
+` + arg + `\r
+`;
+        }
+      }
+      return result;
+    }
+    stringifyArguments() {
+      for (let i = 0;i < this.args.length; ++i) {
+        const arg = this.args[i];
+        if (typeof arg === "string") {} else if (arg instanceof Buffer) {
+          this.bufferMode = true;
+        } else {
+          this.args[i] = (0, utils_1.toArg)(arg);
+        }
+      }
+    }
+    transformReply(result) {
+      if (this.replyEncoding) {
+        result = (0, utils_1.convertBufferToString)(result, this.replyEncoding);
+      }
+      const transformer = Command._transformer.reply[this.name];
+      if (transformer) {
+        result = transformer(result);
+      }
+      return result;
+    }
+    setTimeout(ms5) {
+      if (!this._commandTimeoutTimer) {
+        this._commandTimeoutTimer = setTimeout(() => {
+          if (!this.isResolved) {
+            this.reject(new Error("Command timed out"));
+          }
+        }, ms5);
+      }
+    }
+    initPromise() {
+      const promise = new Promise((resolve, reject) => {
+        if (!this.transformed) {
+          this.transformed = true;
+          const transformer = Command._transformer.argument[this.name];
+          if (transformer) {
+            this.args = transformer(this.args);
+          }
+          this.stringifyArguments();
+        }
+        this.resolve = this._convertValue(resolve);
+        if (this.errorStack) {
+          this.reject = (err2) => {
+            reject((0, utils_1.optimizeErrorStack)(err2, this.errorStack.stack, __dirname));
+          };
+        } else {
+          this.reject = reject;
+        }
+      });
+      this.promise = (0, standard_as_callback_1.default)(promise, this.callback);
+    }
+    _iterateKeys(transform2 = (key) => key) {
+      if (typeof this.keys === "undefined") {
+        this.keys = [];
+        if ((0, commands_1.exists)(this.name)) {
+          const keyIndexes = (0, commands_1.getKeyIndexes)(this.name, this.args);
+          for (const index2 of keyIndexes) {
+            this.args[index2] = transform2(this.args[index2]);
+            this.keys.push(this.args[index2]);
+          }
+        }
+      }
+      return this.keys;
+    }
+    _convertValue(resolve) {
+      return (value) => {
+        try {
+          const existingTimer = this._commandTimeoutTimer;
+          if (existingTimer) {
+            clearTimeout(existingTimer);
+            delete this._commandTimeoutTimer;
+          }
+          resolve(this.transformReply(value));
+          this.isResolved = true;
+        } catch (err2) {
+          this.reject(err2);
+        }
+        return this.promise;
+      };
+    }
+  }
+  exports.default = Command;
+  Command.FLAGS = {
+    VALID_IN_SUBSCRIBER_MODE: [
+      "subscribe",
+      "psubscribe",
+      "unsubscribe",
+      "punsubscribe",
+      "ssubscribe",
+      "sunsubscribe",
+      "ping",
+      "quit"
+    ],
+    VALID_IN_MONITOR_MODE: ["monitor", "auth"],
+    ENTER_SUBSCRIBER_MODE: ["subscribe", "psubscribe", "ssubscribe"],
+    EXIT_SUBSCRIBER_MODE: ["unsubscribe", "punsubscribe", "sunsubscribe"],
+    WILL_DISCONNECT: ["quit"],
+    HANDSHAKE_COMMANDS: ["auth", "select", "client", "readonly", "info"],
+    IGNORE_RECONNECT_ON_ERROR: ["client"]
+  };
+  Command._transformer = {
+    argument: {},
+    reply: {}
+  };
+  var msetArgumentTransformer = function(args) {
+    if (args.length === 1) {
+      if (args[0] instanceof Map) {
+        return (0, utils_1.convertMapToArray)(args[0]);
+      }
+      if (typeof args[0] === "object" && args[0] !== null) {
+        return (0, utils_1.convertObjectToArray)(args[0]);
+      }
+    }
+    return args;
+  };
+  var hsetArgumentTransformer = function(args) {
+    if (args.length === 2) {
+      if (args[1] instanceof Map) {
+        return [args[0]].concat((0, utils_1.convertMapToArray)(args[1]));
+      }
+      if (typeof args[1] === "object" && args[1] !== null) {
+        return [args[0]].concat((0, utils_1.convertObjectToArray)(args[1]));
+      }
+    }
+    return args;
+  };
+  Command.setArgumentTransformer("mset", msetArgumentTransformer);
+  Command.setArgumentTransformer("msetnx", msetArgumentTransformer);
+  Command.setArgumentTransformer("hset", hsetArgumentTransformer);
+  Command.setArgumentTransformer("hmset", hsetArgumentTransformer);
+  Command.setReplyTransformer("hgetall", function(result) {
+    if (Array.isArray(result)) {
+      const obj = {};
+      for (let i = 0;i < result.length; i += 2) {
+        const key = result[i];
+        const value = result[i + 1];
+        if (key in obj) {
+          Object.defineProperty(obj, key, {
+            value,
+            configurable: true,
+            enumerable: true,
+            writable: true
+          });
+        } else {
+          obj[key] = value;
+        }
+      }
+      return obj;
+    }
+    return result;
+  });
+
+  class MixedBuffers {
+    constructor() {
+      this.length = 0;
+      this.items = [];
+    }
+    push(x) {
+      this.length += Buffer.byteLength(x);
+      this.items.push(x);
+    }
+    toBuffer() {
+      const result = Buffer.allocUnsafe(this.length);
+      let offset2 = 0;
+      for (const item of this.items) {
+        const length = Buffer.byteLength(item);
+        Buffer.isBuffer(item) ? item.copy(result, offset2) : result.write(item, offset2, length);
+        offset2 += length;
+      }
+      return result;
+    }
+  }
+});
+
+// node_modules/ioredis/built/errors/ClusterAllFailedError.js
+var require_ClusterAllFailedError = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var redis_errors_1 = require_redis_errors();
+
+  class ClusterAllFailedError extends redis_errors_1.RedisError {
+    constructor(message, lastNodeError) {
+      super(message);
+      this.lastNodeError = lastNodeError;
+      Error.captureStackTrace(this, this.constructor);
+    }
+    get name() {
+      return this.constructor.name;
+    }
+  }
+  exports.default = ClusterAllFailedError;
+  ClusterAllFailedError.defaultMessage = "Failed to refresh slots cache.";
+});
+
+// node_modules/ioredis/built/ScanStream.js
+var require_ScanStream = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var stream_1 = __require("stream");
+
+  class ScanStream extends stream_1.Readable {
+    constructor(opt) {
+      super(opt);
+      this.opt = opt;
+      this._redisCursor = "0";
+      this._redisDrained = false;
+    }
+    _read() {
+      if (this._redisDrained) {
+        this.push(null);
+        return;
+      }
+      const args = [this._redisCursor];
+      if (this.opt.key) {
+        args.unshift(this.opt.key);
+      }
+      if (this.opt.match) {
+        args.push("MATCH", this.opt.match);
+      }
+      if (this.opt.type) {
+        args.push("TYPE", this.opt.type);
+      }
+      if (this.opt.count) {
+        args.push("COUNT", String(this.opt.count));
+      }
+      if (this.opt.noValues) {
+        args.push("NOVALUES");
+      }
+      this.opt.redis[this.opt.command](args, (err2, res) => {
+        if (err2) {
+          this.emit("error", err2);
+          return;
+        }
+        this._redisCursor = res[0] instanceof Buffer ? res[0].toString() : res[0];
+        if (this._redisCursor === "0") {
+          this._redisDrained = true;
+        }
+        this.push(res[1]);
+      });
+    }
+    close() {
+      this._redisDrained = true;
+    }
+  }
+  exports.default = ScanStream;
+});
+
+// node_modules/ioredis/built/autoPipelining.js
+var require_autoPipelining = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.executeWithAutoPipelining = exports.getFirstValueInFlattenedArray = exports.shouldUseAutoPipelining = exports.notAllowedAutoPipelineCommands = exports.kCallbacks = exports.kExec = undefined;
+  var lodash_1 = require_lodash3();
+  var calculateSlot = require_lib2();
+  var standard_as_callback_1 = require_built2();
+  exports.kExec = Symbol("exec");
+  exports.kCallbacks = Symbol("callbacks");
+  exports.notAllowedAutoPipelineCommands = [
+    "auth",
+    "info",
+    "script",
+    "quit",
+    "cluster",
+    "pipeline",
+    "multi",
+    "subscribe",
+    "psubscribe",
+    "unsubscribe",
+    "unpsubscribe",
+    "select",
+    "client"
+  ];
+  function executeAutoPipeline(client2, slotKey) {
+    if (client2._runningAutoPipelines.has(slotKey)) {
+      return;
+    }
+    if (!client2._autoPipelines.has(slotKey)) {
+      return;
+    }
+    client2._runningAutoPipelines.add(slotKey);
+    const pipeline2 = client2._autoPipelines.get(slotKey);
+    client2._autoPipelines.delete(slotKey);
+    const callbacks = pipeline2[exports.kCallbacks];
+    pipeline2[exports.kCallbacks] = null;
+    pipeline2.exec(function(err2, results) {
+      client2._runningAutoPipelines.delete(slotKey);
+      if (err2) {
+        for (let i = 0;i < callbacks.length; i++) {
+          process.nextTick(callbacks[i], err2);
+        }
+      } else {
+        for (let i = 0;i < callbacks.length; i++) {
+          process.nextTick(callbacks[i], ...results[i]);
+        }
+      }
+      if (client2._autoPipelines.has(slotKey)) {
+        executeAutoPipeline(client2, slotKey);
+      }
+    });
+  }
+  function shouldUseAutoPipelining(client2, functionName, commandName) {
+    return functionName && client2.options.enableAutoPipelining && !client2.isPipeline && !exports.notAllowedAutoPipelineCommands.includes(commandName) && !client2.options.autoPipeliningIgnoredCommands.includes(commandName);
+  }
+  exports.shouldUseAutoPipelining = shouldUseAutoPipelining;
+  function getFirstValueInFlattenedArray(args) {
+    for (let i = 0;i < args.length; i++) {
+      const arg = args[i];
+      if (typeof arg === "string") {
+        return arg;
+      } else if (Array.isArray(arg) || (0, lodash_1.isArguments)(arg)) {
+        if (arg.length === 0) {
+          continue;
+        }
+        return arg[0];
+      }
+      const flattened = [arg].flat();
+      if (flattened.length > 0) {
+        return flattened[0];
+      }
+    }
+    return;
+  }
+  exports.getFirstValueInFlattenedArray = getFirstValueInFlattenedArray;
+  function executeWithAutoPipelining(client2, functionName, commandName, args, callback) {
+    if (client2.isCluster && !client2.slots.length) {
+      if (client2.status === "wait")
+        client2.connect().catch(lodash_1.noop);
+      return (0, standard_as_callback_1.default)(new Promise(function(resolve, reject) {
+        client2.delayUntilReady((err2) => {
+          if (err2) {
+            reject(err2);
+            return;
+          }
+          executeWithAutoPipelining(client2, functionName, commandName, args, null).then(resolve, reject);
+        });
+      }), callback);
+    }
+    const prefix = client2.options.keyPrefix || "";
+    const slotKey = client2.isCluster ? client2.slots[calculateSlot(`${prefix}${getFirstValueInFlattenedArray(args)}`)].join(",") : "main";
+    if (!client2._autoPipelines.has(slotKey)) {
+      const pipeline3 = client2.pipeline();
+      pipeline3[exports.kExec] = false;
+      pipeline3[exports.kCallbacks] = [];
+      client2._autoPipelines.set(slotKey, pipeline3);
+    }
+    const pipeline2 = client2._autoPipelines.get(slotKey);
+    if (!pipeline2[exports.kExec]) {
+      pipeline2[exports.kExec] = true;
+      setImmediate(executeAutoPipeline, client2, slotKey);
+    }
+    const autoPipelinePromise = new Promise(function(resolve, reject) {
+      pipeline2[exports.kCallbacks].push(function(err2, value) {
+        if (err2) {
+          reject(err2);
+          return;
+        }
+        resolve(value);
+      });
+      if (functionName === "call") {
+        args.unshift(commandName);
+      }
+      pipeline2[functionName](...args);
+    });
+    return (0, standard_as_callback_1.default)(autoPipelinePromise, callback);
+  }
+  exports.executeWithAutoPipelining = executeWithAutoPipelining;
+});
+
+// node_modules/ioredis/built/Script.js
+var require_Script = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var crypto_1 = __require("crypto");
+  var Command_1 = require_Command();
+  var standard_as_callback_1 = require_built2();
+
+  class Script {
+    constructor(lua, numberOfKeys = null, keyPrefix = "", readOnly = false) {
+      this.lua = lua;
+      this.numberOfKeys = numberOfKeys;
+      this.keyPrefix = keyPrefix;
+      this.readOnly = readOnly;
+      this.sha = (0, crypto_1.createHash)("sha1").update(lua).digest("hex");
+      const sha = this.sha;
+      const socketHasScriptLoaded = new WeakSet;
+      this.Command = class CustomScriptCommand extends Command_1.default {
+        toWritable(socket) {
+          const origReject = this.reject;
+          this.reject = (err2) => {
+            if (err2.message.indexOf("NOSCRIPT") !== -1) {
+              socketHasScriptLoaded.delete(socket);
+            }
+            origReject.call(this, err2);
+          };
+          if (!socketHasScriptLoaded.has(socket)) {
+            socketHasScriptLoaded.add(socket);
+            this.name = "eval";
+            this.args[0] = lua;
+          } else if (this.name === "eval") {
+            this.name = "evalsha";
+            this.args[0] = sha;
+          }
+          return super.toWritable(socket);
+        }
+      };
+    }
+    execute(container, args, options, callback) {
+      if (typeof this.numberOfKeys === "number") {
+        args.unshift(this.numberOfKeys);
+      }
+      if (this.keyPrefix) {
+        options.keyPrefix = this.keyPrefix;
+      }
+      if (this.readOnly) {
+        options.readOnly = true;
+      }
+      const evalsha = new this.Command("evalsha", [this.sha, ...args], options);
+      evalsha.promise = evalsha.promise.catch((err2) => {
+        if (err2.message.indexOf("NOSCRIPT") === -1) {
+          throw err2;
+        }
+        const resend = new this.Command("evalsha", [this.sha, ...args], options);
+        const client2 = container.isPipeline ? container.redis : container;
+        return client2.sendCommand(resend);
+      });
+      (0, standard_as_callback_1.default)(evalsha.promise, callback);
+      return container.sendCommand(evalsha);
+    }
+  }
+  exports.default = Script;
+});
+
+// node_modules/ioredis/built/utils/Commander.js
+var require_Commander = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var commands_1 = require_built();
+  var autoPipelining_1 = require_autoPipelining();
+  var Command_1 = require_Command();
+  var Script_1 = require_Script();
+
+  class Commander {
+    constructor() {
+      this.options = {};
+      this.scriptsSet = {};
+      this.addedBuiltinSet = new Set;
+    }
+    getBuiltinCommands() {
+      return commands.slice(0);
+    }
+    createBuiltinCommand(commandName) {
+      return {
+        string: generateFunction(null, commandName, "utf8"),
+        buffer: generateFunction(null, commandName, null)
+      };
+    }
+    addBuiltinCommand(commandName) {
+      this.addedBuiltinSet.add(commandName);
+      this[commandName] = generateFunction(commandName, commandName, "utf8");
+      this[commandName + "Buffer"] = generateFunction(commandName + "Buffer", commandName, null);
+    }
+    defineCommand(name, definition) {
+      const script = new Script_1.default(definition.lua, definition.numberOfKeys, this.options.keyPrefix, definition.readOnly);
+      this.scriptsSet[name] = script;
+      this[name] = generateScriptingFunction(name, name, script, "utf8");
+      this[name + "Buffer"] = generateScriptingFunction(name + "Buffer", name, script, null);
+    }
+    sendCommand(command, stream, node) {
+      throw new Error('"sendCommand" is not implemented');
+    }
+  }
+  var commands = commands_1.list.filter((command) => command !== "monitor");
+  commands.push("sentinel");
+  commands.forEach(function(commandName) {
+    Commander.prototype[commandName] = generateFunction(commandName, commandName, "utf8");
+    Commander.prototype[commandName + "Buffer"] = generateFunction(commandName + "Buffer", commandName, null);
+  });
+  Commander.prototype.call = generateFunction("call", "utf8");
+  Commander.prototype.callBuffer = generateFunction("callBuffer", null);
+  Commander.prototype.send_command = Commander.prototype.call;
+  function generateFunction(functionName, _commandName, _encoding) {
+    if (typeof _encoding === "undefined") {
+      _encoding = _commandName;
+      _commandName = null;
+    }
+    return function(...args) {
+      const commandName = _commandName || args.shift();
+      let callback = args[args.length - 1];
+      if (typeof callback === "function") {
+        args.pop();
+      } else {
+        callback = undefined;
+      }
+      const options = {
+        errorStack: this.options.showFriendlyErrorStack ? new Error : undefined,
+        keyPrefix: this.options.keyPrefix,
+        replyEncoding: _encoding
+      };
+      if (!(0, autoPipelining_1.shouldUseAutoPipelining)(this, functionName, commandName)) {
+        return this.sendCommand(new Command_1.default(commandName, args, options, callback));
+      }
+      return (0, autoPipelining_1.executeWithAutoPipelining)(this, functionName, commandName, args, callback);
+    };
+  }
+  function generateScriptingFunction(functionName, commandName, script, encoding) {
+    return function(...args) {
+      const callback = typeof args[args.length - 1] === "function" ? args.pop() : undefined;
+      const options = {
+        replyEncoding: encoding
+      };
+      if (this.options.showFriendlyErrorStack) {
+        options.errorStack = new Error;
+      }
+      if (!(0, autoPipelining_1.shouldUseAutoPipelining)(this, functionName, commandName)) {
+        return script.execute(this, args, options, callback);
+      }
+      return (0, autoPipelining_1.executeWithAutoPipelining)(this, functionName, commandName, args, callback);
+    };
+  }
+  exports.default = Commander;
+});
+
+// node_modules/ioredis/built/Pipeline.js
+var require_Pipeline = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var calculateSlot = require_lib2();
+  var commands_1 = require_built();
+  var standard_as_callback_1 = require_built2();
+  var util_1 = __require("util");
+  var Command_1 = require_Command();
+  var utils_1 = require_utils5();
+  var Commander_1 = require_Commander();
+  function generateMultiWithNodes(redis, keys) {
+    const slot = calculateSlot(keys[0]);
+    const target = redis._groupsBySlot[slot];
+    for (let i = 1;i < keys.length; i++) {
+      if (redis._groupsBySlot[calculateSlot(keys[i])] !== target) {
+        return -1;
+      }
+    }
+    return slot;
+  }
+
+  class Pipeline extends Commander_1.default {
+    constructor(redis) {
+      super();
+      this.redis = redis;
+      this.isPipeline = true;
+      this.replyPending = 0;
+      this._queue = [];
+      this._result = [];
+      this._transactions = 0;
+      this._shaToScript = {};
+      this.isCluster = this.redis.constructor.name === "Cluster" || this.redis.isCluster;
+      this.options = redis.options;
+      Object.keys(redis.scriptsSet).forEach((name) => {
+        const script = redis.scriptsSet[name];
+        this._shaToScript[script.sha] = script;
+        this[name] = redis[name];
+        this[name + "Buffer"] = redis[name + "Buffer"];
+      });
+      redis.addedBuiltinSet.forEach((name) => {
+        this[name] = redis[name];
+        this[name + "Buffer"] = redis[name + "Buffer"];
+      });
+      this.promise = new Promise((resolve, reject) => {
+        this.resolve = resolve;
+        this.reject = reject;
+      });
+      const _this = this;
+      Object.defineProperty(this, "length", {
+        get: function() {
+          return _this._queue.length;
+        }
+      });
+    }
+    fillResult(value, position) {
+      if (this._queue[position].name === "exec" && Array.isArray(value[1])) {
+        const execLength = value[1].length;
+        for (let i = 0;i < execLength; i++) {
+          if (value[1][i] instanceof Error) {
+            continue;
+          }
+          const cmd = this._queue[position - (execLength - i)];
+          try {
+            value[1][i] = cmd.transformReply(value[1][i]);
+          } catch (err2) {
+            value[1][i] = err2;
+          }
+        }
+      }
+      this._result[position] = value;
+      if (--this.replyPending) {
+        return;
+      }
+      if (this.isCluster) {
+        let retriable = true;
+        let commonError;
+        for (let i = 0;i < this._result.length; ++i) {
+          const error = this._result[i][0];
+          const command = this._queue[i];
+          if (error) {
+            if (command.name === "exec" && error.message === "EXECABORT Transaction discarded because of previous errors.") {
+              continue;
+            }
+            if (!commonError) {
+              commonError = {
+                name: error.name,
+                message: error.message
+              };
+            } else if (commonError.name !== error.name || commonError.message !== error.message) {
+              retriable = false;
+              break;
+            }
+          } else if (!command.inTransaction) {
+            const isReadOnly = (0, commands_1.exists)(command.name) && (0, commands_1.hasFlag)(command.name, "readonly");
+            if (!isReadOnly) {
+              retriable = false;
+              break;
+            }
+          }
+        }
+        if (commonError && retriable) {
+          const _this = this;
+          const errv = commonError.message.split(" ");
+          const queue = this._queue;
+          let inTransaction = false;
+          this._queue = [];
+          for (let i = 0;i < queue.length; ++i) {
+            if (errv[0] === "ASK" && !inTransaction && queue[i].name !== "asking" && (!queue[i - 1] || queue[i - 1].name !== "asking")) {
+              const asking = new Command_1.default("asking");
+              asking.ignore = true;
+              this.sendCommand(asking);
+            }
+            queue[i].initPromise();
+            this.sendCommand(queue[i]);
+            inTransaction = queue[i].inTransaction;
+          }
+          let matched = true;
+          if (typeof this.leftRedirections === "undefined") {
+            this.leftRedirections = {};
+          }
+          const exec = function() {
+            _this.exec();
+          };
+          const cluster = this.redis;
+          cluster.handleError(commonError, this.leftRedirections, {
+            moved: function(_slot, key) {
+              _this.preferKey = key;
+              cluster.slots[errv[1]] = [key];
+              cluster._groupsBySlot[errv[1]] = cluster._groupsIds[cluster.slots[errv[1]].join(";")];
+              cluster.refreshSlotsCache();
+              _this.exec();
+            },
+            ask: function(_slot, key) {
+              _this.preferKey = key;
+              _this.exec();
+            },
+            tryagain: exec,
+            clusterDown: exec,
+            connectionClosed: exec,
+            maxRedirections: () => {
+              matched = false;
+            },
+            defaults: () => {
+              matched = false;
+            }
+          });
+          if (matched) {
+            return;
+          }
+        }
+      }
+      let ignoredCount = 0;
+      for (let i = 0;i < this._queue.length - ignoredCount; ++i) {
+        if (this._queue[i + ignoredCount].ignore) {
+          ignoredCount += 1;
+        }
+        this._result[i] = this._result[i + ignoredCount];
+      }
+      this.resolve(this._result.slice(0, this._result.length - ignoredCount));
+    }
+    sendCommand(command) {
+      if (this._transactions > 0) {
+        command.inTransaction = true;
+      }
+      const position = this._queue.length;
+      command.pipelineIndex = position;
+      command.promise.then((result) => {
+        this.fillResult([null, result], position);
+      }).catch((error) => {
+        this.fillResult([error], position);
+      });
+      this._queue.push(command);
+      return this;
+    }
+    addBatch(commands) {
+      let command, commandName, args;
+      for (let i = 0;i < commands.length; ++i) {
+        command = commands[i];
+        commandName = command[0];
+        args = command.slice(1);
+        this[commandName].apply(this, args);
+      }
+      return this;
+    }
+  }
+  exports.default = Pipeline;
+  var multi = Pipeline.prototype.multi;
+  Pipeline.prototype.multi = function() {
+    this._transactions += 1;
+    return multi.apply(this, arguments);
+  };
+  var execBuffer = Pipeline.prototype.execBuffer;
+  Pipeline.prototype.execBuffer = (0, util_1.deprecate)(function() {
+    if (this._transactions > 0) {
+      this._transactions -= 1;
+    }
+    return execBuffer.apply(this, arguments);
+  }, "Pipeline#execBuffer: Use Pipeline#exec instead");
+  Pipeline.prototype.exec = function(callback) {
+    if (this.isCluster && !this.redis.slots.length) {
+      if (this.redis.status === "wait")
+        this.redis.connect().catch(utils_1.noop);
+      if (callback && !this.nodeifiedPromise) {
+        this.nodeifiedPromise = true;
+        (0, standard_as_callback_1.default)(this.promise, callback);
+      }
+      this.redis.delayUntilReady((err2) => {
+        if (err2) {
+          this.reject(err2);
+          return;
+        }
+        this.exec(callback);
+      });
+      return this.promise;
+    }
+    if (this._transactions > 0) {
+      this._transactions -= 1;
+      return execBuffer.apply(this, arguments);
+    }
+    if (!this.nodeifiedPromise) {
+      this.nodeifiedPromise = true;
+      (0, standard_as_callback_1.default)(this.promise, callback);
+    }
+    if (!this._queue.length) {
+      this.resolve([]);
+    }
+    let pipelineSlot;
+    if (this.isCluster) {
+      const sampleKeys = [];
+      for (let i = 0;i < this._queue.length; i++) {
+        const keys = this._queue[i].getKeys();
+        if (keys.length) {
+          sampleKeys.push(keys[0]);
+        }
+        if (keys.length && calculateSlot.generateMulti(keys) < 0) {
+          this.reject(new Error("All the keys in a pipeline command should belong to the same slot"));
+          return this.promise;
+        }
+      }
+      if (sampleKeys.length) {
+        pipelineSlot = generateMultiWithNodes(this.redis, sampleKeys);
+        if (pipelineSlot < 0) {
+          this.reject(new Error("All keys in the pipeline should belong to the same slots allocation group"));
+          return this.promise;
+        }
+      } else {
+        pipelineSlot = Math.random() * 16384 | 0;
+      }
+    }
+    const _this = this;
+    execPipeline();
+    return this.promise;
+    function execPipeline() {
+      let writePending = _this.replyPending = _this._queue.length;
+      let node;
+      if (_this.isCluster) {
+        node = {
+          slot: pipelineSlot,
+          redis: _this.redis.connectionPool.nodes.all[_this.preferKey]
+        };
+      }
+      let data = "";
+      let buffers;
+      const stream = {
+        isPipeline: true,
+        destination: _this.isCluster ? node : { redis: _this.redis },
+        write(writable) {
+          if (typeof writable !== "string") {
+            if (!buffers) {
+              buffers = [];
+            }
+            if (data) {
+              buffers.push(Buffer.from(data, "utf8"));
+              data = "";
+            }
+            buffers.push(writable);
+          } else {
+            data += writable;
+          }
+          if (!--writePending) {
+            if (buffers) {
+              if (data) {
+                buffers.push(Buffer.from(data, "utf8"));
+              }
+              stream.destination.redis.stream.write(Buffer.concat(buffers));
+            } else {
+              stream.destination.redis.stream.write(data);
+            }
+            writePending = _this._queue.length;
+            data = "";
+            buffers = undefined;
+          }
+        }
+      };
+      for (let i = 0;i < _this._queue.length; ++i) {
+        _this.redis.sendCommand(_this._queue[i], stream, node);
+      }
+      return _this.promise;
+    }
+  };
+});
+
+// node_modules/ioredis/built/transaction.js
+var require_transaction = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.addTransactionSupport = undefined;
+  var utils_1 = require_utils5();
+  var standard_as_callback_1 = require_built2();
+  var Pipeline_1 = require_Pipeline();
+  function addTransactionSupport(redis) {
+    redis.pipeline = function(commands) {
+      const pipeline2 = new Pipeline_1.default(this);
+      if (Array.isArray(commands)) {
+        pipeline2.addBatch(commands);
+      }
+      return pipeline2;
+    };
+    const { multi } = redis;
+    redis.multi = function(commands, options) {
+      if (typeof options === "undefined" && !Array.isArray(commands)) {
+        options = commands;
+        commands = null;
+      }
+      if (options && options.pipeline === false) {
+        return multi.call(this);
+      }
+      const pipeline2 = new Pipeline_1.default(this);
+      pipeline2.multi();
+      if (Array.isArray(commands)) {
+        pipeline2.addBatch(commands);
+      }
+      const exec2 = pipeline2.exec;
+      pipeline2.exec = function(callback) {
+        if (this.isCluster && !this.redis.slots.length) {
+          if (this.redis.status === "wait")
+            this.redis.connect().catch(utils_1.noop);
+          return (0, standard_as_callback_1.default)(new Promise((resolve, reject) => {
+            this.redis.delayUntilReady((err2) => {
+              if (err2) {
+                reject(err2);
+                return;
+              }
+              this.exec(pipeline2).then(resolve, reject);
+            });
+          }), callback);
+        }
+        if (this._transactions > 0) {
+          exec2.call(pipeline2);
+        }
+        if (this.nodeifiedPromise) {
+          return exec2.call(pipeline2);
+        }
+        const promise = exec2.call(pipeline2);
+        return (0, standard_as_callback_1.default)(promise.then(function(result) {
+          const execResult = result[result.length - 1];
+          if (typeof execResult === "undefined") {
+            throw new Error("Pipeline cannot be used to send any commands when the `exec()` has been called on it.");
+          }
+          if (execResult[0]) {
+            execResult[0].previousErrors = [];
+            for (let i = 0;i < result.length - 1; ++i) {
+              if (result[i][0]) {
+                execResult[0].previousErrors.push(result[i][0]);
+              }
+            }
+            throw execResult[0];
+          }
+          return (0, utils_1.wrapMultiResult)(execResult[1]);
+        }), callback);
+      };
+      const { execBuffer } = pipeline2;
+      pipeline2.execBuffer = function(callback) {
+        if (this._transactions > 0) {
+          execBuffer.call(pipeline2);
+        }
+        return pipeline2.exec(callback);
+      };
+      return pipeline2;
+    };
+    const { exec } = redis;
+    redis.exec = function(callback) {
+      return (0, standard_as_callback_1.default)(exec.call(this).then(function(results) {
+        if (Array.isArray(results)) {
+          results = (0, utils_1.wrapMultiResult)(results);
+        }
+        return results;
+      }), callback);
+    };
+  }
+  exports.addTransactionSupport = addTransactionSupport;
+});
+
+// node_modules/ioredis/built/utils/applyMixin.js
+var require_applyMixin = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  function applyMixin(derivedConstructor, mixinConstructor) {
+    Object.getOwnPropertyNames(mixinConstructor.prototype).forEach((name) => {
+      Object.defineProperty(derivedConstructor.prototype, name, Object.getOwnPropertyDescriptor(mixinConstructor.prototype, name));
+    });
+  }
+  exports.default = applyMixin;
+});
+
+// node_modules/ioredis/built/cluster/ClusterOptions.js
+var require_ClusterOptions = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.DEFAULT_CLUSTER_OPTIONS = undefined;
+  var dns_1 = __require("dns");
+  exports.DEFAULT_CLUSTER_OPTIONS = {
+    clusterRetryStrategy: (times) => Math.min(100 + times * 2, 2000),
+    enableOfflineQueue: true,
+    enableReadyCheck: true,
+    scaleReads: "master",
+    maxRedirections: 16,
+    retryDelayOnMoved: 0,
+    retryDelayOnFailover: 100,
+    retryDelayOnClusterDown: 100,
+    retryDelayOnTryAgain: 100,
+    slotsRefreshTimeout: 1000,
+    useSRVRecords: false,
+    resolveSrv: dns_1.resolveSrv,
+    dnsLookup: dns_1.lookup,
+    enableAutoPipelining: false,
+    autoPipeliningIgnoredCommands: [],
+    shardedSubscribers: false
+  };
+});
+
+// node_modules/ioredis/built/cluster/util.js
+var require_util2 = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.getConnectionName = exports.weightSrvRecords = exports.groupSrvRecords = exports.getUniqueHostnamesFromOptions = exports.normalizeNodeOptions = exports.nodeKeyToRedisOptions = exports.getNodeKey = undefined;
+  var utils_1 = require_utils5();
+  var net_1 = __require("net");
+  function getNodeKey(node) {
+    node.port = node.port || 6379;
+    node.host = node.host || "127.0.0.1";
+    return node.host + ":" + node.port;
+  }
+  exports.getNodeKey = getNodeKey;
+  function nodeKeyToRedisOptions(nodeKey) {
+    const portIndex = nodeKey.lastIndexOf(":");
+    if (portIndex === -1) {
+      throw new Error(`Invalid node key ${nodeKey}`);
+    }
+    return {
+      host: nodeKey.slice(0, portIndex),
+      port: Number(nodeKey.slice(portIndex + 1))
+    };
+  }
+  exports.nodeKeyToRedisOptions = nodeKeyToRedisOptions;
+  function normalizeNodeOptions(nodes) {
+    return nodes.map((node) => {
+      const options = {};
+      if (typeof node === "object") {
+        Object.assign(options, node);
+      } else if (typeof node === "string") {
+        Object.assign(options, (0, utils_1.parseURL)(node));
+      } else if (typeof node === "number") {
+        options.port = node;
+      } else {
+        throw new Error("Invalid argument " + node);
+      }
+      if (typeof options.port === "string") {
+        options.port = parseInt(options.port, 10);
+      }
+      delete options.db;
+      if (!options.port) {
+        options.port = 6379;
+      }
+      if (!options.host) {
+        options.host = "127.0.0.1";
+      }
+      return (0, utils_1.resolveTLSProfile)(options);
+    });
+  }
+  exports.normalizeNodeOptions = normalizeNodeOptions;
+  function getUniqueHostnamesFromOptions(nodes) {
+    const uniqueHostsMap = {};
+    nodes.forEach((node) => {
+      uniqueHostsMap[node.host] = true;
+    });
+    return Object.keys(uniqueHostsMap).filter((host) => !(0, net_1.isIP)(host));
+  }
+  exports.getUniqueHostnamesFromOptions = getUniqueHostnamesFromOptions;
+  function groupSrvRecords(records) {
+    const recordsByPriority = {};
+    for (const record2 of records) {
+      if (!recordsByPriority.hasOwnProperty(record2.priority)) {
+        recordsByPriority[record2.priority] = {
+          totalWeight: record2.weight,
+          records: [record2]
+        };
+      } else {
+        recordsByPriority[record2.priority].totalWeight += record2.weight;
+        recordsByPriority[record2.priority].records.push(record2);
+      }
+    }
+    return recordsByPriority;
+  }
+  exports.groupSrvRecords = groupSrvRecords;
+  function weightSrvRecords(recordsGroup) {
+    if (recordsGroup.records.length === 1) {
+      recordsGroup.totalWeight = 0;
+      return recordsGroup.records.shift();
+    }
+    const random = Math.floor(Math.random() * (recordsGroup.totalWeight + recordsGroup.records.length));
+    let total = 0;
+    for (const [i, record2] of recordsGroup.records.entries()) {
+      total += 1 + record2.weight;
+      if (total > random) {
+        recordsGroup.totalWeight -= record2.weight;
+        recordsGroup.records.splice(i, 1);
+        return record2;
+      }
+    }
+  }
+  exports.weightSrvRecords = weightSrvRecords;
+  function getConnectionName(component, nodeConnectionName) {
+    const prefix = `ioredis-cluster(${component})`;
+    return nodeConnectionName ? `${prefix}:${nodeConnectionName}` : prefix;
+  }
+  exports.getConnectionName = getConnectionName;
+});
+
+// node_modules/ioredis/built/cluster/ClusterSubscriber.js
+var require_ClusterSubscriber = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var util_1 = require_util2();
+  var utils_1 = require_utils5();
+  var Redis_1 = require_Redis();
+  var debug5 = (0, utils_1.Debug)("cluster:subscriber");
+
+  class ClusterSubscriber {
+    constructor(connectionPool, emitter, isSharded = false) {
+      this.connectionPool = connectionPool;
+      this.emitter = emitter;
+      this.isSharded = isSharded;
+      this.started = false;
+      this.subscriber = null;
+      this.slotRange = [];
+      this.onSubscriberEnd = () => {
+        if (!this.started) {
+          debug5("subscriber has disconnected, but ClusterSubscriber is not started, so not reconnecting.");
+          return;
+        }
+        debug5("subscriber has disconnected, selecting a new one...");
+        this.selectSubscriber();
+      };
+      this.connectionPool.on("-node", (_2, key) => {
+        if (!this.started || !this.subscriber) {
+          return;
+        }
+        if ((0, util_1.getNodeKey)(this.subscriber.options) === key) {
+          debug5("subscriber has left, selecting a new one...");
+          this.selectSubscriber();
+        }
+      });
+      this.connectionPool.on("+node", () => {
+        if (!this.started || this.subscriber) {
+          return;
+        }
+        debug5("a new node is discovered and there is no subscriber, selecting a new one...");
+        this.selectSubscriber();
+      });
+    }
+    getInstance() {
+      return this.subscriber;
+    }
+    associateSlotRange(range) {
+      if (this.isSharded) {
+        this.slotRange = range;
+      }
+      return this.slotRange;
+    }
+    start() {
+      this.started = true;
+      this.selectSubscriber();
+      debug5("started");
+    }
+    stop() {
+      this.started = false;
+      if (this.subscriber) {
+        this.subscriber.disconnect();
+        this.subscriber = null;
+      }
+    }
+    isStarted() {
+      return this.started;
+    }
+    selectSubscriber() {
+      const lastActiveSubscriber = this.lastActiveSubscriber;
+      if (lastActiveSubscriber) {
+        lastActiveSubscriber.off("end", this.onSubscriberEnd);
+        lastActiveSubscriber.disconnect();
+      }
+      if (this.subscriber) {
+        this.subscriber.off("end", this.onSubscriberEnd);
+        this.subscriber.disconnect();
+      }
+      const sampleNode = (0, utils_1.sample)(this.connectionPool.getNodes());
+      if (!sampleNode) {
+        debug5("selecting subscriber failed since there is no node discovered in the cluster yet");
+        this.subscriber = null;
+        return;
+      }
+      const { options } = sampleNode;
+      debug5("selected a subscriber %s:%s", options.host, options.port);
+      let connectionPrefix = "subscriber";
+      if (this.isSharded)
+        connectionPrefix = "ssubscriber";
+      this.subscriber = new Redis_1.default({
+        port: options.port,
+        host: options.host,
+        username: options.username,
+        password: options.password,
+        enableReadyCheck: true,
+        connectionName: (0, util_1.getConnectionName)(connectionPrefix, options.connectionName),
+        lazyConnect: true,
+        tls: options.tls,
+        retryStrategy: null
+      });
+      this.subscriber.on("error", utils_1.noop);
+      this.subscriber.on("moved", () => {
+        this.emitter.emit("forceRefresh");
+      });
+      this.subscriber.once("end", this.onSubscriberEnd);
+      const previousChannels = { subscribe: [], psubscribe: [], ssubscribe: [] };
+      if (lastActiveSubscriber) {
+        const condition = lastActiveSubscriber.condition || lastActiveSubscriber.prevCondition;
+        if (condition && condition.subscriber) {
+          previousChannels.subscribe = condition.subscriber.channels("subscribe");
+          previousChannels.psubscribe = condition.subscriber.channels("psubscribe");
+          previousChannels.ssubscribe = condition.subscriber.channels("ssubscribe");
+        }
+      }
+      if (previousChannels.subscribe.length || previousChannels.psubscribe.length || previousChannels.ssubscribe.length) {
+        let pending = 0;
+        for (const type2 of ["subscribe", "psubscribe", "ssubscribe"]) {
+          const channels = previousChannels[type2];
+          if (channels.length == 0) {
+            continue;
+          }
+          debug5("%s %d channels", type2, channels.length);
+          if (type2 === "ssubscribe") {
+            for (const channel of channels) {
+              pending += 1;
+              this.subscriber[type2](channel).then(() => {
+                if (!--pending) {
+                  this.lastActiveSubscriber = this.subscriber;
+                }
+              }).catch(() => {
+                debug5("failed to ssubscribe to channel: %s", channel);
+              });
+            }
+          } else {
+            pending += 1;
+            this.subscriber[type2](channels).then(() => {
+              if (!--pending) {
+                this.lastActiveSubscriber = this.subscriber;
+              }
+            }).catch(() => {
+              debug5("failed to %s %d channels", type2, channels.length);
+            });
+          }
+        }
+      } else {
+        this.lastActiveSubscriber = this.subscriber;
+      }
+      for (const event of [
+        "message",
+        "messageBuffer"
+      ]) {
+        this.subscriber.on(event, (arg1, arg2) => {
+          this.emitter.emit(event, arg1, arg2);
+        });
+      }
+      for (const event of ["pmessage", "pmessageBuffer"]) {
+        this.subscriber.on(event, (arg1, arg2, arg3) => {
+          this.emitter.emit(event, arg1, arg2, arg3);
+        });
+      }
+      if (this.isSharded == true) {
+        for (const event of [
+          "smessage",
+          "smessageBuffer"
+        ]) {
+          this.subscriber.on(event, (arg1, arg2) => {
+            this.emitter.emit(event, arg1, arg2);
+          });
+        }
+      }
+    }
+  }
+  exports.default = ClusterSubscriber;
+});
+
+// node_modules/ioredis/built/cluster/ConnectionPool.js
+var require_ConnectionPool = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var events_1 = __require("events");
+  var utils_1 = require_utils5();
+  var util_1 = require_util2();
+  var Redis_1 = require_Redis();
+  var debug5 = (0, utils_1.Debug)("cluster:connectionPool");
+
+  class ConnectionPool extends events_1.EventEmitter {
+    constructor(redisOptions) {
+      super();
+      this.redisOptions = redisOptions;
+      this.nodes = {
+        all: {},
+        master: {},
+        slave: {}
+      };
+      this.specifiedOptions = {};
+    }
+    getNodes(role = "all") {
+      const nodes = this.nodes[role];
+      return Object.keys(nodes).map((key) => nodes[key]);
+    }
+    getInstanceByKey(key) {
+      return this.nodes.all[key];
+    }
+    getSampleInstance(role) {
+      const keys = Object.keys(this.nodes[role]);
+      const sampleKey = (0, utils_1.sample)(keys);
+      return this.nodes[role][sampleKey];
+    }
+    addMasterNode(node) {
+      const key = (0, util_1.getNodeKey)(node.options);
+      const redis = this.createRedisFromOptions(node, node.options.readOnly);
+      if (!node.options.readOnly) {
+        this.nodes.all[key] = redis;
+        this.nodes.master[key] = redis;
+        return true;
+      }
+      return false;
+    }
+    createRedisFromOptions(node, readOnly) {
+      const redis = new Redis_1.default((0, utils_1.defaults)({
+        retryStrategy: null,
+        enableOfflineQueue: true,
+        readOnly
+      }, node, this.redisOptions, { lazyConnect: true }));
+      return redis;
+    }
+    findOrCreate(node, readOnly = false) {
+      const key = (0, util_1.getNodeKey)(node);
+      readOnly = Boolean(readOnly);
+      if (this.specifiedOptions[key]) {
+        Object.assign(node, this.specifiedOptions[key]);
+      } else {
+        this.specifiedOptions[key] = node;
+      }
+      let redis;
+      if (this.nodes.all[key]) {
+        redis = this.nodes.all[key];
+        if (redis.options.readOnly !== readOnly) {
+          redis.options.readOnly = readOnly;
+          debug5("Change role of %s to %s", key, readOnly ? "slave" : "master");
+          redis[readOnly ? "readonly" : "readwrite"]().catch(utils_1.noop);
+          if (readOnly) {
+            delete this.nodes.master[key];
+            this.nodes.slave[key] = redis;
+          } else {
+            delete this.nodes.slave[key];
+            this.nodes.master[key] = redis;
+          }
+        }
+      } else {
+        debug5("Connecting to %s as %s", key, readOnly ? "slave" : "master");
+        redis = this.createRedisFromOptions(node, readOnly);
+        this.nodes.all[key] = redis;
+        this.nodes[readOnly ? "slave" : "master"][key] = redis;
+        redis.once("end", () => {
+          this.removeNode(key);
+          this.emit("-node", redis, key);
+          if (!Object.keys(this.nodes.all).length) {
+            this.emit("drain");
+          }
+        });
+        this.emit("+node", redis, key);
+        redis.on("error", function(error) {
+          this.emit("nodeError", error, key);
+        });
+      }
+      return redis;
+    }
+    reset(nodes) {
+      debug5("Reset with %O", nodes);
+      const newNodes = {};
+      nodes.forEach((node) => {
+        const key = (0, util_1.getNodeKey)(node);
+        if (!(node.readOnly && newNodes[key])) {
+          newNodes[key] = node;
+        }
+      });
+      Object.keys(this.nodes.all).forEach((key) => {
+        if (!newNodes[key]) {
+          debug5("Disconnect %s because the node does not hold any slot", key);
+          this.nodes.all[key].disconnect();
+          this.removeNode(key);
+        }
+      });
+      Object.keys(newNodes).forEach((key) => {
+        const node = newNodes[key];
+        this.findOrCreate(node, node.readOnly);
+      });
+    }
+    removeNode(key) {
+      const { nodes } = this;
+      if (nodes.all[key]) {
+        debug5("Remove %s from the pool", key);
+        delete nodes.all[key];
+      }
+      delete nodes.master[key];
+      delete nodes.slave[key];
+    }
+  }
+  exports.default = ConnectionPool;
+});
+
+// node_modules/denque/index.js
+var require_denque = __commonJS((exports, module) => {
+  function Denque(array2, options) {
+    var options = options || {};
+    this._capacity = options.capacity;
+    this._head = 0;
+    this._tail = 0;
+    if (Array.isArray(array2)) {
+      this._fromArray(array2);
+    } else {
+      this._capacityMask = 3;
+      this._list = new Array(4);
+    }
+  }
+  Denque.prototype.peekAt = function peekAt(index2) {
+    var i = index2;
+    if (i !== (i | 0)) {
+      return;
+    }
+    var len = this.size();
+    if (i >= len || i < -len)
+      return;
+    if (i < 0)
+      i += len;
+    i = this._head + i & this._capacityMask;
+    return this._list[i];
+  };
+  Denque.prototype.get = function get(i) {
+    return this.peekAt(i);
+  };
+  Denque.prototype.peek = function peek() {
+    if (this._head === this._tail)
+      return;
+    return this._list[this._head];
+  };
+  Denque.prototype.peekFront = function peekFront() {
+    return this.peek();
+  };
+  Denque.prototype.peekBack = function peekBack() {
+    return this.peekAt(-1);
+  };
+  Object.defineProperty(Denque.prototype, "length", {
+    get: function length() {
+      return this.size();
+    }
+  });
+  Denque.prototype.size = function size() {
+    if (this._head === this._tail)
+      return 0;
+    if (this._head < this._tail)
+      return this._tail - this._head;
+    else
+      return this._capacityMask + 1 - (this._head - this._tail);
+  };
+  Denque.prototype.unshift = function unshift(item) {
+    if (arguments.length === 0)
+      return this.size();
+    var len = this._list.length;
+    this._head = this._head - 1 + len & this._capacityMask;
+    this._list[this._head] = item;
+    if (this._tail === this._head)
+      this._growArray();
+    if (this._capacity && this.size() > this._capacity)
+      this.pop();
+    if (this._head < this._tail)
+      return this._tail - this._head;
+    else
+      return this._capacityMask + 1 - (this._head - this._tail);
+  };
+  Denque.prototype.shift = function shift() {
+    var head = this._head;
+    if (head === this._tail)
+      return;
+    var item = this._list[head];
+    this._list[head] = undefined;
+    this._head = head + 1 & this._capacityMask;
+    if (head < 2 && this._tail > 1e4 && this._tail <= this._list.length >>> 2)
+      this._shrinkArray();
+    return item;
+  };
+  Denque.prototype.push = function push(item) {
+    if (arguments.length === 0)
+      return this.size();
+    var tail = this._tail;
+    this._list[tail] = item;
+    this._tail = tail + 1 & this._capacityMask;
+    if (this._tail === this._head) {
+      this._growArray();
+    }
+    if (this._capacity && this.size() > this._capacity) {
+      this.shift();
+    }
+    if (this._head < this._tail)
+      return this._tail - this._head;
+    else
+      return this._capacityMask + 1 - (this._head - this._tail);
+  };
+  Denque.prototype.pop = function pop() {
+    var tail = this._tail;
+    if (tail === this._head)
+      return;
+    var len = this._list.length;
+    this._tail = tail - 1 + len & this._capacityMask;
+    var item = this._list[this._tail];
+    this._list[this._tail] = undefined;
+    if (this._head < 2 && tail > 1e4 && tail <= len >>> 2)
+      this._shrinkArray();
+    return item;
+  };
+  Denque.prototype.removeOne = function removeOne(index2) {
+    var i = index2;
+    if (i !== (i | 0)) {
+      return;
+    }
+    if (this._head === this._tail)
+      return;
+    var size2 = this.size();
+    var len = this._list.length;
+    if (i >= size2 || i < -size2)
+      return;
+    if (i < 0)
+      i += size2;
+    i = this._head + i & this._capacityMask;
+    var item = this._list[i];
+    var k2;
+    if (index2 < size2 / 2) {
+      for (k2 = index2;k2 > 0; k2--) {
+        this._list[i] = this._list[i = i - 1 + len & this._capacityMask];
+      }
+      this._list[i] = undefined;
+      this._head = this._head + 1 + len & this._capacityMask;
+    } else {
+      for (k2 = size2 - 1 - index2;k2 > 0; k2--) {
+        this._list[i] = this._list[i = i + 1 + len & this._capacityMask];
+      }
+      this._list[i] = undefined;
+      this._tail = this._tail - 1 + len & this._capacityMask;
+    }
+    return item;
+  };
+  Denque.prototype.remove = function remove(index2, count) {
+    var i = index2;
+    var removed;
+    var del_count = count;
+    if (i !== (i | 0)) {
+      return;
+    }
+    if (this._head === this._tail)
+      return;
+    var size2 = this.size();
+    var len = this._list.length;
+    if (i >= size2 || i < -size2 || count < 1)
+      return;
+    if (i < 0)
+      i += size2;
+    if (count === 1 || !count) {
+      removed = new Array(1);
+      removed[0] = this.removeOne(i);
+      return removed;
+    }
+    if (i === 0 && i + count >= size2) {
+      removed = this.toArray();
+      this.clear();
+      return removed;
+    }
+    if (i + count > size2)
+      count = size2 - i;
+    var k2;
+    removed = new Array(count);
+    for (k2 = 0;k2 < count; k2++) {
+      removed[k2] = this._list[this._head + i + k2 & this._capacityMask];
+    }
+    i = this._head + i & this._capacityMask;
+    if (index2 + count === size2) {
+      this._tail = this._tail - count + len & this._capacityMask;
+      for (k2 = count;k2 > 0; k2--) {
+        this._list[i = i + 1 + len & this._capacityMask] = undefined;
+      }
+      return removed;
+    }
+    if (index2 === 0) {
+      this._head = this._head + count + len & this._capacityMask;
+      for (k2 = count - 1;k2 > 0; k2--) {
+        this._list[i = i + 1 + len & this._capacityMask] = undefined;
+      }
+      return removed;
+    }
+    if (i < size2 / 2) {
+      this._head = this._head + index2 + count + len & this._capacityMask;
+      for (k2 = index2;k2 > 0; k2--) {
+        this.unshift(this._list[i = i - 1 + len & this._capacityMask]);
+      }
+      i = this._head - 1 + len & this._capacityMask;
+      while (del_count > 0) {
+        this._list[i = i - 1 + len & this._capacityMask] = undefined;
+        del_count--;
+      }
+      if (index2 < 0)
+        this._tail = i;
+    } else {
+      this._tail = i;
+      i = i + count + len & this._capacityMask;
+      for (k2 = size2 - (count + index2);k2 > 0; k2--) {
+        this.push(this._list[i++]);
+      }
+      i = this._tail;
+      while (del_count > 0) {
+        this._list[i = i + 1 + len & this._capacityMask] = undefined;
+        del_count--;
+      }
+    }
+    if (this._head < 2 && this._tail > 1e4 && this._tail <= len >>> 2)
+      this._shrinkArray();
+    return removed;
+  };
+  Denque.prototype.splice = function splice(index2, count) {
+    var i = index2;
+    if (i !== (i | 0)) {
+      return;
+    }
+    var size2 = this.size();
+    if (i < 0)
+      i += size2;
+    if (i > size2)
+      return;
+    if (arguments.length > 2) {
+      var k2;
+      var temp;
+      var removed;
+      var arg_len = arguments.length;
+      var len = this._list.length;
+      var arguments_index = 2;
+      if (!size2 || i < size2 / 2) {
+        temp = new Array(i);
+        for (k2 = 0;k2 < i; k2++) {
+          temp[k2] = this._list[this._head + k2 & this._capacityMask];
+        }
+        if (count === 0) {
+          removed = [];
+          if (i > 0) {
+            this._head = this._head + i + len & this._capacityMask;
+          }
+        } else {
+          removed = this.remove(i, count);
+          this._head = this._head + i + len & this._capacityMask;
+        }
+        while (arg_len > arguments_index) {
+          this.unshift(arguments[--arg_len]);
+        }
+        for (k2 = i;k2 > 0; k2--) {
+          this.unshift(temp[k2 - 1]);
+        }
+      } else {
+        temp = new Array(size2 - (i + count));
+        var leng = temp.length;
+        for (k2 = 0;k2 < leng; k2++) {
+          temp[k2] = this._list[this._head + i + count + k2 & this._capacityMask];
+        }
+        if (count === 0) {
+          removed = [];
+          if (i != size2) {
+            this._tail = this._head + i + len & this._capacityMask;
+          }
+        } else {
+          removed = this.remove(i, count);
+          this._tail = this._tail - leng + len & this._capacityMask;
+        }
+        while (arguments_index < arg_len) {
+          this.push(arguments[arguments_index++]);
+        }
+        for (k2 = 0;k2 < leng; k2++) {
+          this.push(temp[k2]);
+        }
+      }
+      return removed;
+    } else {
+      return this.remove(i, count);
+    }
+  };
+  Denque.prototype.clear = function clear() {
+    this._list = new Array(this._list.length);
+    this._head = 0;
+    this._tail = 0;
+  };
+  Denque.prototype.isEmpty = function isEmpty() {
+    return this._head === this._tail;
+  };
+  Denque.prototype.toArray = function toArray() {
+    return this._copyArray(false);
+  };
+  Denque.prototype._fromArray = function _fromArray(array2) {
+    var length = array2.length;
+    var capacity = this._nextPowerOf2(length);
+    this._list = new Array(capacity);
+    this._capacityMask = capacity - 1;
+    this._tail = length;
+    for (var i = 0;i < length; i++)
+      this._list[i] = array2[i];
+  };
+  Denque.prototype._copyArray = function _copyArray(fullCopy, size2) {
+    var src = this._list;
+    var capacity = src.length;
+    var length = this.length;
+    size2 = size2 | length;
+    if (size2 == length && this._head < this._tail) {
+      return this._list.slice(this._head, this._tail);
+    }
+    var dest = new Array(size2);
+    var k2 = 0;
+    var i;
+    if (fullCopy || this._head > this._tail) {
+      for (i = this._head;i < capacity; i++)
+        dest[k2++] = src[i];
+      for (i = 0;i < this._tail; i++)
+        dest[k2++] = src[i];
+    } else {
+      for (i = this._head;i < this._tail; i++)
+        dest[k2++] = src[i];
+    }
+    return dest;
+  };
+  Denque.prototype._growArray = function _growArray() {
+    if (this._head != 0) {
+      var newList = this._copyArray(true, this._list.length << 1);
+      this._tail = this._list.length;
+      this._head = 0;
+      this._list = newList;
+    } else {
+      this._tail = this._list.length;
+      this._list.length <<= 1;
+    }
+    this._capacityMask = this._capacityMask << 1 | 1;
+  };
+  Denque.prototype._shrinkArray = function _shrinkArray() {
+    this._list.length >>>= 1;
+    this._capacityMask >>>= 1;
+  };
+  Denque.prototype._nextPowerOf2 = function _nextPowerOf2(num) {
+    var log2 = Math.log(num) / Math.log(2);
+    var nextPow2 = 1 << log2 + 1;
+    return Math.max(nextPow2, 4);
+  };
+  module.exports = Denque;
+});
+
+// node_modules/ioredis/built/cluster/DelayQueue.js
+var require_DelayQueue = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var utils_1 = require_utils5();
+  var Deque = require_denque();
+  var debug5 = (0, utils_1.Debug)("delayqueue");
+
+  class DelayQueue {
+    constructor() {
+      this.queues = {};
+      this.timeouts = {};
+    }
+    push(bucket, item, options) {
+      const callback = options.callback || process.nextTick;
+      if (!this.queues[bucket]) {
+        this.queues[bucket] = new Deque;
+      }
+      const queue = this.queues[bucket];
+      queue.push(item);
+      if (!this.timeouts[bucket]) {
+        this.timeouts[bucket] = setTimeout(() => {
+          callback(() => {
+            this.timeouts[bucket] = null;
+            this.execute(bucket);
+          });
+        }, options.timeout);
+      }
+    }
+    execute(bucket) {
+      const queue = this.queues[bucket];
+      if (!queue) {
+        return;
+      }
+      const { length } = queue;
+      if (!length) {
+        return;
+      }
+      debug5("send %d commands in %s queue", length, bucket);
+      this.queues[bucket] = null;
+      while (queue.length > 0) {
+        queue.shift()();
+      }
+    }
+  }
+  exports.default = DelayQueue;
+});
+
+// node_modules/ioredis/built/cluster/ClusterSubscriberGroup.js
+var require_ClusterSubscriberGroup = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var utils_1 = require_utils5();
+  var ClusterSubscriber_1 = require_ClusterSubscriber();
+  var ConnectionPool_1 = require_ConnectionPool();
+  var util_1 = require_util2();
+  var calculateSlot = require_lib2();
+  var debug5 = (0, utils_1.Debug)("cluster:subscriberGroup");
+
+  class ClusterSubscriberGroup {
+    constructor(cluster, refreshSlotsCacheCallback) {
+      this.cluster = cluster;
+      this.shardedSubscribers = new Map;
+      this.clusterSlots = [];
+      this.subscriberToSlotsIndex = new Map;
+      this.channels = new Map;
+      cluster.on("+node", (redis) => {
+        this._addSubscriber(redis);
+      });
+      cluster.on("-node", (redis) => {
+        this._removeSubscriber(redis);
+      });
+      cluster.on("refresh", () => {
+        this._refreshSlots(cluster);
+      });
+      cluster.on("forceRefresh", () => {
+        refreshSlotsCacheCallback();
+      });
+    }
+    getResponsibleSubscriber(slot) {
+      const nodeKey = this.clusterSlots[slot][0];
+      return this.shardedSubscribers.get(nodeKey);
+    }
+    addChannels(channels) {
+      const slot = calculateSlot(channels[0]);
+      channels.forEach((c) => {
+        if (calculateSlot(c) != slot)
+          return -1;
+      });
+      const currChannels = this.channels.get(slot);
+      if (!currChannels) {
+        this.channels.set(slot, channels);
+      } else {
+        this.channels.set(slot, currChannels.concat(channels));
+      }
+      return [...this.channels.values()].flatMap((v) => v).length;
+    }
+    removeChannels(channels) {
+      const slot = calculateSlot(channels[0]);
+      channels.forEach((c) => {
+        if (calculateSlot(c) != slot)
+          return -1;
+      });
+      const slotChannels = this.channels.get(slot);
+      if (slotChannels) {
+        const updatedChannels = slotChannels.filter((c) => !channels.includes(c));
+        this.channels.set(slot, updatedChannels);
+      }
+      return [...this.channels.values()].flatMap((v) => v).length;
+    }
+    stop() {
+      for (const s of this.shardedSubscribers.values()) {
+        s.stop();
+      }
+    }
+    start() {
+      for (const s of this.shardedSubscribers.values()) {
+        if (!s.isStarted()) {
+          s.start();
+        }
+      }
+    }
+    _addSubscriber(redis) {
+      const pool = new ConnectionPool_1.default(redis.options);
+      if (pool.addMasterNode(redis)) {
+        const sub = new ClusterSubscriber_1.default(pool, this.cluster, true);
+        const nodeKey = (0, util_1.getNodeKey)(redis.options);
+        this.shardedSubscribers.set(nodeKey, sub);
+        sub.start();
+        this._resubscribe();
+        this.cluster.emit("+subscriber");
+        return sub;
+      }
+      return null;
+    }
+    _removeSubscriber(redis) {
+      const nodeKey = (0, util_1.getNodeKey)(redis.options);
+      const sub = this.shardedSubscribers.get(nodeKey);
+      if (sub) {
+        sub.stop();
+        this.shardedSubscribers.delete(nodeKey);
+        this._resubscribe();
+        this.cluster.emit("-subscriber");
+      }
+      return this.shardedSubscribers;
+    }
+    _refreshSlots(cluster) {
+      if (this._slotsAreEqual(cluster.slots)) {
+        debug5("Nothing to refresh because the new cluster map is equal to the previous one.");
+      } else {
+        debug5("Refreshing the slots of the subscriber group.");
+        this.subscriberToSlotsIndex = new Map;
+        for (let slot = 0;slot < cluster.slots.length; slot++) {
+          const node = cluster.slots[slot][0];
+          if (!this.subscriberToSlotsIndex.has(node)) {
+            this.subscriberToSlotsIndex.set(node, []);
+          }
+          this.subscriberToSlotsIndex.get(node).push(Number(slot));
+        }
+        this._resubscribe();
+        this.clusterSlots = JSON.parse(JSON.stringify(cluster.slots));
+        this.cluster.emit("subscribersReady");
+        return true;
+      }
+      return false;
+    }
+    _resubscribe() {
+      if (this.shardedSubscribers) {
+        this.shardedSubscribers.forEach((s, nodeKey) => {
+          const subscriberSlots = this.subscriberToSlotsIndex.get(nodeKey);
+          if (subscriberSlots) {
+            s.associateSlotRange(subscriberSlots);
+            subscriberSlots.forEach((ss) => {
+              const redis = s.getInstance();
+              const channels = this.channels.get(ss);
+              if (channels && channels.length > 0) {
+                if (redis) {
+                  redis.ssubscribe(channels);
+                  redis.on("ready", () => {
+                    redis.ssubscribe(channels);
+                  });
+                }
+              }
+            });
+          }
+        });
+      }
+    }
+    _slotsAreEqual(other) {
+      if (this.clusterSlots === undefined)
+        return false;
+      else
+        return JSON.stringify(this.clusterSlots) === JSON.stringify(other);
+    }
+  }
+  exports.default = ClusterSubscriberGroup;
+});
+
+// node_modules/ioredis/built/cluster/index.js
+var require_cluster = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var commands_1 = require_built();
+  var events_1 = __require("events");
+  var redis_errors_1 = require_redis_errors();
+  var standard_as_callback_1 = require_built2();
+  var Command_1 = require_Command();
+  var ClusterAllFailedError_1 = require_ClusterAllFailedError();
+  var Redis_1 = require_Redis();
+  var ScanStream_1 = require_ScanStream();
+  var transaction_1 = require_transaction();
+  var utils_1 = require_utils5();
+  var applyMixin_1 = require_applyMixin();
+  var Commander_1 = require_Commander();
+  var ClusterOptions_1 = require_ClusterOptions();
+  var ClusterSubscriber_1 = require_ClusterSubscriber();
+  var ConnectionPool_1 = require_ConnectionPool();
+  var DelayQueue_1 = require_DelayQueue();
+  var util_1 = require_util2();
+  var Deque = require_denque();
+  var ClusterSubscriberGroup_1 = require_ClusterSubscriberGroup();
+  var debug5 = (0, utils_1.Debug)("cluster");
+  var REJECT_OVERWRITTEN_COMMANDS = new WeakSet;
+
+  class Cluster extends Commander_1.default {
+    constructor(startupNodes, options = {}) {
+      super();
+      this.slots = [];
+      this._groupsIds = {};
+      this._groupsBySlot = Array(16384);
+      this.isCluster = true;
+      this.retryAttempts = 0;
+      this.delayQueue = new DelayQueue_1.default;
+      this.offlineQueue = new Deque;
+      this.isRefreshing = false;
+      this._refreshSlotsCacheCallbacks = [];
+      this._autoPipelines = new Map;
+      this._runningAutoPipelines = new Set;
+      this._readyDelayedCallbacks = [];
+      this.connectionEpoch = 0;
+      events_1.EventEmitter.call(this);
+      this.startupNodes = startupNodes;
+      this.options = (0, utils_1.defaults)({}, options, ClusterOptions_1.DEFAULT_CLUSTER_OPTIONS, this.options);
+      if (this.options.shardedSubscribers == true)
+        this.shardedSubscribers = new ClusterSubscriberGroup_1.default(this, this.refreshSlotsCache.bind(this));
+      if (this.options.redisOptions && this.options.redisOptions.keyPrefix && !this.options.keyPrefix) {
+        this.options.keyPrefix = this.options.redisOptions.keyPrefix;
+      }
+      if (typeof this.options.scaleReads !== "function" && ["all", "master", "slave"].indexOf(this.options.scaleReads) === -1) {
+        throw new Error('Invalid option scaleReads "' + this.options.scaleReads + '". Expected "all", "master", "slave" or a custom function');
+      }
+      this.connectionPool = new ConnectionPool_1.default(this.options.redisOptions);
+      this.connectionPool.on("-node", (redis, key) => {
+        this.emit("-node", redis);
+      });
+      this.connectionPool.on("+node", (redis) => {
+        this.emit("+node", redis);
+      });
+      this.connectionPool.on("drain", () => {
+        this.setStatus("close");
+      });
+      this.connectionPool.on("nodeError", (error, key) => {
+        this.emit("node error", error, key);
+      });
+      this.subscriber = new ClusterSubscriber_1.default(this.connectionPool, this);
+      if (this.options.scripts) {
+        Object.entries(this.options.scripts).forEach(([name, definition]) => {
+          this.defineCommand(name, definition);
+        });
+      }
+      if (this.options.lazyConnect) {
+        this.setStatus("wait");
+      } else {
+        this.connect().catch((err2) => {
+          debug5("connecting failed: %s", err2);
+        });
+      }
+    }
+    connect() {
+      return new Promise((resolve, reject) => {
+        if (this.status === "connecting" || this.status === "connect" || this.status === "ready") {
+          reject(new Error("Redis is already connecting/connected"));
+          return;
+        }
+        const epoch = ++this.connectionEpoch;
+        this.setStatus("connecting");
+        this.resolveStartupNodeHostnames().then((nodes) => {
+          if (this.connectionEpoch !== epoch) {
+            debug5("discard connecting after resolving startup nodes because epoch not match: %d != %d", epoch, this.connectionEpoch);
+            reject(new redis_errors_1.RedisError("Connection is discarded because a new connection is made"));
+            return;
+          }
+          if (this.status !== "connecting") {
+            debug5("discard connecting after resolving startup nodes because the status changed to %s", this.status);
+            reject(new redis_errors_1.RedisError("Connection is aborted"));
+            return;
+          }
+          this.connectionPool.reset(nodes);
+          const readyHandler = () => {
+            this.setStatus("ready");
+            this.retryAttempts = 0;
+            this.executeOfflineCommands();
+            this.resetNodesRefreshInterval();
+            resolve();
+          };
+          let closeListener = undefined;
+          const refreshListener = () => {
+            this.invokeReadyDelayedCallbacks(undefined);
+            this.removeListener("close", closeListener);
+            this.manuallyClosing = false;
+            this.setStatus("connect");
+            if (this.options.enableReadyCheck) {
+              this.readyCheck((err2, fail) => {
+                if (err2 || fail) {
+                  debug5("Ready check failed (%s). Reconnecting...", err2 || fail);
+                  if (this.status === "connect") {
+                    this.disconnect(true);
+                  }
+                } else {
+                  readyHandler();
+                }
+              });
+            } else {
+              readyHandler();
+            }
+          };
+          closeListener = () => {
+            const error = new Error("None of startup nodes is available");
+            this.removeListener("refresh", refreshListener);
+            this.invokeReadyDelayedCallbacks(error);
+            reject(error);
+          };
+          this.once("refresh", refreshListener);
+          this.once("close", closeListener);
+          this.once("close", this.handleCloseEvent.bind(this));
+          this.refreshSlotsCache((err2) => {
+            if (err2 && err2.message === ClusterAllFailedError_1.default.defaultMessage) {
+              Redis_1.default.prototype.silentEmit.call(this, "error", err2);
+              this.connectionPool.reset([]);
+            }
+          });
+          this.subscriber.start();
+          if (this.options.shardedSubscribers) {
+            this.shardedSubscribers.start();
+          }
+        }).catch((err2) => {
+          this.setStatus("close");
+          this.handleCloseEvent(err2);
+          this.invokeReadyDelayedCallbacks(err2);
+          reject(err2);
+        });
+      });
+    }
+    disconnect(reconnect = false) {
+      const status2 = this.status;
+      this.setStatus("disconnecting");
+      if (!reconnect) {
+        this.manuallyClosing = true;
+      }
+      if (this.reconnectTimeout && !reconnect) {
+        clearTimeout(this.reconnectTimeout);
+        this.reconnectTimeout = null;
+        debug5("Canceled reconnecting attempts");
+      }
+      this.clearNodesRefreshInterval();
+      this.subscriber.stop();
+      if (this.options.shardedSubscribers) {
+        this.shardedSubscribers.stop();
+      }
+      if (status2 === "wait") {
+        this.setStatus("close");
+        this.handleCloseEvent();
+      } else {
+        this.connectionPool.reset([]);
+      }
+    }
+    quit(callback) {
+      const status2 = this.status;
+      this.setStatus("disconnecting");
+      this.manuallyClosing = true;
+      if (this.reconnectTimeout) {
+        clearTimeout(this.reconnectTimeout);
+        this.reconnectTimeout = null;
+      }
+      this.clearNodesRefreshInterval();
+      this.subscriber.stop();
+      if (this.options.shardedSubscribers) {
+        this.shardedSubscribers.stop();
+      }
+      if (status2 === "wait") {
+        const ret = (0, standard_as_callback_1.default)(Promise.resolve("OK"), callback);
+        setImmediate(function() {
+          this.setStatus("close");
+          this.handleCloseEvent();
+        }.bind(this));
+        return ret;
+      }
+      return (0, standard_as_callback_1.default)(Promise.all(this.nodes().map((node) => node.quit().catch((err2) => {
+        if (err2.message === utils_1.CONNECTION_CLOSED_ERROR_MSG) {
+          return "OK";
+        }
+        throw err2;
+      }))).then(() => "OK"), callback);
+    }
+    duplicate(overrideStartupNodes = [], overrideOptions = {}) {
+      const startupNodes = overrideStartupNodes.length > 0 ? overrideStartupNodes : this.startupNodes.slice(0);
+      const options = Object.assign({}, this.options, overrideOptions);
+      return new Cluster(startupNodes, options);
+    }
+    nodes(role = "all") {
+      if (role !== "all" && role !== "master" && role !== "slave") {
+        throw new Error('Invalid role "' + role + '". Expected "all", "master" or "slave"');
+      }
+      return this.connectionPool.getNodes(role);
+    }
+    delayUntilReady(callback) {
+      this._readyDelayedCallbacks.push(callback);
+    }
+    get autoPipelineQueueSize() {
+      let queued = 0;
+      for (const pipeline2 of this._autoPipelines.values()) {
+        queued += pipeline2.length;
+      }
+      return queued;
+    }
+    refreshSlotsCache(callback) {
+      if (callback) {
+        this._refreshSlotsCacheCallbacks.push(callback);
+      }
+      if (this.isRefreshing) {
+        return;
+      }
+      this.isRefreshing = true;
+      const _this = this;
+      const wrapper = (error) => {
+        this.isRefreshing = false;
+        for (const callback2 of this._refreshSlotsCacheCallbacks) {
+          callback2(error);
+        }
+        this._refreshSlotsCacheCallbacks = [];
+      };
+      const nodes = (0, utils_1.shuffle)(this.connectionPool.getNodes());
+      let lastNodeError = null;
+      function tryNode(index2) {
+        if (index2 === nodes.length) {
+          const error = new ClusterAllFailedError_1.default(ClusterAllFailedError_1.default.defaultMessage, lastNodeError);
+          return wrapper(error);
+        }
+        const node = nodes[index2];
+        const key = `${node.options.host}:${node.options.port}`;
+        debug5("getting slot cache from %s", key);
+        _this.getInfoFromNode(node, function(err2) {
+          switch (_this.status) {
+            case "close":
+            case "end":
+              return wrapper(new Error("Cluster is disconnected."));
+            case "disconnecting":
+              return wrapper(new Error("Cluster is disconnecting."));
+          }
+          if (err2) {
+            _this.emit("node error", err2, key);
+            lastNodeError = err2;
+            tryNode(index2 + 1);
+          } else {
+            _this.emit("refresh");
+            wrapper();
+          }
+        });
+      }
+      tryNode(0);
+    }
+    sendCommand(command, stream, node) {
+      if (this.status === "wait") {
+        this.connect().catch(utils_1.noop);
+      }
+      if (this.status === "end") {
+        command.reject(new Error(utils_1.CONNECTION_CLOSED_ERROR_MSG));
+        return command.promise;
+      }
+      let to = this.options.scaleReads;
+      if (to !== "master") {
+        const isCommandReadOnly = command.isReadOnly || (0, commands_1.exists)(command.name) && (0, commands_1.hasFlag)(command.name, "readonly");
+        if (!isCommandReadOnly) {
+          to = "master";
+        }
+      }
+      let targetSlot = node ? node.slot : command.getSlot();
+      const ttl = {};
+      const _this = this;
+      if (!node && !REJECT_OVERWRITTEN_COMMANDS.has(command)) {
+        REJECT_OVERWRITTEN_COMMANDS.add(command);
+        const reject = command.reject;
+        command.reject = function(err2) {
+          const partialTry = tryConnection.bind(null, true);
+          _this.handleError(err2, ttl, {
+            moved: function(slot, key) {
+              debug5("command %s is moved to %s", command.name, key);
+              targetSlot = Number(slot);
+              if (_this.slots[slot]) {
+                _this.slots[slot][0] = key;
+              } else {
+                _this.slots[slot] = [key];
+              }
+              _this._groupsBySlot[slot] = _this._groupsIds[_this.slots[slot].join(";")];
+              _this.connectionPool.findOrCreate(_this.natMapper(key));
+              tryConnection();
+              debug5("refreshing slot caches... (triggered by MOVED error)");
+              _this.refreshSlotsCache();
+            },
+            ask: function(slot, key) {
+              debug5("command %s is required to ask %s:%s", command.name, key);
+              const mapped = _this.natMapper(key);
+              _this.connectionPool.findOrCreate(mapped);
+              tryConnection(false, `${mapped.host}:${mapped.port}`);
+            },
+            tryagain: partialTry,
+            clusterDown: partialTry,
+            connectionClosed: partialTry,
+            maxRedirections: function(redirectionError) {
+              reject.call(command, redirectionError);
+            },
+            defaults: function() {
+              reject.call(command, err2);
+            }
+          });
+        };
+      }
+      tryConnection();
+      function tryConnection(random, asking) {
+        if (_this.status === "end") {
+          command.reject(new redis_errors_1.AbortError("Cluster is ended."));
+          return;
+        }
+        let redis;
+        if (_this.status === "ready" || command.name === "cluster") {
+          if (node && node.redis) {
+            redis = node.redis;
+          } else if (Command_1.default.checkFlag("ENTER_SUBSCRIBER_MODE", command.name) || Command_1.default.checkFlag("EXIT_SUBSCRIBER_MODE", command.name)) {
+            if (_this.options.shardedSubscribers == true && (command.name == "ssubscribe" || command.name == "sunsubscribe")) {
+              const sub = _this.shardedSubscribers.getResponsibleSubscriber(targetSlot);
+              let status2 = -1;
+              if (command.name == "ssubscribe")
+                status2 = _this.shardedSubscribers.addChannels(command.getKeys());
+              if (command.name == "sunsubscribe")
+                status2 = _this.shardedSubscribers.removeChannels(command.getKeys());
+              if (status2 !== -1) {
+                redis = sub.getInstance();
+              } else {
+                command.reject(new redis_errors_1.AbortError("Can't add or remove the given channels. Are they in the same slot?"));
+              }
+            } else {
+              redis = _this.subscriber.getInstance();
+            }
+            if (!redis) {
+              command.reject(new redis_errors_1.AbortError("No subscriber for the cluster"));
+              return;
+            }
+          } else {
+            if (!random) {
+              if (typeof targetSlot === "number" && _this.slots[targetSlot]) {
+                const nodeKeys = _this.slots[targetSlot];
+                if (typeof to === "function") {
+                  const nodes = nodeKeys.map(function(key) {
+                    return _this.connectionPool.getInstanceByKey(key);
+                  });
+                  redis = to(nodes, command);
+                  if (Array.isArray(redis)) {
+                    redis = (0, utils_1.sample)(redis);
+                  }
+                  if (!redis) {
+                    redis = nodes[0];
+                  }
+                } else {
+                  let key;
+                  if (to === "all") {
+                    key = (0, utils_1.sample)(nodeKeys);
+                  } else if (to === "slave" && nodeKeys.length > 1) {
+                    key = (0, utils_1.sample)(nodeKeys, 1);
+                  } else {
+                    key = nodeKeys[0];
+                  }
+                  redis = _this.connectionPool.getInstanceByKey(key);
+                }
+              }
+              if (asking) {
+                redis = _this.connectionPool.getInstanceByKey(asking);
+                redis.asking();
+              }
+            }
+            if (!redis) {
+              redis = (typeof to === "function" ? null : _this.connectionPool.getSampleInstance(to)) || _this.connectionPool.getSampleInstance("all");
+            }
+          }
+          if (node && !node.redis) {
+            node.redis = redis;
+          }
+        }
+        if (redis) {
+          redis.sendCommand(command, stream);
+        } else if (_this.options.enableOfflineQueue) {
+          _this.offlineQueue.push({
+            command,
+            stream,
+            node
+          });
+        } else {
+          command.reject(new Error("Cluster isn't ready and enableOfflineQueue options is false"));
+        }
+      }
+      return command.promise;
+    }
+    sscanStream(key, options) {
+      return this.createScanStream("sscan", { key, options });
+    }
+    sscanBufferStream(key, options) {
+      return this.createScanStream("sscanBuffer", { key, options });
+    }
+    hscanStream(key, options) {
+      return this.createScanStream("hscan", { key, options });
+    }
+    hscanBufferStream(key, options) {
+      return this.createScanStream("hscanBuffer", { key, options });
+    }
+    zscanStream(key, options) {
+      return this.createScanStream("zscan", { key, options });
+    }
+    zscanBufferStream(key, options) {
+      return this.createScanStream("zscanBuffer", { key, options });
+    }
+    handleError(error, ttl, handlers) {
+      if (typeof ttl.value === "undefined") {
+        ttl.value = this.options.maxRedirections;
+      } else {
+        ttl.value -= 1;
+      }
+      if (ttl.value <= 0) {
+        handlers.maxRedirections(new Error("Too many Cluster redirections. Last error: " + error));
+        return;
+      }
+      const errv = error.message.split(" ");
+      if (errv[0] === "MOVED") {
+        const timeout = this.options.retryDelayOnMoved;
+        if (timeout && typeof timeout === "number") {
+          this.delayQueue.push("moved", handlers.moved.bind(null, errv[1], errv[2]), { timeout });
+        } else {
+          handlers.moved(errv[1], errv[2]);
+        }
+      } else if (errv[0] === "ASK") {
+        handlers.ask(errv[1], errv[2]);
+      } else if (errv[0] === "TRYAGAIN") {
+        this.delayQueue.push("tryagain", handlers.tryagain, {
+          timeout: this.options.retryDelayOnTryAgain
+        });
+      } else if (errv[0] === "CLUSTERDOWN" && this.options.retryDelayOnClusterDown > 0) {
+        this.delayQueue.push("clusterdown", handlers.connectionClosed, {
+          timeout: this.options.retryDelayOnClusterDown,
+          callback: this.refreshSlotsCache.bind(this)
+        });
+      } else if (error.message === utils_1.CONNECTION_CLOSED_ERROR_MSG && this.options.retryDelayOnFailover > 0 && this.status === "ready") {
+        this.delayQueue.push("failover", handlers.connectionClosed, {
+          timeout: this.options.retryDelayOnFailover,
+          callback: this.refreshSlotsCache.bind(this)
+        });
+      } else {
+        handlers.defaults();
+      }
+    }
+    resetOfflineQueue() {
+      this.offlineQueue = new Deque;
+    }
+    clearNodesRefreshInterval() {
+      if (this.slotsTimer) {
+        clearTimeout(this.slotsTimer);
+        this.slotsTimer = null;
+      }
+    }
+    resetNodesRefreshInterval() {
+      if (this.slotsTimer || !this.options.slotsRefreshInterval) {
+        return;
+      }
+      const nextRound = () => {
+        this.slotsTimer = setTimeout(() => {
+          debug5('refreshing slot caches... (triggered by "slotsRefreshInterval" option)');
+          this.refreshSlotsCache(() => {
+            nextRound();
+          });
+        }, this.options.slotsRefreshInterval);
+      };
+      nextRound();
+    }
+    setStatus(status2) {
+      debug5("status: %s -> %s", this.status || "[empty]", status2);
+      this.status = status2;
+      process.nextTick(() => {
+        this.emit(status2);
+      });
+    }
+    handleCloseEvent(reason) {
+      if (reason) {
+        debug5("closed because %s", reason);
+      }
+      let retryDelay;
+      if (!this.manuallyClosing && typeof this.options.clusterRetryStrategy === "function") {
+        retryDelay = this.options.clusterRetryStrategy.call(this, ++this.retryAttempts, reason);
+      }
+      if (typeof retryDelay === "number") {
+        this.setStatus("reconnecting");
+        this.reconnectTimeout = setTimeout(() => {
+          this.reconnectTimeout = null;
+          debug5("Cluster is disconnected. Retrying after %dms", retryDelay);
+          this.connect().catch(function(err2) {
+            debug5("Got error %s when reconnecting. Ignoring...", err2);
+          });
+        }, retryDelay);
+      } else {
+        this.setStatus("end");
+        this.flushQueue(new Error("None of startup nodes is available"));
+      }
+    }
+    flushQueue(error) {
+      let item;
+      while (item = this.offlineQueue.shift()) {
+        item.command.reject(error);
+      }
+    }
+    executeOfflineCommands() {
+      if (this.offlineQueue.length) {
+        debug5("send %d commands in offline queue", this.offlineQueue.length);
+        const offlineQueue = this.offlineQueue;
+        this.resetOfflineQueue();
+        let item;
+        while (item = offlineQueue.shift()) {
+          this.sendCommand(item.command, item.stream, item.node);
+        }
+      }
+    }
+    natMapper(nodeKey) {
+      const key = typeof nodeKey === "string" ? nodeKey : `${nodeKey.host}:${nodeKey.port}`;
+      let mapped = null;
+      if (this.options.natMap && typeof this.options.natMap === "function") {
+        mapped = this.options.natMap(key);
+      } else if (this.options.natMap && typeof this.options.natMap === "object") {
+        mapped = this.options.natMap[key];
+      }
+      if (mapped) {
+        debug5("NAT mapping %s -> %O", key, mapped);
+        return Object.assign({}, mapped);
+      }
+      return typeof nodeKey === "string" ? (0, util_1.nodeKeyToRedisOptions)(nodeKey) : nodeKey;
+    }
+    getInfoFromNode(redis, callback) {
+      if (!redis) {
+        return callback(new Error("Node is disconnected"));
+      }
+      const duplicatedConnection = redis.duplicate({
+        enableOfflineQueue: true,
+        enableReadyCheck: false,
+        retryStrategy: null,
+        connectionName: (0, util_1.getConnectionName)("refresher", this.options.redisOptions && this.options.redisOptions.connectionName)
+      });
+      duplicatedConnection.on("error", utils_1.noop);
+      duplicatedConnection.cluster("SLOTS", (0, utils_1.timeout)((err2, result) => {
+        duplicatedConnection.disconnect();
+        if (err2) {
+          debug5("error encountered running CLUSTER.SLOTS: %s", err2);
+          return callback(err2);
+        }
+        if (this.status === "disconnecting" || this.status === "close" || this.status === "end") {
+          debug5("ignore CLUSTER.SLOTS results (count: %d) since cluster status is %s", result.length, this.status);
+          callback();
+          return;
+        }
+        const nodes = [];
+        debug5("cluster slots result count: %d", result.length);
+        for (let i = 0;i < result.length; ++i) {
+          const items = result[i];
+          const slotRangeStart = items[0];
+          const slotRangeEnd = items[1];
+          const keys = [];
+          for (let j2 = 2;j2 < items.length; j2++) {
+            if (!items[j2][0]) {
+              continue;
+            }
+            const node = this.natMapper({
+              host: items[j2][0],
+              port: items[j2][1]
+            });
+            node.readOnly = j2 !== 2;
+            nodes.push(node);
+            keys.push(node.host + ":" + node.port);
+          }
+          debug5("cluster slots result [%d]: slots %d~%d served by %s", i, slotRangeStart, slotRangeEnd, keys);
+          for (let slot = slotRangeStart;slot <= slotRangeEnd; slot++) {
+            this.slots[slot] = keys;
+          }
+        }
+        this._groupsIds = Object.create(null);
+        let j = 0;
+        for (let i = 0;i < 16384; i++) {
+          const target = (this.slots[i] || []).join(";");
+          if (!target.length) {
+            this._groupsBySlot[i] = undefined;
+            continue;
+          }
+          if (!this._groupsIds[target]) {
+            this._groupsIds[target] = ++j;
+          }
+          this._groupsBySlot[i] = this._groupsIds[target];
+        }
+        this.connectionPool.reset(nodes);
+        callback();
+      }, this.options.slotsRefreshTimeout));
+    }
+    invokeReadyDelayedCallbacks(err2) {
+      for (const c of this._readyDelayedCallbacks) {
+        process.nextTick(c, err2);
+      }
+      this._readyDelayedCallbacks = [];
+    }
+    readyCheck(callback) {
+      this.cluster("INFO", (err2, res) => {
+        if (err2) {
+          return callback(err2);
+        }
+        if (typeof res !== "string") {
+          return callback();
+        }
+        let state;
+        const lines = res.split(`\r
+`);
+        for (let i = 0;i < lines.length; ++i) {
+          const parts = lines[i].split(":");
+          if (parts[0] === "cluster_state") {
+            state = parts[1];
+            break;
+          }
+        }
+        if (state === "fail") {
+          debug5("cluster state not ok (%s)", state);
+          callback(null, state);
+        } else {
+          callback();
+        }
+      });
+    }
+    resolveSrv(hostname) {
+      return new Promise((resolve, reject) => {
+        this.options.resolveSrv(hostname, (err2, records) => {
+          if (err2) {
+            return reject(err2);
+          }
+          const self = this, groupedRecords = (0, util_1.groupSrvRecords)(records), sortedKeys = Object.keys(groupedRecords).sort((a, b2) => parseInt(a) - parseInt(b2));
+          function tryFirstOne(err3) {
+            if (!sortedKeys.length) {
+              return reject(err3);
+            }
+            const key = sortedKeys[0], group = groupedRecords[key], record2 = (0, util_1.weightSrvRecords)(group);
+            if (!group.records.length) {
+              sortedKeys.shift();
+            }
+            self.dnsLookup(record2.name).then((host) => resolve({
+              host,
+              port: record2.port
+            }), tryFirstOne);
+          }
+          tryFirstOne();
+        });
+      });
+    }
+    dnsLookup(hostname) {
+      return new Promise((resolve, reject) => {
+        this.options.dnsLookup(hostname, (err2, address) => {
+          if (err2) {
+            debug5("failed to resolve hostname %s to IP: %s", hostname, err2.message);
+            reject(err2);
+          } else {
+            debug5("resolved hostname %s to IP %s", hostname, address);
+            resolve(address);
+          }
+        });
+      });
+    }
+    async resolveStartupNodeHostnames() {
+      if (!Array.isArray(this.startupNodes) || this.startupNodes.length === 0) {
+        throw new Error("`startupNodes` should contain at least one node.");
+      }
+      const startupNodes = (0, util_1.normalizeNodeOptions)(this.startupNodes);
+      const hostnames = (0, util_1.getUniqueHostnamesFromOptions)(startupNodes);
+      if (hostnames.length === 0) {
+        return startupNodes;
+      }
+      const configs = await Promise.all(hostnames.map((this.options.useSRVRecords ? this.resolveSrv : this.dnsLookup).bind(this)));
+      const hostnameToConfig = (0, utils_1.zipMap)(hostnames, configs);
+      return startupNodes.map((node) => {
+        const config = hostnameToConfig.get(node.host);
+        if (!config) {
+          return node;
+        }
+        if (this.options.useSRVRecords) {
+          return Object.assign({}, node, config);
+        }
+        return Object.assign({}, node, { host: config });
+      });
+    }
+    createScanStream(command, { key, options = {} }) {
+      return new ScanStream_1.default({
+        objectMode: true,
+        key,
+        redis: this,
+        command,
+        ...options
+      });
+    }
+  }
+  (0, applyMixin_1.default)(Cluster, events_1.EventEmitter);
+  (0, transaction_1.addTransactionSupport)(Cluster.prototype);
+  exports.default = Cluster;
+});
+
+// node_modules/ioredis/built/connectors/AbstractConnector.js
+var require_AbstractConnector = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var utils_1 = require_utils5();
+  var debug5 = (0, utils_1.Debug)("AbstractConnector");
+
+  class AbstractConnector {
+    constructor(disconnectTimeout) {
+      this.connecting = false;
+      this.disconnectTimeout = disconnectTimeout;
+    }
+    check(info) {
+      return true;
+    }
+    disconnect() {
+      this.connecting = false;
+      if (this.stream) {
+        const stream = this.stream;
+        const timeout = setTimeout(() => {
+          debug5("stream %s:%s still open, destroying it", stream.remoteAddress, stream.remotePort);
+          stream.destroy();
+        }, this.disconnectTimeout);
+        stream.on("close", () => clearTimeout(timeout));
+        stream.end();
+      }
+    }
+  }
+  exports.default = AbstractConnector;
+});
+
+// node_modules/ioredis/built/connectors/StandaloneConnector.js
+var require_StandaloneConnector = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var net_1 = __require("net");
+  var tls_1 = __require("tls");
+  var utils_1 = require_utils5();
+  var AbstractConnector_1 = require_AbstractConnector();
+
+  class StandaloneConnector extends AbstractConnector_1.default {
+    constructor(options) {
+      super(options.disconnectTimeout);
+      this.options = options;
+    }
+    connect(_2) {
+      const { options } = this;
+      this.connecting = true;
+      let connectionOptions;
+      if ("path" in options && options.path) {
+        connectionOptions = {
+          path: options.path
+        };
+      } else {
+        connectionOptions = {};
+        if ("port" in options && options.port != null) {
+          connectionOptions.port = options.port;
+        }
+        if ("host" in options && options.host != null) {
+          connectionOptions.host = options.host;
+        }
+        if ("family" in options && options.family != null) {
+          connectionOptions.family = options.family;
+        }
+      }
+      if (options.tls) {
+        Object.assign(connectionOptions, options.tls);
+      }
+      return new Promise((resolve, reject) => {
+        process.nextTick(() => {
+          if (!this.connecting) {
+            reject(new Error(utils_1.CONNECTION_CLOSED_ERROR_MSG));
+            return;
+          }
+          try {
+            if (options.tls) {
+              this.stream = (0, tls_1.connect)(connectionOptions);
+            } else {
+              this.stream = (0, net_1.createConnection)(connectionOptions);
+            }
+          } catch (err2) {
+            reject(err2);
+            return;
+          }
+          this.stream.once("error", (err2) => {
+            this.firstError = err2;
+          });
+          resolve(this.stream);
+        });
+      });
+    }
+  }
+  exports.default = StandaloneConnector;
+});
+
+// node_modules/ioredis/built/connectors/SentinelConnector/SentinelIterator.js
+var require_SentinelIterator = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  function isSentinelEql(a, b2) {
+    return (a.host || "127.0.0.1") === (b2.host || "127.0.0.1") && (a.port || 26379) === (b2.port || 26379);
+  }
+
+  class SentinelIterator {
+    constructor(sentinels) {
+      this.cursor = 0;
+      this.sentinels = sentinels.slice(0);
+    }
+    next() {
+      const done = this.cursor >= this.sentinels.length;
+      return { done, value: done ? undefined : this.sentinels[this.cursor++] };
+    }
+    reset(moveCurrentEndpointToFirst) {
+      if (moveCurrentEndpointToFirst && this.sentinels.length > 1 && this.cursor !== 1) {
+        this.sentinels.unshift(...this.sentinels.splice(this.cursor - 1));
+      }
+      this.cursor = 0;
+    }
+    add(sentinel) {
+      for (let i = 0;i < this.sentinels.length; i++) {
+        if (isSentinelEql(sentinel, this.sentinels[i])) {
+          return false;
+        }
+      }
+      this.sentinels.push(sentinel);
+      return true;
+    }
+    toString() {
+      return `${JSON.stringify(this.sentinels)} @${this.cursor}`;
+    }
+  }
+  exports.default = SentinelIterator;
+});
+
+// node_modules/ioredis/built/connectors/SentinelConnector/FailoverDetector.js
+var require_FailoverDetector = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.FailoverDetector = undefined;
+  var utils_1 = require_utils5();
+  var debug5 = (0, utils_1.Debug)("FailoverDetector");
+  var CHANNEL_NAME = "+switch-master";
+
+  class FailoverDetector {
+    constructor(connector, sentinels) {
+      this.isDisconnected = false;
+      this.connector = connector;
+      this.sentinels = sentinels;
+    }
+    cleanup() {
+      this.isDisconnected = true;
+      for (const sentinel of this.sentinels) {
+        sentinel.client.disconnect();
+      }
+    }
+    async subscribe() {
+      debug5("Starting FailoverDetector");
+      const promises = [];
+      for (const sentinel of this.sentinels) {
+        const promise = sentinel.client.subscribe(CHANNEL_NAME).catch((err2) => {
+          debug5("Failed to subscribe to failover messages on sentinel %s:%s (%s)", sentinel.address.host || "127.0.0.1", sentinel.address.port || 26739, err2.message);
+        });
+        promises.push(promise);
+        sentinel.client.on("message", (channel) => {
+          if (!this.isDisconnected && channel === CHANNEL_NAME) {
+            this.disconnect();
+          }
+        });
+      }
+      await Promise.all(promises);
+    }
+    disconnect() {
+      this.isDisconnected = true;
+      debug5("Failover detected, disconnecting");
+      this.connector.disconnect();
+    }
+  }
+  exports.FailoverDetector = FailoverDetector;
+});
+
+// node_modules/ioredis/built/connectors/SentinelConnector/index.js
+var require_SentinelConnector = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.SentinelIterator = undefined;
+  var net_1 = __require("net");
+  var utils_1 = require_utils5();
+  var tls_1 = __require("tls");
+  var SentinelIterator_1 = require_SentinelIterator();
+  exports.SentinelIterator = SentinelIterator_1.default;
+  var AbstractConnector_1 = require_AbstractConnector();
+  var Redis_1 = require_Redis();
+  var FailoverDetector_1 = require_FailoverDetector();
+  var debug5 = (0, utils_1.Debug)("SentinelConnector");
+
+  class SentinelConnector extends AbstractConnector_1.default {
+    constructor(options) {
+      super(options.disconnectTimeout);
+      this.options = options;
+      this.emitter = null;
+      this.failoverDetector = null;
+      if (!this.options.sentinels.length) {
+        throw new Error("Requires at least one sentinel to connect to.");
+      }
+      if (!this.options.name) {
+        throw new Error("Requires the name of master.");
+      }
+      this.sentinelIterator = new SentinelIterator_1.default(this.options.sentinels);
+    }
+    check(info) {
+      const roleMatches = !info.role || this.options.role === info.role;
+      if (!roleMatches) {
+        debug5("role invalid, expected %s, but got %s", this.options.role, info.role);
+        this.sentinelIterator.next();
+        this.sentinelIterator.next();
+        this.sentinelIterator.reset(true);
+      }
+      return roleMatches;
+    }
+    disconnect() {
+      super.disconnect();
+      if (this.failoverDetector) {
+        this.failoverDetector.cleanup();
+      }
+    }
+    connect(eventEmitter) {
+      this.connecting = true;
+      this.retryAttempts = 0;
+      let lastError;
+      const connectToNext = async () => {
+        const endpoint = this.sentinelIterator.next();
+        if (endpoint.done) {
+          this.sentinelIterator.reset(false);
+          const retryDelay = typeof this.options.sentinelRetryStrategy === "function" ? this.options.sentinelRetryStrategy(++this.retryAttempts) : null;
+          let errorMsg = typeof retryDelay !== "number" ? "All sentinels are unreachable and retry is disabled." : `All sentinels are unreachable. Retrying from scratch after ${retryDelay}ms.`;
+          if (lastError) {
+            errorMsg += ` Last error: ${lastError.message}`;
+          }
+          debug5(errorMsg);
+          const error = new Error(errorMsg);
+          if (typeof retryDelay === "number") {
+            eventEmitter("error", error);
+            await new Promise((resolve) => setTimeout(resolve, retryDelay));
+            return connectToNext();
+          } else {
+            throw error;
+          }
+        }
+        let resolved = null;
+        let err2 = null;
+        try {
+          resolved = await this.resolve(endpoint.value);
+        } catch (error) {
+          err2 = error;
+        }
+        if (!this.connecting) {
+          throw new Error(utils_1.CONNECTION_CLOSED_ERROR_MSG);
+        }
+        const endpointAddress = endpoint.value.host + ":" + endpoint.value.port;
+        if (resolved) {
+          debug5("resolved: %s:%s from sentinel %s", resolved.host, resolved.port, endpointAddress);
+          if (this.options.enableTLSForSentinelMode && this.options.tls) {
+            Object.assign(resolved, this.options.tls);
+            this.stream = (0, tls_1.connect)(resolved);
+            this.stream.once("secureConnect", this.initFailoverDetector.bind(this));
+          } else {
+            this.stream = (0, net_1.createConnection)(resolved);
+            this.stream.once("connect", this.initFailoverDetector.bind(this));
+          }
+          this.stream.once("error", (err3) => {
+            this.firstError = err3;
+          });
+          return this.stream;
+        } else {
+          const errorMsg = err2 ? "failed to connect to sentinel " + endpointAddress + " because " + err2.message : "connected to sentinel " + endpointAddress + " successfully, but got an invalid reply: " + resolved;
+          debug5(errorMsg);
+          eventEmitter("sentinelError", new Error(errorMsg));
+          if (err2) {
+            lastError = err2;
+          }
+          return connectToNext();
+        }
+      };
+      return connectToNext();
+    }
+    async updateSentinels(client2) {
+      if (!this.options.updateSentinels) {
+        return;
+      }
+      const result = await client2.sentinel("sentinels", this.options.name);
+      if (!Array.isArray(result)) {
+        return;
+      }
+      result.map(utils_1.packObject).forEach((sentinel) => {
+        const flags = sentinel.flags ? sentinel.flags.split(",") : [];
+        if (flags.indexOf("disconnected") === -1 && sentinel.ip && sentinel.port) {
+          const endpoint = this.sentinelNatResolve(addressResponseToAddress(sentinel));
+          if (this.sentinelIterator.add(endpoint)) {
+            debug5("adding sentinel %s:%s", endpoint.host, endpoint.port);
+          }
+        }
+      });
+      debug5("Updated internal sentinels: %s", this.sentinelIterator);
+    }
+    async resolveMaster(client2) {
+      const result = await client2.sentinel("get-master-addr-by-name", this.options.name);
+      await this.updateSentinels(client2);
+      return this.sentinelNatResolve(Array.isArray(result) ? { host: result[0], port: Number(result[1]) } : null);
+    }
+    async resolveSlave(client2) {
+      const result = await client2.sentinel("slaves", this.options.name);
+      if (!Array.isArray(result)) {
+        return null;
+      }
+      const availableSlaves = result.map(utils_1.packObject).filter((slave) => slave.flags && !slave.flags.match(/(disconnected|s_down|o_down)/));
+      return this.sentinelNatResolve(selectPreferredSentinel(availableSlaves, this.options.preferredSlaves));
+    }
+    sentinelNatResolve(item) {
+      if (!item || !this.options.natMap)
+        return item;
+      const key = `${item.host}:${item.port}`;
+      let result = item;
+      if (typeof this.options.natMap === "function") {
+        result = this.options.natMap(key) || item;
+      } else if (typeof this.options.natMap === "object") {
+        result = this.options.natMap[key] || item;
+      }
+      return result;
+    }
+    connectToSentinel(endpoint, options) {
+      const redis = new Redis_1.default({
+        port: endpoint.port || 26379,
+        host: endpoint.host,
+        username: this.options.sentinelUsername || null,
+        password: this.options.sentinelPassword || null,
+        family: endpoint.family || ("path" in this.options && this.options.path ? undefined : this.options.family),
+        tls: this.options.sentinelTLS,
+        retryStrategy: null,
+        enableReadyCheck: false,
+        connectTimeout: this.options.connectTimeout,
+        commandTimeout: this.options.sentinelCommandTimeout,
+        ...options
+      });
+      return redis;
+    }
+    async resolve(endpoint) {
+      const client2 = this.connectToSentinel(endpoint);
+      client2.on("error", noop3);
+      try {
+        if (this.options.role === "slave") {
+          return await this.resolveSlave(client2);
+        } else {
+          return await this.resolveMaster(client2);
+        }
+      } finally {
+        client2.disconnect();
+      }
+    }
+    async initFailoverDetector() {
+      var _a;
+      if (!this.options.failoverDetector) {
+        return;
+      }
+      this.sentinelIterator.reset(true);
+      const sentinels = [];
+      while (sentinels.length < this.options.sentinelMaxConnections) {
+        const { done, value } = this.sentinelIterator.next();
+        if (done) {
+          break;
+        }
+        const client2 = this.connectToSentinel(value, {
+          lazyConnect: true,
+          retryStrategy: this.options.sentinelReconnectStrategy
+        });
+        client2.on("reconnecting", () => {
+          var _a2;
+          (_a2 = this.emitter) === null || _a2 === undefined || _a2.emit("sentinelReconnecting");
+        });
+        sentinels.push({ address: value, client: client2 });
+      }
+      this.sentinelIterator.reset(false);
+      if (this.failoverDetector) {
+        this.failoverDetector.cleanup();
+      }
+      this.failoverDetector = new FailoverDetector_1.FailoverDetector(this, sentinels);
+      await this.failoverDetector.subscribe();
+      (_a = this.emitter) === null || _a === undefined || _a.emit("failoverSubscribed");
+    }
+  }
+  exports.default = SentinelConnector;
+  function selectPreferredSentinel(availableSlaves, preferredSlaves) {
+    if (availableSlaves.length === 0) {
+      return null;
+    }
+    let selectedSlave;
+    if (typeof preferredSlaves === "function") {
+      selectedSlave = preferredSlaves(availableSlaves);
+    } else if (preferredSlaves !== null && typeof preferredSlaves === "object") {
+      const preferredSlavesArray = Array.isArray(preferredSlaves) ? preferredSlaves : [preferredSlaves];
+      preferredSlavesArray.sort((a, b2) => {
+        if (!a.prio) {
+          a.prio = 1;
+        }
+        if (!b2.prio) {
+          b2.prio = 1;
+        }
+        if (a.prio < b2.prio) {
+          return -1;
+        }
+        if (a.prio > b2.prio) {
+          return 1;
+        }
+        return 0;
+      });
+      for (let p = 0;p < preferredSlavesArray.length; p++) {
+        for (let a = 0;a < availableSlaves.length; a++) {
+          const slave = availableSlaves[a];
+          if (slave.ip === preferredSlavesArray[p].ip) {
+            if (slave.port === preferredSlavesArray[p].port) {
+              selectedSlave = slave;
+              break;
+            }
+          }
+        }
+        if (selectedSlave) {
+          break;
+        }
+      }
+    }
+    if (!selectedSlave) {
+      selectedSlave = (0, utils_1.sample)(availableSlaves);
+    }
+    return addressResponseToAddress(selectedSlave);
+  }
+  function addressResponseToAddress(input) {
+    return { host: input.ip, port: Number(input.port) };
+  }
+  function noop3() {}
+});
+
+// node_modules/ioredis/built/connectors/index.js
+var require_connectors = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.SentinelConnector = exports.StandaloneConnector = undefined;
+  var StandaloneConnector_1 = require_StandaloneConnector();
+  exports.StandaloneConnector = StandaloneConnector_1.default;
+  var SentinelConnector_1 = require_SentinelConnector();
+  exports.SentinelConnector = SentinelConnector_1.default;
+});
+
+// node_modules/ioredis/built/errors/MaxRetriesPerRequestError.js
+var require_MaxRetriesPerRequestError = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var redis_errors_1 = require_redis_errors();
+
+  class MaxRetriesPerRequestError extends redis_errors_1.AbortError {
+    constructor(maxRetriesPerRequest) {
+      const message = `Reached the max retries per request limit (which is ${maxRetriesPerRequest}). Refer to "maxRetriesPerRequest" option for details.`;
+      super(message);
+      Error.captureStackTrace(this, this.constructor);
+    }
+    get name() {
+      return this.constructor.name;
+    }
+  }
+  exports.default = MaxRetriesPerRequestError;
+});
+
+// node_modules/ioredis/built/errors/index.js
+var require_errors = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.MaxRetriesPerRequestError = undefined;
+  var MaxRetriesPerRequestError_1 = require_MaxRetriesPerRequestError();
+  exports.MaxRetriesPerRequestError = MaxRetriesPerRequestError_1.default;
+});
+
+// node_modules/redis-parser/lib/parser.js
+var require_parser = __commonJS((exports, module) => {
+  var Buffer3 = __require("buffer").Buffer;
+  var StringDecoder = __require("string_decoder").StringDecoder;
+  var decoder = new StringDecoder;
+  var errors2 = require_redis_errors();
+  var ReplyError = errors2.ReplyError;
+  var ParserError = errors2.ParserError;
+  var bufferPool = Buffer3.allocUnsafe(32 * 1024);
+  var bufferOffset = 0;
+  var interval2 = null;
+  var counter = 0;
+  var notDecreased = 0;
+  function parseSimpleNumbers(parser) {
+    const length = parser.buffer.length - 1;
+    var offset2 = parser.offset;
+    var number2 = 0;
+    var sign2 = 1;
+    if (parser.buffer[offset2] === 45) {
+      sign2 = -1;
+      offset2++;
+    }
+    while (offset2 < length) {
+      const c1 = parser.buffer[offset2++];
+      if (c1 === 13) {
+        parser.offset = offset2 + 1;
+        return sign2 * number2;
+      }
+      number2 = number2 * 10 + (c1 - 48);
+    }
+  }
+  function parseStringNumbers(parser) {
+    const length = parser.buffer.length - 1;
+    var offset2 = parser.offset;
+    var number2 = 0;
+    var res = "";
+    if (parser.buffer[offset2] === 45) {
+      res += "-";
+      offset2++;
+    }
+    while (offset2 < length) {
+      var c1 = parser.buffer[offset2++];
+      if (c1 === 13) {
+        parser.offset = offset2 + 1;
+        if (number2 !== 0) {
+          res += number2;
+        }
+        return res;
+      } else if (number2 > 429496728) {
+        res += number2 * 10 + (c1 - 48);
+        number2 = 0;
+      } else if (c1 === 48 && number2 === 0) {
+        res += 0;
+      } else {
+        number2 = number2 * 10 + (c1 - 48);
+      }
+    }
+  }
+  function parseSimpleString(parser) {
+    const start = parser.offset;
+    const buffer2 = parser.buffer;
+    const length = buffer2.length - 1;
+    var offset2 = start;
+    while (offset2 < length) {
+      if (buffer2[offset2++] === 13) {
+        parser.offset = offset2 + 1;
+        if (parser.optionReturnBuffers === true) {
+          return parser.buffer.slice(start, offset2 - 1);
+        }
+        return parser.buffer.toString("utf8", start, offset2 - 1);
+      }
+    }
+  }
+  function parseLength(parser) {
+    const length = parser.buffer.length - 1;
+    var offset2 = parser.offset;
+    var number2 = 0;
+    while (offset2 < length) {
+      const c1 = parser.buffer[offset2++];
+      if (c1 === 13) {
+        parser.offset = offset2 + 1;
+        return number2;
+      }
+      number2 = number2 * 10 + (c1 - 48);
+    }
+  }
+  function parseInteger(parser) {
+    if (parser.optionStringNumbers === true) {
+      return parseStringNumbers(parser);
+    }
+    return parseSimpleNumbers(parser);
+  }
+  function parseBulkString(parser) {
+    const length = parseLength(parser);
+    if (length === undefined) {
+      return;
+    }
+    if (length < 0) {
+      return null;
+    }
+    const offset2 = parser.offset + length;
+    if (offset2 + 2 > parser.buffer.length) {
+      parser.bigStrSize = offset2 + 2;
+      parser.totalChunkSize = parser.buffer.length;
+      parser.bufferCache.push(parser.buffer);
+      return;
+    }
+    const start = parser.offset;
+    parser.offset = offset2 + 2;
+    if (parser.optionReturnBuffers === true) {
+      return parser.buffer.slice(start, offset2);
+    }
+    return parser.buffer.toString("utf8", start, offset2);
+  }
+  function parseError2(parser) {
+    var string2 = parseSimpleString(parser);
+    if (string2 !== undefined) {
+      if (parser.optionReturnBuffers === true) {
+        string2 = string2.toString();
+      }
+      return new ReplyError(string2);
+    }
+  }
+  function handleError(parser, type2) {
+    const err2 = new ParserError("Protocol error, got " + JSON.stringify(String.fromCharCode(type2)) + " as reply type byte", JSON.stringify(parser.buffer), parser.offset);
+    parser.buffer = null;
+    parser.returnFatalError(err2);
+  }
+  function parseArray(parser) {
+    const length = parseLength(parser);
+    if (length === undefined) {
+      return;
+    }
+    if (length < 0) {
+      return null;
+    }
+    const responses = new Array(length);
+    return parseArrayElements(parser, responses, 0);
+  }
+  function pushArrayCache(parser, array2, pos) {
+    parser.arrayCache.push(array2);
+    parser.arrayPos.push(pos);
+  }
+  function parseArrayChunks(parser) {
+    const tmp = parser.arrayCache.pop();
+    var pos = parser.arrayPos.pop();
+    if (parser.arrayCache.length) {
+      const res = parseArrayChunks(parser);
+      if (res === undefined) {
+        pushArrayCache(parser, tmp, pos);
+        return;
+      }
+      tmp[pos++] = res;
+    }
+    return parseArrayElements(parser, tmp, pos);
+  }
+  function parseArrayElements(parser, responses, i) {
+    const bufferLength = parser.buffer.length;
+    while (i < responses.length) {
+      const offset2 = parser.offset;
+      if (parser.offset >= bufferLength) {
+        pushArrayCache(parser, responses, i);
+        return;
+      }
+      const response = parseType(parser, parser.buffer[parser.offset++]);
+      if (response === undefined) {
+        if (!(parser.arrayCache.length || parser.bufferCache.length)) {
+          parser.offset = offset2;
+        }
+        pushArrayCache(parser, responses, i);
+        return;
+      }
+      responses[i] = response;
+      i++;
+    }
+    return responses;
+  }
+  function parseType(parser, type2) {
+    switch (type2) {
+      case 36:
+        return parseBulkString(parser);
+      case 43:
+        return parseSimpleString(parser);
+      case 42:
+        return parseArray(parser);
+      case 58:
+        return parseInteger(parser);
+      case 45:
+        return parseError2(parser);
+      default:
+        return handleError(parser, type2);
+    }
+  }
+  function decreaseBufferPool() {
+    if (bufferPool.length > 50 * 1024) {
+      if (counter === 1 || notDecreased > counter * 2) {
+        const minSliceLen = Math.floor(bufferPool.length / 10);
+        const sliceLength = minSliceLen < bufferOffset ? bufferOffset : minSliceLen;
+        bufferOffset = 0;
+        bufferPool = bufferPool.slice(sliceLength, bufferPool.length);
+      } else {
+        notDecreased++;
+        counter--;
+      }
+    } else {
+      clearInterval(interval2);
+      counter = 0;
+      notDecreased = 0;
+      interval2 = null;
+    }
+  }
+  function resizeBuffer(length) {
+    if (bufferPool.length < length + bufferOffset) {
+      const multiplier = length > 1024 * 1024 * 75 ? 2 : 3;
+      if (bufferOffset > 1024 * 1024 * 111) {
+        bufferOffset = 1024 * 1024 * 50;
+      }
+      bufferPool = Buffer3.allocUnsafe(length * multiplier + bufferOffset);
+      bufferOffset = 0;
+      counter++;
+      if (interval2 === null) {
+        interval2 = setInterval(decreaseBufferPool, 50);
+      }
+    }
+  }
+  function concatBulkString(parser) {
+    const list = parser.bufferCache;
+    const oldOffset = parser.offset;
+    var chunks = list.length;
+    var offset2 = parser.bigStrSize - parser.totalChunkSize;
+    parser.offset = offset2;
+    if (offset2 <= 2) {
+      if (chunks === 2) {
+        return list[0].toString("utf8", oldOffset, list[0].length + offset2 - 2);
+      }
+      chunks--;
+      offset2 = list[list.length - 2].length + offset2;
+    }
+    var res = decoder.write(list[0].slice(oldOffset));
+    for (var i = 1;i < chunks - 1; i++) {
+      res += decoder.write(list[i]);
+    }
+    res += decoder.end(list[i].slice(0, offset2 - 2));
+    return res;
+  }
+  function concatBulkBuffer(parser) {
+    const list = parser.bufferCache;
+    const oldOffset = parser.offset;
+    const length = parser.bigStrSize - oldOffset - 2;
+    var chunks = list.length;
+    var offset2 = parser.bigStrSize - parser.totalChunkSize;
+    parser.offset = offset2;
+    if (offset2 <= 2) {
+      if (chunks === 2) {
+        return list[0].slice(oldOffset, list[0].length + offset2 - 2);
+      }
+      chunks--;
+      offset2 = list[list.length - 2].length + offset2;
+    }
+    resizeBuffer(length);
+    const start = bufferOffset;
+    list[0].copy(bufferPool, start, oldOffset, list[0].length);
+    bufferOffset += list[0].length - oldOffset;
+    for (var i = 1;i < chunks - 1; i++) {
+      list[i].copy(bufferPool, bufferOffset);
+      bufferOffset += list[i].length;
+    }
+    list[i].copy(bufferPool, bufferOffset, 0, offset2 - 2);
+    bufferOffset += offset2 - 2;
+    return bufferPool.slice(start, bufferOffset);
+  }
+
+  class JavascriptRedisParser {
+    constructor(options) {
+      if (!options) {
+        throw new TypeError("Options are mandatory.");
+      }
+      if (typeof options.returnError !== "function" || typeof options.returnReply !== "function") {
+        throw new TypeError("The returnReply and returnError options have to be functions.");
+      }
+      this.setReturnBuffers(!!options.returnBuffers);
+      this.setStringNumbers(!!options.stringNumbers);
+      this.returnError = options.returnError;
+      this.returnFatalError = options.returnFatalError || options.returnError;
+      this.returnReply = options.returnReply;
+      this.reset();
+    }
+    reset() {
+      this.offset = 0;
+      this.buffer = null;
+      this.bigStrSize = 0;
+      this.totalChunkSize = 0;
+      this.bufferCache = [];
+      this.arrayCache = [];
+      this.arrayPos = [];
+    }
+    setReturnBuffers(returnBuffers) {
+      if (typeof returnBuffers !== "boolean") {
+        throw new TypeError("The returnBuffers argument has to be a boolean");
+      }
+      this.optionReturnBuffers = returnBuffers;
+    }
+    setStringNumbers(stringNumbers) {
+      if (typeof stringNumbers !== "boolean") {
+        throw new TypeError("The stringNumbers argument has to be a boolean");
+      }
+      this.optionStringNumbers = stringNumbers;
+    }
+    execute(buffer2) {
+      if (this.buffer === null) {
+        this.buffer = buffer2;
+        this.offset = 0;
+      } else if (this.bigStrSize === 0) {
+        const oldLength = this.buffer.length;
+        const remainingLength = oldLength - this.offset;
+        const newBuffer = Buffer3.allocUnsafe(remainingLength + buffer2.length);
+        this.buffer.copy(newBuffer, 0, this.offset, oldLength);
+        buffer2.copy(newBuffer, remainingLength, 0, buffer2.length);
+        this.buffer = newBuffer;
+        this.offset = 0;
+        if (this.arrayCache.length) {
+          const arr = parseArrayChunks(this);
+          if (arr === undefined) {
+            return;
+          }
+          this.returnReply(arr);
+        }
+      } else if (this.totalChunkSize + buffer2.length >= this.bigStrSize) {
+        this.bufferCache.push(buffer2);
+        var tmp = this.optionReturnBuffers ? concatBulkBuffer(this) : concatBulkString(this);
+        this.bigStrSize = 0;
+        this.bufferCache = [];
+        this.buffer = buffer2;
+        if (this.arrayCache.length) {
+          this.arrayCache[0][this.arrayPos[0]++] = tmp;
+          tmp = parseArrayChunks(this);
+          if (tmp === undefined) {
+            return;
+          }
+        }
+        this.returnReply(tmp);
+      } else {
+        this.bufferCache.push(buffer2);
+        this.totalChunkSize += buffer2.length;
+        return;
+      }
+      while (this.offset < this.buffer.length) {
+        const offset2 = this.offset;
+        const type2 = this.buffer[this.offset++];
+        const response = parseType(this, type2);
+        if (response === undefined) {
+          if (!(this.arrayCache.length || this.bufferCache.length)) {
+            this.offset = offset2;
+          }
+          return;
+        }
+        if (type2 === 45) {
+          this.returnError(response);
+        } else {
+          this.returnReply(response);
+        }
+      }
+      this.buffer = null;
+    }
+  }
+  module.exports = JavascriptRedisParser;
+});
+
+// node_modules/ioredis/built/SubscriptionSet.js
+var require_SubscriptionSet = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+
+  class SubscriptionSet {
+    constructor() {
+      this.set = {
+        subscribe: {},
+        psubscribe: {},
+        ssubscribe: {}
+      };
+    }
+    add(set2, channel) {
+      this.set[mapSet(set2)][channel] = true;
+    }
+    del(set2, channel) {
+      delete this.set[mapSet(set2)][channel];
+    }
+    channels(set2) {
+      return Object.keys(this.set[mapSet(set2)]);
+    }
+    isEmpty() {
+      return this.channels("subscribe").length === 0 && this.channels("psubscribe").length === 0 && this.channels("ssubscribe").length === 0;
+    }
+  }
+  exports.default = SubscriptionSet;
+  function mapSet(set2) {
+    if (set2 === "unsubscribe") {
+      return "subscribe";
+    }
+    if (set2 === "punsubscribe") {
+      return "psubscribe";
+    }
+    if (set2 === "sunsubscribe") {
+      return "ssubscribe";
+    }
+    return set2;
+  }
+});
+
+// node_modules/ioredis/built/DataHandler.js
+var require_DataHandler = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var Command_1 = require_Command();
+  var utils_1 = require_utils5();
+  var RedisParser = require_parser();
+  var SubscriptionSet_1 = require_SubscriptionSet();
+  var debug5 = (0, utils_1.Debug)("dataHandler");
+
+  class DataHandler {
+    constructor(redis, parserOptions) {
+      this.redis = redis;
+      const parser = new RedisParser({
+        stringNumbers: parserOptions.stringNumbers,
+        returnBuffers: true,
+        returnError: (err2) => {
+          this.returnError(err2);
+        },
+        returnFatalError: (err2) => {
+          this.returnFatalError(err2);
+        },
+        returnReply: (reply) => {
+          this.returnReply(reply);
+        }
+      });
+      redis.stream.prependListener("data", (data) => {
+        parser.execute(data);
+      });
+      redis.stream.resume();
+    }
+    returnFatalError(err2) {
+      err2.message += ". Please report this.";
+      this.redis.recoverFromFatalError(err2, err2, { offlineQueue: false });
+    }
+    returnError(err2) {
+      const item = this.shiftCommand(err2);
+      if (!item) {
+        return;
+      }
+      err2.command = {
+        name: item.command.name,
+        args: item.command.args
+      };
+      if (item.command.name == "ssubscribe" && err2.message.includes("MOVED")) {
+        this.redis.emit("moved");
+        return;
+      }
+      this.redis.handleReconnection(err2, item);
+    }
+    returnReply(reply) {
+      if (this.handleMonitorReply(reply)) {
+        return;
+      }
+      if (this.handleSubscriberReply(reply)) {
+        return;
+      }
+      const item = this.shiftCommand(reply);
+      if (!item) {
+        return;
+      }
+      if (Command_1.default.checkFlag("ENTER_SUBSCRIBER_MODE", item.command.name)) {
+        this.redis.condition.subscriber = new SubscriptionSet_1.default;
+        this.redis.condition.subscriber.add(item.command.name, reply[1].toString());
+        if (!fillSubCommand(item.command, reply[2])) {
+          this.redis.commandQueue.unshift(item);
+        }
+      } else if (Command_1.default.checkFlag("EXIT_SUBSCRIBER_MODE", item.command.name)) {
+        if (!fillUnsubCommand(item.command, reply[2])) {
+          this.redis.commandQueue.unshift(item);
+        }
+      } else {
+        item.command.resolve(reply);
+      }
+    }
+    handleSubscriberReply(reply) {
+      if (!this.redis.condition.subscriber) {
+        return false;
+      }
+      const replyType = Array.isArray(reply) ? reply[0].toString() : null;
+      debug5('receive reply "%s" in subscriber mode', replyType);
+      switch (replyType) {
+        case "message":
+          if (this.redis.listeners("message").length > 0) {
+            this.redis.emit("message", reply[1].toString(), reply[2] ? reply[2].toString() : "");
+          }
+          this.redis.emit("messageBuffer", reply[1], reply[2]);
+          break;
+        case "pmessage": {
+          const pattern = reply[1].toString();
+          if (this.redis.listeners("pmessage").length > 0) {
+            this.redis.emit("pmessage", pattern, reply[2].toString(), reply[3].toString());
+          }
+          this.redis.emit("pmessageBuffer", pattern, reply[2], reply[3]);
+          break;
+        }
+        case "smessage": {
+          if (this.redis.listeners("smessage").length > 0) {
+            this.redis.emit("smessage", reply[1].toString(), reply[2] ? reply[2].toString() : "");
+          }
+          this.redis.emit("smessageBuffer", reply[1], reply[2]);
+          break;
+        }
+        case "ssubscribe":
+        case "subscribe":
+        case "psubscribe": {
+          const channel = reply[1].toString();
+          this.redis.condition.subscriber.add(replyType, channel);
+          const item = this.shiftCommand(reply);
+          if (!item) {
+            return;
+          }
+          if (!fillSubCommand(item.command, reply[2])) {
+            this.redis.commandQueue.unshift(item);
+          }
+          break;
+        }
+        case "sunsubscribe":
+        case "unsubscribe":
+        case "punsubscribe": {
+          const channel = reply[1] ? reply[1].toString() : null;
+          if (channel) {
+            this.redis.condition.subscriber.del(replyType, channel);
+          }
+          const count = reply[2];
+          if (Number(count) === 0) {
+            this.redis.condition.subscriber = false;
+          }
+          const item = this.shiftCommand(reply);
+          if (!item) {
+            return;
+          }
+          if (!fillUnsubCommand(item.command, count)) {
+            this.redis.commandQueue.unshift(item);
+          }
+          break;
+        }
+        default: {
+          const item = this.shiftCommand(reply);
+          if (!item) {
+            return;
+          }
+          item.command.resolve(reply);
+        }
+      }
+      return true;
+    }
+    handleMonitorReply(reply) {
+      if (this.redis.status !== "monitoring") {
+        return false;
+      }
+      const replyStr = reply.toString();
+      if (replyStr === "OK") {
+        return false;
+      }
+      const len = replyStr.indexOf(" ");
+      const timestamp2 = replyStr.slice(0, len);
+      const argIndex = replyStr.indexOf('"');
+      const args = replyStr.slice(argIndex + 1, -1).split('" "').map((elem) => elem.replace(/\\"/g, '"'));
+      const dbAndSource = replyStr.slice(len + 2, argIndex - 2).split(" ");
+      this.redis.emit("monitor", timestamp2, args, dbAndSource[1], dbAndSource[0]);
+      return true;
+    }
+    shiftCommand(reply) {
+      const item = this.redis.commandQueue.shift();
+      if (!item) {
+        const message = "Command queue state error. If you can reproduce this, please report it.";
+        const error = new Error(message + (reply instanceof Error ? ` Last error: ${reply.message}` : ` Last reply: ${reply.toString()}`));
+        this.redis.emit("error", error);
+        return null;
+      }
+      return item;
+    }
+  }
+  exports.default = DataHandler;
+  var remainingRepliesMap = new WeakMap;
+  function fillSubCommand(command, count) {
+    let remainingReplies = remainingRepliesMap.has(command) ? remainingRepliesMap.get(command) : command.args.length;
+    remainingReplies -= 1;
+    if (remainingReplies <= 0) {
+      command.resolve(count);
+      remainingRepliesMap.delete(command);
+      return true;
+    }
+    remainingRepliesMap.set(command, remainingReplies);
+    return false;
+  }
+  function fillUnsubCommand(command, count) {
+    let remainingReplies = remainingRepliesMap.has(command) ? remainingRepliesMap.get(command) : command.args.length;
+    if (remainingReplies === 0) {
+      if (Number(count) === 0) {
+        remainingRepliesMap.delete(command);
+        command.resolve(count);
+        return true;
+      }
+      return false;
+    }
+    remainingReplies -= 1;
+    if (remainingReplies <= 0) {
+      command.resolve(count);
+      return true;
+    }
+    remainingRepliesMap.set(command, remainingReplies);
+    return false;
+  }
+});
+
+// node_modules/ioredis/built/redis/event_handler.js
+var require_event_handler = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.readyHandler = exports.errorHandler = exports.closeHandler = exports.connectHandler = undefined;
+  var redis_errors_1 = require_redis_errors();
+  var Command_1 = require_Command();
+  var errors_1 = require_errors();
+  var utils_1 = require_utils5();
+  var DataHandler_1 = require_DataHandler();
+  var debug5 = (0, utils_1.Debug)("connection");
+  function connectHandler(self) {
+    return function() {
+      var _a;
+      self.setStatus("connect");
+      self.resetCommandQueue();
+      let flushed = false;
+      const { connectionEpoch } = self;
+      if (self.condition.auth) {
+        self.auth(self.condition.auth, function(err2) {
+          if (connectionEpoch !== self.connectionEpoch) {
+            return;
+          }
+          if (err2) {
+            if (err2.message.indexOf("no password is set") !== -1) {
+              console.warn("[WARN] Redis server does not require a password, but a password was supplied.");
+            } else if (err2.message.indexOf("without any password configured for the default user") !== -1) {
+              console.warn("[WARN] This Redis server's `default` user does not require a password, but a password was supplied");
+            } else if (err2.message.indexOf("wrong number of arguments for 'auth' command") !== -1) {
+              console.warn(`[ERROR] The server returned "wrong number of arguments for 'auth' command". You are probably passing both username and password to Redis version 5 or below. You should only pass the 'password' option for Redis version 5 and under.`);
+            } else {
+              flushed = true;
+              self.recoverFromFatalError(err2, err2);
+            }
+          }
+        });
+      }
+      if (self.condition.select) {
+        self.select(self.condition.select).catch((err2) => {
+          self.silentEmit("error", err2);
+        });
+      }
+      new DataHandler_1.default(self, {
+        stringNumbers: self.options.stringNumbers
+      });
+      const clientCommandPromises = [];
+      if (self.options.connectionName) {
+        debug5("set the connection name [%s]", self.options.connectionName);
+        clientCommandPromises.push(self.client("setname", self.options.connectionName).catch(utils_1.noop));
+      }
+      if (!self.options.disableClientInfo) {
+        debug5("set the client info");
+        clientCommandPromises.push((0, utils_1.getPackageMeta)().then((packageMeta) => {
+          return self.client("SETINFO", "LIB-VER", packageMeta.version).catch(utils_1.noop);
+        }).catch(utils_1.noop));
+        clientCommandPromises.push(self.client("SETINFO", "LIB-NAME", ((_a = self.options) === null || _a === undefined ? undefined : _a.clientInfoTag) ? `ioredis(${self.options.clientInfoTag})` : "ioredis").catch(utils_1.noop));
+      }
+      Promise.all(clientCommandPromises).catch(utils_1.noop).finally(() => {
+        if (!self.options.enableReadyCheck) {
+          exports.readyHandler(self)();
+        }
+        if (self.options.enableReadyCheck) {
+          self._readyCheck(function(err2, info) {
+            if (connectionEpoch !== self.connectionEpoch) {
+              return;
+            }
+            if (err2) {
+              if (!flushed) {
+                self.recoverFromFatalError(new Error("Ready check failed: " + err2.message), err2);
+              }
+            } else {
+              if (self.connector.check(info)) {
+                exports.readyHandler(self)();
+              } else {
+                self.disconnect(true);
+              }
+            }
+          });
+        }
+      });
+    };
+  }
+  exports.connectHandler = connectHandler;
+  function abortError(command) {
+    const err2 = new redis_errors_1.AbortError("Command aborted due to connection close");
+    err2.command = {
+      name: command.name,
+      args: command.args
+    };
+    return err2;
+  }
+  function abortIncompletePipelines(commandQueue) {
+    var _a;
+    let expectedIndex = 0;
+    for (let i = 0;i < commandQueue.length; ) {
+      const command = (_a = commandQueue.peekAt(i)) === null || _a === undefined ? undefined : _a.command;
+      const pipelineIndex = command.pipelineIndex;
+      if (pipelineIndex === undefined || pipelineIndex === 0) {
+        expectedIndex = 0;
+      }
+      if (pipelineIndex !== undefined && pipelineIndex !== expectedIndex++) {
+        commandQueue.remove(i, 1);
+        command.reject(abortError(command));
+        continue;
+      }
+      i++;
+    }
+  }
+  function abortTransactionFragments(commandQueue) {
+    var _a;
+    for (let i = 0;i < commandQueue.length; ) {
+      const command = (_a = commandQueue.peekAt(i)) === null || _a === undefined ? undefined : _a.command;
+      if (command.name === "multi") {
+        break;
+      }
+      if (command.name === "exec") {
+        commandQueue.remove(i, 1);
+        command.reject(abortError(command));
+        break;
+      }
+      if (command.inTransaction) {
+        commandQueue.remove(i, 1);
+        command.reject(abortError(command));
+      } else {
+        i++;
+      }
+    }
+  }
+  function closeHandler(self) {
+    return function() {
+      const prevStatus = self.status;
+      self.setStatus("close");
+      if (self.commandQueue.length) {
+        abortIncompletePipelines(self.commandQueue);
+      }
+      if (self.offlineQueue.length) {
+        abortTransactionFragments(self.offlineQueue);
+      }
+      if (prevStatus === "ready") {
+        if (!self.prevCondition) {
+          self.prevCondition = self.condition;
+        }
+        if (self.commandQueue.length) {
+          self.prevCommandQueue = self.commandQueue;
+        }
+      }
+      if (self.manuallyClosing) {
+        self.manuallyClosing = false;
+        debug5("skip reconnecting since the connection is manually closed.");
+        return close();
+      }
+      if (typeof self.options.retryStrategy !== "function") {
+        debug5("skip reconnecting because `retryStrategy` is not a function");
+        return close();
+      }
+      const retryDelay = self.options.retryStrategy(++self.retryAttempts);
+      if (typeof retryDelay !== "number") {
+        debug5("skip reconnecting because `retryStrategy` doesn't return a number");
+        return close();
+      }
+      debug5("reconnect in %sms", retryDelay);
+      self.setStatus("reconnecting", retryDelay);
+      self.reconnectTimeout = setTimeout(function() {
+        self.reconnectTimeout = null;
+        self.connect().catch(utils_1.noop);
+      }, retryDelay);
+      const { maxRetriesPerRequest } = self.options;
+      if (typeof maxRetriesPerRequest === "number") {
+        if (maxRetriesPerRequest < 0) {
+          debug5("maxRetriesPerRequest is negative, ignoring...");
+        } else {
+          const remainder = self.retryAttempts % (maxRetriesPerRequest + 1);
+          if (remainder === 0) {
+            debug5("reach maxRetriesPerRequest limitation, flushing command queue...");
+            self.flushQueue(new errors_1.MaxRetriesPerRequestError(maxRetriesPerRequest));
+          }
+        }
+      }
+    };
+    function close() {
+      self.setStatus("end");
+      self.flushQueue(new Error(utils_1.CONNECTION_CLOSED_ERROR_MSG));
+    }
+  }
+  exports.closeHandler = closeHandler;
+  function errorHandler(self) {
+    return function(error) {
+      debug5("error: %s", error);
+      self.silentEmit("error", error);
+    };
+  }
+  exports.errorHandler = errorHandler;
+  function readyHandler(self) {
+    return function() {
+      self.setStatus("ready");
+      self.retryAttempts = 0;
+      if (self.options.monitor) {
+        self.call("monitor").then(() => self.setStatus("monitoring"), (error) => self.emit("error", error));
+        const { sendCommand } = self;
+        self.sendCommand = function(command) {
+          if (Command_1.default.checkFlag("VALID_IN_MONITOR_MODE", command.name)) {
+            return sendCommand.call(self, command);
+          }
+          command.reject(new Error("Connection is in monitoring mode, can't process commands."));
+          return command.promise;
+        };
+        self.once("close", function() {
+          delete self.sendCommand;
+        });
+        return;
+      }
+      const finalSelect = self.prevCondition ? self.prevCondition.select : self.condition.select;
+      if (self.options.readOnly) {
+        debug5("set the connection to readonly mode");
+        self.readonly().catch(utils_1.noop);
+      }
+      if (self.prevCondition) {
+        const condition = self.prevCondition;
+        self.prevCondition = null;
+        if (condition.subscriber && self.options.autoResubscribe) {
+          if (self.condition.select !== finalSelect) {
+            debug5("connect to db [%d]", finalSelect);
+            self.select(finalSelect);
+          }
+          const subscribeChannels = condition.subscriber.channels("subscribe");
+          if (subscribeChannels.length) {
+            debug5("subscribe %d channels", subscribeChannels.length);
+            self.subscribe(subscribeChannels);
+          }
+          const psubscribeChannels = condition.subscriber.channels("psubscribe");
+          if (psubscribeChannels.length) {
+            debug5("psubscribe %d channels", psubscribeChannels.length);
+            self.psubscribe(psubscribeChannels);
+          }
+          const ssubscribeChannels = condition.subscriber.channels("ssubscribe");
+          if (ssubscribeChannels.length) {
+            debug5("ssubscribe %s", ssubscribeChannels.length);
+            for (const channel of ssubscribeChannels) {
+              self.ssubscribe(channel);
+            }
+          }
+        }
+      }
+      if (self.prevCommandQueue) {
+        if (self.options.autoResendUnfulfilledCommands) {
+          debug5("resend %d unfulfilled commands", self.prevCommandQueue.length);
+          while (self.prevCommandQueue.length > 0) {
+            const item = self.prevCommandQueue.shift();
+            if (item.select !== self.condition.select && item.command.name !== "select") {
+              self.select(item.select);
+            }
+            self.sendCommand(item.command, item.stream);
+          }
+        } else {
+          self.prevCommandQueue = null;
+        }
+      }
+      if (self.offlineQueue.length) {
+        debug5("send %d commands in offline queue", self.offlineQueue.length);
+        const offlineQueue = self.offlineQueue;
+        self.resetOfflineQueue();
+        while (offlineQueue.length > 0) {
+          const item = offlineQueue.shift();
+          if (item.select !== self.condition.select && item.command.name !== "select") {
+            self.select(item.select);
+          }
+          self.sendCommand(item.command, item.stream);
+        }
+      }
+      if (self.condition.select !== finalSelect) {
+        debug5("connect to db [%d]", finalSelect);
+        self.select(finalSelect);
+      }
+    };
+  }
+  exports.readyHandler = readyHandler;
+});
+
+// node_modules/ioredis/built/redis/RedisOptions.js
+var require_RedisOptions = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.DEFAULT_REDIS_OPTIONS = undefined;
+  exports.DEFAULT_REDIS_OPTIONS = {
+    port: 6379,
+    host: "localhost",
+    family: 0,
+    connectTimeout: 1e4,
+    disconnectTimeout: 2000,
+    retryStrategy: function(times) {
+      return Math.min(times * 50, 2000);
+    },
+    keepAlive: 0,
+    noDelay: true,
+    connectionName: null,
+    disableClientInfo: false,
+    clientInfoTag: undefined,
+    sentinels: null,
+    name: null,
+    role: "master",
+    sentinelRetryStrategy: function(times) {
+      return Math.min(times * 10, 1000);
+    },
+    sentinelReconnectStrategy: function() {
+      return 60000;
+    },
+    natMap: null,
+    enableTLSForSentinelMode: false,
+    updateSentinels: true,
+    failoverDetector: false,
+    username: null,
+    password: null,
+    db: 0,
+    enableOfflineQueue: true,
+    enableReadyCheck: true,
+    autoResubscribe: true,
+    autoResendUnfulfilledCommands: true,
+    lazyConnect: false,
+    keyPrefix: "",
+    reconnectOnError: null,
+    readOnly: false,
+    stringNumbers: false,
+    maxRetriesPerRequest: 20,
+    maxLoadingRetryTime: 1e4,
+    enableAutoPipelining: false,
+    autoPipeliningIgnoredCommands: [],
+    sentinelMaxConnections: 10
+  };
+});
+
+// node_modules/ioredis/built/Redis.js
+var require_Redis = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  var commands_1 = require_built();
+  var events_1 = __require("events");
+  var standard_as_callback_1 = require_built2();
+  var cluster_1 = require_cluster();
+  var Command_1 = require_Command();
+  var connectors_1 = require_connectors();
+  var SentinelConnector_1 = require_SentinelConnector();
+  var eventHandler = require_event_handler();
+  var RedisOptions_1 = require_RedisOptions();
+  var ScanStream_1 = require_ScanStream();
+  var transaction_1 = require_transaction();
+  var utils_1 = require_utils5();
+  var applyMixin_1 = require_applyMixin();
+  var Commander_1 = require_Commander();
+  var lodash_1 = require_lodash3();
+  var Deque = require_denque();
+  var debug5 = (0, utils_1.Debug)("redis");
+
+  class Redis extends Commander_1.default {
+    constructor(arg1, arg2, arg3) {
+      super();
+      this.status = "wait";
+      this.isCluster = false;
+      this.reconnectTimeout = null;
+      this.connectionEpoch = 0;
+      this.retryAttempts = 0;
+      this.manuallyClosing = false;
+      this._autoPipelines = new Map;
+      this._runningAutoPipelines = new Set;
+      this.parseOptions(arg1, arg2, arg3);
+      events_1.EventEmitter.call(this);
+      this.resetCommandQueue();
+      this.resetOfflineQueue();
+      if (this.options.Connector) {
+        this.connector = new this.options.Connector(this.options);
+      } else if (this.options.sentinels) {
+        const sentinelConnector = new SentinelConnector_1.default(this.options);
+        sentinelConnector.emitter = this;
+        this.connector = sentinelConnector;
+      } else {
+        this.connector = new connectors_1.StandaloneConnector(this.options);
+      }
+      if (this.options.scripts) {
+        Object.entries(this.options.scripts).forEach(([name, definition]) => {
+          this.defineCommand(name, definition);
+        });
+      }
+      if (this.options.lazyConnect) {
+        this.setStatus("wait");
+      } else {
+        this.connect().catch(lodash_1.noop);
+      }
+    }
+    static createClient(...args) {
+      return new Redis(...args);
+    }
+    get autoPipelineQueueSize() {
+      let queued = 0;
+      for (const pipeline2 of this._autoPipelines.values()) {
+        queued += pipeline2.length;
+      }
+      return queued;
+    }
+    connect(callback) {
+      const promise = new Promise((resolve, reject) => {
+        if (this.status === "connecting" || this.status === "connect" || this.status === "ready") {
+          reject(new Error("Redis is already connecting/connected"));
+          return;
+        }
+        this.connectionEpoch += 1;
+        this.setStatus("connecting");
+        const { options } = this;
+        this.condition = {
+          select: options.db,
+          auth: options.username ? [options.username, options.password] : options.password,
+          subscriber: false
+        };
+        const _this = this;
+        (0, standard_as_callback_1.default)(this.connector.connect(function(type2, err2) {
+          _this.silentEmit(type2, err2);
+        }), function(err2, stream) {
+          if (err2) {
+            _this.flushQueue(err2);
+            _this.silentEmit("error", err2);
+            reject(err2);
+            _this.setStatus("end");
+            return;
+          }
+          let CONNECT_EVENT = options.tls ? "secureConnect" : "connect";
+          if ("sentinels" in options && options.sentinels && !options.enableTLSForSentinelMode) {
+            CONNECT_EVENT = "connect";
+          }
+          _this.stream = stream;
+          if (options.noDelay) {
+            stream.setNoDelay(true);
+          }
+          if (typeof options.keepAlive === "number") {
+            if (stream.connecting) {
+              stream.once(CONNECT_EVENT, () => {
+                stream.setKeepAlive(true, options.keepAlive);
+              });
+            } else {
+              stream.setKeepAlive(true, options.keepAlive);
+            }
+          }
+          if (stream.connecting) {
+            stream.once(CONNECT_EVENT, eventHandler.connectHandler(_this));
+            if (options.connectTimeout) {
+              let connectTimeoutCleared = false;
+              stream.setTimeout(options.connectTimeout, function() {
+                if (connectTimeoutCleared) {
+                  return;
+                }
+                stream.setTimeout(0);
+                stream.destroy();
+                const err3 = new Error("connect ETIMEDOUT");
+                err3.errorno = "ETIMEDOUT";
+                err3.code = "ETIMEDOUT";
+                err3.syscall = "connect";
+                eventHandler.errorHandler(_this)(err3);
+              });
+              stream.once(CONNECT_EVENT, function() {
+                connectTimeoutCleared = true;
+                stream.setTimeout(0);
+              });
+            }
+          } else if (stream.destroyed) {
+            const firstError = _this.connector.firstError;
+            if (firstError) {
+              process.nextTick(() => {
+                eventHandler.errorHandler(_this)(firstError);
+              });
+            }
+            process.nextTick(eventHandler.closeHandler(_this));
+          } else {
+            process.nextTick(eventHandler.connectHandler(_this));
+          }
+          if (!stream.destroyed) {
+            stream.once("error", eventHandler.errorHandler(_this));
+            stream.once("close", eventHandler.closeHandler(_this));
+          }
+          const connectionReadyHandler = function() {
+            _this.removeListener("close", connectionCloseHandler);
+            resolve();
+          };
+          var connectionCloseHandler = function() {
+            _this.removeListener("ready", connectionReadyHandler);
+            reject(new Error(utils_1.CONNECTION_CLOSED_ERROR_MSG));
+          };
+          _this.once("ready", connectionReadyHandler);
+          _this.once("close", connectionCloseHandler);
+        });
+      });
+      return (0, standard_as_callback_1.default)(promise, callback);
+    }
+    disconnect(reconnect = false) {
+      if (!reconnect) {
+        this.manuallyClosing = true;
+      }
+      if (this.reconnectTimeout && !reconnect) {
+        clearTimeout(this.reconnectTimeout);
+        this.reconnectTimeout = null;
+      }
+      if (this.status === "wait") {
+        eventHandler.closeHandler(this)();
+      } else {
+        this.connector.disconnect();
+      }
+    }
+    end() {
+      this.disconnect();
+    }
+    duplicate(override) {
+      return new Redis({ ...this.options, ...override });
+    }
+    get mode() {
+      var _a;
+      return this.options.monitor ? "monitor" : ((_a = this.condition) === null || _a === undefined ? undefined : _a.subscriber) ? "subscriber" : "normal";
+    }
+    monitor(callback) {
+      const monitorInstance = this.duplicate({
+        monitor: true,
+        lazyConnect: false
+      });
+      return (0, standard_as_callback_1.default)(new Promise(function(resolve, reject) {
+        monitorInstance.once("error", reject);
+        monitorInstance.once("monitoring", function() {
+          resolve(monitorInstance);
+        });
+      }), callback);
+    }
+    sendCommand(command, stream) {
+      var _a, _b;
+      if (this.status === "wait") {
+        this.connect().catch(lodash_1.noop);
+      }
+      if (this.status === "end") {
+        command.reject(new Error(utils_1.CONNECTION_CLOSED_ERROR_MSG));
+        return command.promise;
+      }
+      if (((_a = this.condition) === null || _a === undefined ? undefined : _a.subscriber) && !Command_1.default.checkFlag("VALID_IN_SUBSCRIBER_MODE", command.name)) {
+        command.reject(new Error("Connection in subscriber mode, only subscriber commands may be used"));
+        return command.promise;
+      }
+      if (typeof this.options.commandTimeout === "number") {
+        command.setTimeout(this.options.commandTimeout);
+      }
+      let writable = this.status === "ready" || !stream && this.status === "connect" && (0, commands_1.exists)(command.name) && ((0, commands_1.hasFlag)(command.name, "loading") || Command_1.default.checkFlag("HANDSHAKE_COMMANDS", command.name));
+      if (!this.stream) {
+        writable = false;
+      } else if (!this.stream.writable) {
+        writable = false;
+      } else if (this.stream._writableState && this.stream._writableState.ended) {
+        writable = false;
+      }
+      if (!writable) {
+        if (!this.options.enableOfflineQueue) {
+          command.reject(new Error("Stream isn't writeable and enableOfflineQueue options is false"));
+          return command.promise;
+        }
+        if (command.name === "quit" && this.offlineQueue.length === 0) {
+          this.disconnect();
+          command.resolve(Buffer.from("OK"));
+          return command.promise;
+        }
+        if (debug5.enabled) {
+          debug5("queue command[%s]: %d -> %s(%o)", this._getDescription(), this.condition.select, command.name, command.args);
+        }
+        this.offlineQueue.push({
+          command,
+          stream,
+          select: this.condition.select
+        });
+      } else {
+        if (debug5.enabled) {
+          debug5("write command[%s]: %d -> %s(%o)", this._getDescription(), (_b = this.condition) === null || _b === undefined ? undefined : _b.select, command.name, command.args);
+        }
+        if (stream) {
+          if ("isPipeline" in stream && stream.isPipeline) {
+            stream.write(command.toWritable(stream.destination.redis.stream));
+          } else {
+            stream.write(command.toWritable(stream));
+          }
+        } else {
+          this.stream.write(command.toWritable(this.stream));
+        }
+        this.commandQueue.push({
+          command,
+          stream,
+          select: this.condition.select
+        });
+        if (Command_1.default.checkFlag("WILL_DISCONNECT", command.name)) {
+          this.manuallyClosing = true;
+        }
+        if (this.options.socketTimeout !== undefined && this.socketTimeoutTimer === undefined) {
+          this.setSocketTimeout();
+        }
+      }
+      if (command.name === "select" && (0, utils_1.isInt)(command.args[0])) {
+        const db2 = parseInt(command.args[0], 10);
+        if (this.condition.select !== db2) {
+          this.condition.select = db2;
+          this.emit("select", db2);
+          debug5("switch to db [%d]", this.condition.select);
+        }
+      }
+      return command.promise;
+    }
+    setSocketTimeout() {
+      this.socketTimeoutTimer = setTimeout(() => {
+        this.stream.destroy(new Error(`Socket timeout. Expecting data, but didn't receive any in ${this.options.socketTimeout}ms.`));
+        this.socketTimeoutTimer = undefined;
+      }, this.options.socketTimeout);
+      this.stream.once("data", () => {
+        clearTimeout(this.socketTimeoutTimer);
+        this.socketTimeoutTimer = undefined;
+        if (this.commandQueue.length === 0)
+          return;
+        this.setSocketTimeout();
+      });
+    }
+    scanStream(options) {
+      return this.createScanStream("scan", { options });
+    }
+    scanBufferStream(options) {
+      return this.createScanStream("scanBuffer", { options });
+    }
+    sscanStream(key, options) {
+      return this.createScanStream("sscan", { key, options });
+    }
+    sscanBufferStream(key, options) {
+      return this.createScanStream("sscanBuffer", { key, options });
+    }
+    hscanStream(key, options) {
+      return this.createScanStream("hscan", { key, options });
+    }
+    hscanBufferStream(key, options) {
+      return this.createScanStream("hscanBuffer", { key, options });
+    }
+    zscanStream(key, options) {
+      return this.createScanStream("zscan", { key, options });
+    }
+    zscanBufferStream(key, options) {
+      return this.createScanStream("zscanBuffer", { key, options });
+    }
+    silentEmit(eventName, arg) {
+      let error;
+      if (eventName === "error") {
+        error = arg;
+        if (this.status === "end") {
+          return;
+        }
+        if (this.manuallyClosing) {
+          if (error instanceof Error && (error.message === utils_1.CONNECTION_CLOSED_ERROR_MSG || error.syscall === "connect" || error.syscall === "read")) {
+            return;
+          }
+        }
+      }
+      if (this.listeners(eventName).length > 0) {
+        return this.emit.apply(this, arguments);
+      }
+      if (error && error instanceof Error) {
+        console.error("[ioredis] Unhandled error event:", error.stack);
+      }
+      return false;
+    }
+    recoverFromFatalError(_commandError, err2, options) {
+      this.flushQueue(err2, options);
+      this.silentEmit("error", err2);
+      this.disconnect(true);
+    }
+    handleReconnection(err2, item) {
+      var _a;
+      let needReconnect = false;
+      if (this.options.reconnectOnError && !Command_1.default.checkFlag("IGNORE_RECONNECT_ON_ERROR", item.command.name)) {
+        needReconnect = this.options.reconnectOnError(err2);
+      }
+      switch (needReconnect) {
+        case 1:
+        case true:
+          if (this.status !== "reconnecting") {
+            this.disconnect(true);
+          }
+          item.command.reject(err2);
+          break;
+        case 2:
+          if (this.status !== "reconnecting") {
+            this.disconnect(true);
+          }
+          if (((_a = this.condition) === null || _a === undefined ? undefined : _a.select) !== item.select && item.command.name !== "select") {
+            this.select(item.select);
+          }
+          this.sendCommand(item.command);
+          break;
+        default:
+          item.command.reject(err2);
+      }
+    }
+    _getDescription() {
+      let description;
+      if ("path" in this.options && this.options.path) {
+        description = this.options.path;
+      } else if (this.stream && this.stream.remoteAddress && this.stream.remotePort) {
+        description = this.stream.remoteAddress + ":" + this.stream.remotePort;
+      } else if ("host" in this.options && this.options.host) {
+        description = this.options.host + ":" + this.options.port;
+      } else {
+        description = "";
+      }
+      if (this.options.connectionName) {
+        description += ` (${this.options.connectionName})`;
+      }
+      return description;
+    }
+    resetCommandQueue() {
+      this.commandQueue = new Deque;
+    }
+    resetOfflineQueue() {
+      this.offlineQueue = new Deque;
+    }
+    parseOptions(...args) {
+      const options = {};
+      let isTls = false;
+      for (let i = 0;i < args.length; ++i) {
+        const arg = args[i];
+        if (arg === null || typeof arg === "undefined") {
+          continue;
+        }
+        if (typeof arg === "object") {
+          (0, lodash_1.defaults)(options, arg);
+        } else if (typeof arg === "string") {
+          (0, lodash_1.defaults)(options, (0, utils_1.parseURL)(arg));
+          if (arg.startsWith("rediss://")) {
+            isTls = true;
+          }
+        } else if (typeof arg === "number") {
+          options.port = arg;
+        } else {
+          throw new Error("Invalid argument " + arg);
+        }
+      }
+      if (isTls) {
+        (0, lodash_1.defaults)(options, { tls: true });
+      }
+      (0, lodash_1.defaults)(options, Redis.defaultOptions);
+      if (typeof options.port === "string") {
+        options.port = parseInt(options.port, 10);
+      }
+      if (typeof options.db === "string") {
+        options.db = parseInt(options.db, 10);
+      }
+      this.options = (0, utils_1.resolveTLSProfile)(options);
+    }
+    setStatus(status2, arg) {
+      if (debug5.enabled) {
+        debug5("status[%s]: %s -> %s", this._getDescription(), this.status || "[empty]", status2);
+      }
+      this.status = status2;
+      process.nextTick(this.emit.bind(this, status2, arg));
+    }
+    createScanStream(command, { key, options = {} }) {
+      return new ScanStream_1.default({
+        objectMode: true,
+        key,
+        redis: this,
+        command,
+        ...options
+      });
+    }
+    flushQueue(error, options) {
+      options = (0, lodash_1.defaults)({}, options, {
+        offlineQueue: true,
+        commandQueue: true
+      });
+      let item;
+      if (options.offlineQueue) {
+        while (item = this.offlineQueue.shift()) {
+          item.command.reject(error);
+        }
+      }
+      if (options.commandQueue) {
+        if (this.commandQueue.length > 0) {
+          if (this.stream) {
+            this.stream.removeAllListeners("data");
+          }
+          while (item = this.commandQueue.shift()) {
+            item.command.reject(error);
+          }
+        }
+      }
+    }
+    _readyCheck(callback) {
+      const _this = this;
+      this.info(function(err2, res) {
+        if (err2) {
+          if (err2.message && err2.message.includes("NOPERM")) {
+            console.warn(`Skipping the ready check because INFO command fails: "${err2.message}". You can disable ready check with "enableReadyCheck". More: https://github.com/luin/ioredis/wiki/Disable-ready-check.`);
+            return callback(null, {});
+          }
+          return callback(err2);
+        }
+        if (typeof res !== "string") {
+          return callback(null, res);
+        }
+        const info = {};
+        const lines = res.split(`\r
+`);
+        for (let i = 0;i < lines.length; ++i) {
+          const [fieldName, ...fieldValueParts] = lines[i].split(":");
+          const fieldValue = fieldValueParts.join(":");
+          if (fieldValue) {
+            info[fieldName] = fieldValue;
+          }
+        }
+        if (!info.loading || info.loading === "0") {
+          callback(null, info);
+        } else {
+          const loadingEtaMs = (info.loading_eta_seconds || 1) * 1000;
+          const retryTime = _this.options.maxLoadingRetryTime && _this.options.maxLoadingRetryTime < loadingEtaMs ? _this.options.maxLoadingRetryTime : loadingEtaMs;
+          debug5("Redis server still loading, trying again in " + retryTime + "ms");
+          setTimeout(function() {
+            _this._readyCheck(callback);
+          }, retryTime);
+        }
+      }).catch(lodash_1.noop);
+    }
+  }
+  Redis.Cluster = cluster_1.default;
+  Redis.Command = Command_1.default;
+  Redis.defaultOptions = RedisOptions_1.DEFAULT_REDIS_OPTIONS;
+  (0, applyMixin_1.default)(Redis, events_1.EventEmitter);
+  (0, transaction_1.addTransactionSupport)(Redis.prototype);
+  exports.default = Redis;
+});
+
+// node_modules/ioredis/built/index.js
+var require_built3 = __commonJS((exports, module) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.print = exports.ReplyError = exports.SentinelIterator = exports.SentinelConnector = exports.AbstractConnector = exports.Pipeline = exports.ScanStream = exports.Command = exports.Cluster = exports.Redis = exports.default = undefined;
+  exports = module.exports = require_Redis().default;
+  var Redis_1 = require_Redis();
+  Object.defineProperty(exports, "default", { enumerable: true, get: function() {
+    return Redis_1.default;
+  } });
+  var Redis_2 = require_Redis();
+  Object.defineProperty(exports, "Redis", { enumerable: true, get: function() {
+    return Redis_2.default;
+  } });
+  var cluster_1 = require_cluster();
+  Object.defineProperty(exports, "Cluster", { enumerable: true, get: function() {
+    return cluster_1.default;
+  } });
+  var Command_1 = require_Command();
+  Object.defineProperty(exports, "Command", { enumerable: true, get: function() {
+    return Command_1.default;
+  } });
+  var ScanStream_1 = require_ScanStream();
+  Object.defineProperty(exports, "ScanStream", { enumerable: true, get: function() {
+    return ScanStream_1.default;
+  } });
+  var Pipeline_1 = require_Pipeline();
+  Object.defineProperty(exports, "Pipeline", { enumerable: true, get: function() {
+    return Pipeline_1.default;
+  } });
+  var AbstractConnector_1 = require_AbstractConnector();
+  Object.defineProperty(exports, "AbstractConnector", { enumerable: true, get: function() {
+    return AbstractConnector_1.default;
+  } });
+  var SentinelConnector_1 = require_SentinelConnector();
+  Object.defineProperty(exports, "SentinelConnector", { enumerable: true, get: function() {
+    return SentinelConnector_1.default;
+  } });
+  Object.defineProperty(exports, "SentinelIterator", { enumerable: true, get: function() {
+    return SentinelConnector_1.SentinelIterator;
+  } });
+  exports.ReplyError = require_redis_errors().ReplyError;
+  Object.defineProperty(exports, "Promise", {
+    get() {
+      console.warn("ioredis v5 does not support plugging third-party Promise library anymore. Native Promise will be used.");
+      return Promise;
+    },
+    set(_lib) {
+      console.warn("ioredis v5 does not support plugging third-party Promise library anymore. Native Promise will be used.");
+    }
+  });
+  function print2(err2, reply) {
+    if (err2) {
+      console.log("Error: " + err2);
+    } else {
+      console.log("Reply: " + reply);
+    }
+  }
+  exports.print = print2;
 });
 
 // node_modules/@sinclair/typebox/build/esm/type/guard/value.mjs
@@ -18221,10 +26755,8 @@ function Create(errorType, schema, path, value, errors = []) {
     errors
   };
 }
-function* FromAny3(schema, references, path, value) {
-}
-function* FromArgument3(schema, references, path, value) {
-}
+function* FromAny3(schema, references, path, value) {}
+function* FromArgument3(schema, references, path, value) {}
 function* FromArray8(schema, references, path, value) {
   if (!IsArray2(value)) {
     return yield Create(ValueErrorType.Array, schema, path, value);
@@ -18584,8 +27116,7 @@ function* FromUint8Array3(schema, references, path, value) {
     yield Create(ValueErrorType.Uint8ArrayMinByteLength, schema, path, value);
   }
 }
-function* FromUnknown3(schema, references, path, value) {
-}
+function* FromUnknown3(schema, references, path, value) {}
 function* FromVoid3(schema, references, path, value) {
   if (!TypeSystemPolicy.IsVoidLike(value))
     yield Create(ValueErrorType.Void, schema, path, value);
@@ -18808,8 +27339,7 @@ function FromAsyncIterator6(schema, references) {
   if (HasPropertyKey2(schema, "default")) {
     return FromDefault(schema.default);
   } else {
-    return async function* () {
-    }();
+    return async function* () {}();
   }
 }
 function FromBigInt4(schema, references) {
@@ -18893,8 +27423,7 @@ function FromIterator6(schema, references) {
   if (HasPropertyKey2(schema, "default")) {
     return FromDefault(schema.default);
   } else {
-    return function* () {
-    }();
+    return function* () {}();
   }
 }
 function FromLiteral5(schema, references) {
@@ -19235,8 +27764,7 @@ function FromConstructor7(schema, references, value) {
   if (Check(schema, references, value))
     return Create2(schema, references);
   const required = new Set(schema.returns.required || []);
-  const result = function() {
-  };
+  const result = function() {};
   for (const [key, property] of Object.entries(schema.returns.properties)) {
     if (!required.has(key) && value.prototype[key] === undefined)
       continue;
@@ -21344,8 +29872,7 @@ var require_dist = __commonJS2((exports) => {
   exports.stringifySetCookie = stringifySetCookie;
   exports.serialize = stringifySetCookie;
   var cookieNameRegExp = /^[\u0021-\u003A\u003C\u003E-\u007E]+$/, cookieValueRegExp = /^[\u0021-\u003A\u003C-\u007E]*$/, domainValueRegExp = /^([.]?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/i, pathValueRegExp = /^[\u0020-\u003A\u003D-\u007E]*$/, maxAgeRegExp = /^-?\d+$/, __toString = Object.prototype.toString, NullObject = (() => {
-    let C = function() {
-    };
+    let C = function() {};
     return C.prototype = Object.create(null), C;
   })();
   function parseCookie(str, options) {
@@ -21827,15 +30354,13 @@ var mergeDeep = (target, source, options) => {
       if ((override || !(key in target)) && !Object.isFrozen(target))
         try {
           target[key] = value;
-        } catch {
-        }
+        } catch {}
       continue;
     }
     if (!Object.isFrozen(target[key]))
       try {
         target[key] = mergeDeep(target[key], value, { skipKeys, override, mergeArray, seen });
-      } catch {
-      }
+      } catch {}
   }
   return seen.delete(source), target;
 };
@@ -22058,8 +30583,7 @@ class PromiseGroup {
   onFinally;
   root = null;
   promises = [];
-  constructor(onError = console.error, onFinally = () => {
-  }) {
+  constructor(onError = console.error, onFinally = () => {}) {
     this.onError = onError;
     this.onFinally = onFinally;
   }
@@ -22949,8 +31473,7 @@ class Cookie {
           }
           this.valueHash = newHash;
         }
-      } catch {
-      }
+      } catch {}
     if (!(this.name in this.jar))
       this.jar[this.name] = { ...this.initial };
     this.jar[this.name].value = value;
@@ -23055,8 +31578,7 @@ var parseCookie = async (set2, cookieString, { secrets, sign, ...initial } = {})
       if (starts === 123 && ends === 125 || starts === 91 && ends === 93)
         try {
           value = JSON.parse(value);
-        } catch {
-        }
+        } catch {}
     }
     if (sign === true || sign?.includes(name)) {
       if (!secrets)
@@ -23197,8 +31719,7 @@ var createStreamHandler = ({ mapResponse, mapCompactResponse }) => async (genera
       end = true;
       try {
         controller.close();
-      } catch {
-      }
+      } catch {}
     }), !init || init.value instanceof ReadableStream)
       ;
     else if (init.value !== undefined && init.value !== null)
@@ -23238,8 +31759,7 @@ var createStreamHandler = ({ mapResponse, mapCompactResponse }) => async (genera
     }
     try {
       controller.close();
-    } catch {
-    }
+    } catch {}
   } }), set2);
 };
 async function* streamResponse(response) {
@@ -23802,8 +32322,7 @@ function parseQueryStandardSchema(input, startIndex = 0) {
     if (finalValue.charCodeAt(0) === 91 && finalValue.charCodeAt(finalValue.length - 1) === 93) {
       try {
         finalValue = JSON.parse(finalValue);
-      } catch {
-      }
+      } catch {}
       if (currentValue === undefined)
         result[finalKey] = finalValue;
       else if (Array.isArray(currentValue))
@@ -23813,8 +32332,7 @@ function parseQueryStandardSchema(input, startIndex = 0) {
     } else if (finalValue.charCodeAt(0) === 123 && finalValue.charCodeAt(finalValue.length - 1) === 125) {
       try {
         finalValue = JSON.parse(finalValue);
-      } catch {
-      }
+      } catch {}
       if (currentValue === undefined)
         result[finalKey] = finalValue;
       else if (Array.isArray(currentValue))
@@ -24525,8 +33043,7 @@ var createCleaner = (schema) => (value) => {
   if (typeof value === "object")
     try {
       return exports_value2.Clean(schema, value);
-    } catch {
-    }
+    } catch {}
   return value;
 };
 var getSchemaValidator = (s, { models = {}, dynamic = false, modules, normalize = false, additionalProperties = false, forceAdditionalProperties = false, coerce = false, additionalCoerce = [], validators, sanitize: sanitize2 } = {}) => {
@@ -24626,8 +33143,7 @@ var getSchemaValidator = (s, { models = {}, dynamic = false, modules, normalize 
         newValue = mergeDeep(newValue, values[i]);
       return { value: newValue };
     }
-    let validator = { provider: "standard", schema, references: "", checkFunc: () => {
-    }, code: "", Check: Check2, Errors: (value) => Check2(value)?.then?.((x) => x?.issues), Code: () => "", Decode: Check2, Encode: (value) => value, hasAdditionalProperties: false, hasDefault: false, isOptional: false, hasTransform: false, hasRef: false };
+    let validator = { provider: "standard", schema, references: "", checkFunc: () => {}, code: "", Check: Check2, Errors: (value) => Check2(value)?.then?.((x) => x?.issues), Code: () => "", Decode: Check2, Encode: (value) => value, hasAdditionalProperties: false, hasDefault: false, isOptional: false, hasTransform: false, hasRef: false };
     return validator.parse = (v) => {
       try {
         return validator.Decode(validator.Clean?.(v) ?? v);
@@ -24668,8 +33184,7 @@ var getSchemaValidator = (s, { models = {}, dynamic = false, modules, normalize 
     } });
   if (dynamic)
     if (Kind in schema) {
-      let validator = { provider: "typebox", schema, references: "", checkFunc: () => {
-      }, code: "", Check: (value) => exports_value2.Check(schema, value), Errors: (value) => exports_value2.Errors(schema, value), Code: () => "", Clean: createCleaner(schema), Decode: (value) => exports_value2.Decode(schema, value), Encode: (value) => exports_value2.Encode(schema, value), get hasAdditionalProperties() {
+      let validator = { provider: "typebox", schema, references: "", checkFunc: () => {}, code: "", Check: (value) => exports_value2.Check(schema, value), Errors: (value) => exports_value2.Errors(schema, value), Code: () => "", Clean: createCleaner(schema), Decode: (value) => exports_value2.Decode(schema, value), Encode: (value) => exports_value2.Encode(schema, value), get hasAdditionalProperties() {
         if ("~hasAdditionalProperties" in this)
           return this["~hasAdditionalProperties"];
         return this["~hasAdditionalProperties"] = hasAdditionalProperties(schema);
@@ -24718,8 +33233,7 @@ var getSchemaValidator = (s, { models = {}, dynamic = false, modules, normalize 
         }
       }, validator;
     } else {
-      let validator = { provider: "standard", schema, references: "", checkFunc: () => {
-      }, code: "", Check: (v) => schema["~standard"].validate(v), Errors(value) {
+      let validator = { provider: "standard", schema, references: "", checkFunc: () => {}, code: "", Check: (v) => schema["~standard"].validate(v), Errors(value) {
         let response = schema["~standard"].validate(value);
         if (response instanceof Promise)
           throw Error("Async validation is not supported in non-dynamic schema");
@@ -24894,10 +33408,8 @@ var createReport = ({ context = "c", trace = [], addFn }) => {
   if (!trace.length)
     return () => {
       return { resolveChild() {
-        return () => {
-        };
-      }, resolve() {
-      } };
+        return () => {};
+      }, resolve() {} };
     };
   for (let i = 0;i < trace.length; i++)
     addFn(`let report${i},reportChild${i},reportErr${i},reportErrChild${i};let trace${i}=${context}[ELYSIA_TRACE]?.[${i}]??trace[${i}](${context});
@@ -26829,8 +35341,7 @@ var createWSMessageParser = (parse2) => {
       if (start === 34 || start === 47 || start === 91 || start === 123)
         try {
           message = JSON.parse(message);
-        } catch {
-        }
+        } catch {}
       else if (isNumericString(message))
         message = +message;
       else if (message === "true")
@@ -27065,8 +35576,7 @@ for(const [k,v] of c.request.headers.entries())c.headers[k]=v
       if (result instanceof Promise)
         await result;
     }
-    let errorHandlers = [...options.error ? Array.isArray(options.error) ? options.error : [options.error] : [], ...(app.event.error ?? []).map((x) => typeof x === "function" ? x : x.fn)].filter((x) => x), hasCustomErrorHandlers = errorHandlers.length > 0, handleErrors = !hasCustomErrorHandlers ? () => {
-    } : async (ws, error) => {
+    let errorHandlers = [...options.error ? Array.isArray(options.error) ? options.error : [options.error] : [], ...(app.event.error ?? []).map((x) => typeof x === "function" ? x : x.fn)].filter((x) => x), hasCustomErrorHandlers = errorHandlers.length > 0, handleErrors = !hasCustomErrorHandlers ? () => {} : async (ws, error) => {
       for (let handleError of errorHandlers) {
         let response2 = handleError(Object.assign(context, { error }));
         if (response2 instanceof Promise)
@@ -27471,8 +35981,7 @@ var createDynamicErrorHandler = (app) => {
         if (raw instanceof Response)
           context.set.status = raw.status;
         context.response = raw;
-      } catch (toResponseError) {
-      }
+      } catch (toResponseError) {}
     if (!context.response && app.event.error)
       for (let i = 0;i < app.event.error.length; i++) {
         let response = app.event.error[i].fn(errorContext);
@@ -27554,8 +36063,7 @@ class Elysia {
   _promisedModules;
   get promisedModules() {
     if (!this._promisedModules)
-      this._promisedModules = new PromiseGroup(console.error, () => {
-      });
+      this._promisedModules = new PromiseGroup(console.error, () => {});
     return this._promisedModules;
   }
   constructor(config = {}) {
@@ -28917,10 +37425,8 @@ __export(exports_external, {
 // node_modules/zod/v3/helpers/util.js
 var util;
 (function(util2) {
-  util2.assertEqual = (_2) => {
-  };
-  function assertIs(_arg) {
-  }
+  util2.assertEqual = (_2) => {};
+  function assertIs(_arg) {}
   util2.assertIs = assertIs;
   function assertNever(_x) {
     throw new Error;
@@ -31240,8 +39746,7 @@ class ZodObject extends ZodType {
           });
           status2.dirty();
         }
-      } else if (unknownKeys === "strip") {
-      } else {
+      } else if (unknownKeys === "strip") {} else {
         throw new Error(`Internal ZodObject error: invalid unknownKeys value.`);
       }
     } else {
@@ -33053,8 +41558,7 @@ var isSerializedError = (value) => {
       if (Object.hasOwn(value, SERIALIZED_KEY) && value[SERIALIZED_KEY] === SERIALIZED_VALUE)
         return value;
     }
-  } catch {
-  }
+  } catch {}
 };
 var deserializeError$1 = (subject, allowUnknown = false) => {
   const requiredFields = ["name", "message"];
@@ -33184,8 +41688,7 @@ var rethrowError = (prefix) => {
   return (err2) => {
     try {
       err2.message &&= `${prefix}; ${err2.message}`;
-    } catch (_noopErr) {
-    } finally {
+    } catch (_noopErr) {} finally {
       throw err2;
     }
   };
@@ -33464,8 +41967,7 @@ var devServerHost = (env3 = allProcessEnv()) => {
       return;
     try {
       return Boolean(new URL(v));
-    } catch {
-    }
+    } catch {}
   });
 };
 var checkFns = ((checks) => checks)({
@@ -33560,8 +42062,7 @@ var getMode = ({ env: env3 = allProcessEnv(), client, explicitMode } = {}) => {
           explicitDevUrl: new URL(env3[envKeys.InngestDevMode]),
           env: env3
         });
-      } catch {
-      }
+      } catch {}
     const envIsDev = parseAsBoolean(env3[envKeys.InngestDevMode]);
     if (typeof envIsDev === "boolean")
       return new Mode({
@@ -33588,20 +42089,17 @@ var allProcessEnv = () => {
   try {
     if (process.env)
       return process.env;
-  } catch (_err) {
-  }
+  } catch (_err) {}
   try {
     const env3 = Deno.env.toObject();
     if (env3)
       return env3;
-  } catch (_err) {
-  }
+  } catch (_err) {}
   try {
     const env3 = Netlify.env.toObject();
     if (env3)
       return env3;
-  } catch (_err) {
-  }
+  } catch (_err) {}
   return {};
 };
 var inngestHeaders = (opts) => {
@@ -33676,8 +42174,7 @@ var getFetch = (givenFetch) => {
   try {
     if (typeof globalThis !== "undefined" && "fetch" in globalThis)
       return fetch.bind(globalThis);
-  } catch (_err) {
-  }
+  } catch (_err) {}
   if (typeof fetch !== "undefined")
     return fetch;
   return __require2("cross-fetch");
@@ -33781,8 +42278,7 @@ var createDeferredPromise = () => {
 };
 var createDeferredPromiseWithStack = () => {
   const settledPromises = [];
-  let rotateQueue = () => {
-  };
+  let rotateQueue = () => {};
   const results = async function* () {
     while (true) {
       const next = settledPromises.shift();
@@ -33867,8 +42363,7 @@ var goIntervalTiming = async (fn) => {
   const resultPromise = runAsPromise(fn);
   try {
     await resultPromise;
-  } catch {
-  }
+  } catch {}
   const end = Date.now();
   return {
     resultPromise,
@@ -36492,14 +44987,12 @@ function detectPrng(allowInsecure = false, root) {
     try {
       const nodeCrypto = __require("crypto");
       return () => nodeCrypto.randomBytes(1).readUInt8() / 255;
-    } catch (e) {
-    }
+    } catch (e) {}
   }
   if (allowInsecure) {
     try {
       console.error("secure crypto unusable, falling back to insecure Math.random()!");
-    } catch (e) {
-    }
+    } catch (e) {}
     return () => Math.random();
   }
   throw createError("secure crypto unusable, insecure Math.random not allowed");
@@ -38384,8 +46877,7 @@ var Flush = bytes_default().H().end();
 var SSLRequest = bytes_default().i32(8).i32(80877103).end(8);
 var ExecuteUnnamed = Buffer.concat([bytes_default().E().str(bytes_default.N).i32(0).end(), Sync]);
 var DescribeUnnamed = bytes_default().D().str("S").str(bytes_default.N).end();
-var noop = () => {
-};
+var noop = () => {};
 var retryRoutines = new Set([
   "FetchPreparedStatement",
   "RevalidateCachedQuery",
@@ -38976,8 +47468,7 @@ function Connection(options, queues = {}, { onopen = noop, onend = noop, onclose
   function NoticeResponse(x) {
     onnotice ? onnotice(parseError(x)) : console.log(parseError(x));
   }
-  function EmptyQueryResponse() {
-  }
+  function EmptyQueryResponse() {}
   function FunctionCallResponse() {
     errored(Errors2.notSupported("FunctionCallResponse"));
   }
@@ -39080,8 +47571,7 @@ function timer(fn, seconds) {
 }
 
 // node_modules/postgres/src/subscribe.js
-var noop2 = () => {
-};
+var noop2 = () => {};
 function Subscribe(postgres2, options) {
   const subscribers = new Map, slot = "postgresjs_" + Math.random().toString(36).slice(2), state = {};
   let connection2, stream, ended = false;
@@ -39212,10 +47702,8 @@ function parse2(x, state, parsers2, handle, transform2) {
         i += 4;
       }
     },
-    Y: () => {
-    },
-    O: () => {
-    },
+    Y: () => {},
+    O: () => {},
     B: (x2) => {
       state.date = Time(x2.readBigInt64BE(9));
       state.lsn = x2.subarray(1, 9);
@@ -39255,10 +47743,8 @@ function parse2(x, state, parsers2, handle, transform2) {
         old: xs && xs.row
       });
     },
-    T: () => {
-    },
-    C: () => {
-    }
+    T: () => {},
+    C: () => {}
   }).reduce(char, {})[x[0]](x);
 }
 function tuples(x, columns, xi, transform2) {
@@ -39448,8 +47934,7 @@ function Postgres(a, b2) {
       onclose() {
         Object.entries(listen.channels).forEach(([name2, { listeners }]) => {
           delete listen.channels[name2];
-          Promise.all(listeners.map((l) => listen(name2, l.fn, l.onlisten).catch(() => {
-          })));
+          Promise.all(listeners.map((l) => listen(name2, l.fn, l.onlisten).catch(() => {})));
         });
       },
       onnotify(c, x) {
@@ -39795,8 +48280,7 @@ class DefaultLogger {
 
 class NoopLogger {
   static [entityKind] = "NoopLogger";
-  logQuery() {
-  }
+  logQuery() {}
 }
 
 // node_modules/drizzle-orm/query-promise.js
@@ -44439,8 +52923,7 @@ class PgDatabase {
         this.query[tableName] = new RelationalQueryBuilder(schema.fullSchema, this._.schema, this._.tableNamesMap, schema.fullSchema[tableName], columns, dialect, session);
       }
     }
-    this.$cache = { invalidate: async (_params) => {
-    } };
+    this.$cache = { invalidate: async (_params) => {} };
   }
   static [entityKind] = "PgDatabase";
   query;
@@ -44557,10 +53040,8 @@ class NoopCache extends Cache {
   async get(_key) {
     return;
   }
-  async put(_hashedQuery, _response, _tables, _config) {
-  }
-  async onMutate(_params) {
-  }
+  async put(_hashedQuery, _response, _tables, _config) {}
+  async onMutate(_params) {}
 }
 async function hashQuery(sql2, params) {
   const dataToHash = `${sql2}-${JSON.stringify(params)}`;
@@ -44895,6 +53376,7 @@ __export(exports_schema, {
   userPointTransactions: () => userPointTransactions,
   performanceCategory: () => performanceCategory,
   globalParams: () => globalParams,
+  cryptoPriceHistory: () => cryptoPriceHistory,
   cryptoPerformanceLogs: () => cryptoPerformanceLogs,
   cryptoMarketCache: () => cryptoMarketCache,
   comments: () => comments,
@@ -44954,6 +53436,23 @@ var cryptoPerformanceLogs = pgTable("crypto_performance_logs", {
 });
 // src/db/schema/crypto_market_cache.ts
 var cryptoMarketCache = pgTable("crypto_market_cache", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  roundId: uuid("round_id").notNull(),
+  coingeckoId: varchar("coingecko_id", { length: 255 }).notNull(),
+  symbol: varchar("symbol", { length: 50 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  imageUrl: text("image_url"),
+  currentPrice: decimal("current_price", { precision: 20, scale: 8 }).notNull(),
+  marketCap: decimal("market_cap", { precision: 30, scale: 2 }),
+  marketCapRank: integer("market_cap_rank"),
+  totalVolume: decimal("total_volume", { precision: 30, scale: 2 }),
+  volumeRank: integer("volume_rank"),
+  priceChangePercentage24h: decimal("price_change_percentage_24h", { precision: 10, scale: 4 }).notNull(),
+  snapshotTimestamp: timestamp("snapshot_timestamp").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+// src/db/schema/crypto_price_history.ts
+var cryptoPriceHistory = pgTable("crypto_price_history", {
   id: uuid("id").defaultRandom().primaryKey(),
   roundId: uuid("round_id").notNull(),
   coingeckoId: varchar("coingecko_id", { length: 255 }).notNull(),
@@ -45303,13 +53802,25 @@ var cryptoMoversRoutes = new Elysia({ prefix: "/api/crypto-movers" }).get("/", a
 // src/routes/crypto-cache.ts
 var cryptoCacheRoutes = new Elysia({ prefix: "/api/crypto-cache" }).get("/", async ({ set: set2 }) => {
   try {
-    const cachedData = await db.select().from(cryptoMarketCache).orderBy(desc(cryptoMarketCache.volumeRank));
-    if (cachedData.length === 0) {
+    const latestRound = await db.select({
+      roundId: cryptoMarketCache.roundId,
+      snapshotTimestamp: cryptoMarketCache.snapshotTimestamp
+    }).from(cryptoMarketCache).orderBy(desc(cryptoMarketCache.snapshotTimestamp)).limit(1);
+    if (latestRound.length === 0) {
       set2.status = 404;
       return {
         success: false,
         error: "No cached data available. Please run a snapshot first.",
         message: "Trigger a snapshot via POST /api/trigger-snapshot"
+      };
+    }
+    const latestRoundId = latestRound[0].roundId;
+    const cachedData = await db.select().from(cryptoMarketCache).where(eq(cryptoMarketCache.roundId, latestRoundId)).orderBy(desc(cryptoMarketCache.volumeRank));
+    if (cachedData.length === 0) {
+      set2.status = 404;
+      return {
+        success: false,
+        error: "No cached data available for latest round."
       };
     }
     const formattedData = cachedData.map((coin) => ({
@@ -45347,7 +53858,7 @@ var cryptoCacheRoutes = new Elysia({ prefix: "/api/crypto-cache" }).get("/", asy
       roundId: cryptoMarketCache.roundId,
       snapshotTimestamp: cryptoMarketCache.snapshotTimestamp,
       createdAt: cryptoMarketCache.createdAt
-    }).from(cryptoMarketCache).limit(1);
+    }).from(cryptoMarketCache).orderBy(desc(cryptoMarketCache.snapshotTimestamp)).limit(1);
     if (firstRecord.length === 0) {
       set2.status = 404;
       return {
@@ -45355,13 +53866,14 @@ var cryptoCacheRoutes = new Elysia({ prefix: "/api/crypto-cache" }).get("/", asy
         error: "No cached data available"
       };
     }
-    const totalCount = await db.select().from(cryptoMarketCache);
+    const latestRoundId = firstRecord[0].roundId;
+    const roundRecords = await db.select().from(cryptoMarketCache).where(eq(cryptoMarketCache.roundId, latestRoundId));
     return {
       success: true,
       roundId: firstRecord[0].roundId,
       snapshotTimestamp: firstRecord[0].snapshotTimestamp.toISOString(),
       cacheCreatedAt: firstRecord[0].createdAt.toISOString(),
-      totalRecords: totalCount.length
+      totalRecords: roundRecords.length
     };
   } catch (error) {
     console.error("Error fetching cache metadata:", error);
@@ -48062,8 +56574,7 @@ function getHumanReadableErrorMessage(code, context = {}) {
 function getErrorMessage2(code, context = {}) {
   if (true) {
     return getHumanReadableErrorMessage(code, context);
-  } else {
-  }
+  } else {}
 }
 var SolanaError = class extends Error {
   cause = this.cause;
@@ -48342,8 +56853,7 @@ function* run(value, struct, options = {}) {
 
 class Struct {
   constructor(props) {
-    const { type, schema, validator, refiner, coercer = (value) => value, entries = function* () {
-    } } = props;
+    const { type, schema, validator, refiner, coercer = (value) => value, entries = function* () {} } = props;
     this.type = type;
     this.schema = schema;
     this.entries = entries;
@@ -49853,8 +58363,7 @@ function ecdsa(Point, hash2, ecdsaOpts = {}) {
     toHex(format) {
       return bytesToHex(this.toBytes(format));
     }
-    assertValidity() {
-    }
+    assertValidity() {}
     static fromCompact(hex) {
       return Signature2.fromBytes(ensureBytes("sig", hex), "compact");
     }
@@ -51714,8 +60223,7 @@ var SYSTEM_INSTRUCTION_LAYOUTS = Object.freeze({
 });
 
 class SystemProgram {
-  constructor() {
-  }
+  constructor() {}
   static createAccount(params) {
     const type2 = SYSTEM_INSTRUCTION_LAYOUTS.Create;
     const data = encodeData(type2, {
@@ -52014,8 +60522,7 @@ SystemProgram.programId = new PublicKey("11111111111111111111111111111111");
 var CHUNK_SIZE = PACKET_DATA_SIZE - 300;
 
 class Loader {
-  constructor() {
-  }
+  constructor() {}
   static getMinNumSignatures(dataLength) {
     return 2 * (Math.ceil(dataLength / Loader.chunkSize) + 1 + 1);
   }
@@ -52143,8 +60650,7 @@ class Loader {
           if (currentSlot > context.slot) {
             break;
           }
-        } catch {
-        }
+        } catch {}
         await new Promise((resolve) => setTimeout(resolve, Math.round(MS_PER_SLOT / 2)));
       }
     }
@@ -54339,8 +62845,7 @@ class Connection2 {
               }
               break;
             default:
-              ((_2) => {
-              })(commitmentForStatus);
+              ((_2) => {})(commitmentForStatus);
           }
           result = {
             context: signatureStatus.context,
@@ -55363,8 +63868,7 @@ class Connection2 {
       (async () => {
         try {
           await this._rpcWebSocket.notify("ping");
-        } catch {
-        }
+        } catch {}
       })();
     }, 5000);
     this._updateSubscriptions();
@@ -55405,8 +63909,7 @@ class Connection2 {
         stateChangeCallbacks.forEach((cb) => {
           try {
             cb(nextSubscription.state);
-          } catch {
-          }
+          } catch {}
         });
       }
     }
@@ -55414,8 +63917,7 @@ class Connection2 {
   _onSubscriptionStateChange(clientSubscriptionId, callback) {
     const hash2 = this._subscriptionHashByClientSubscriptionId[clientSubscriptionId];
     if (hash2 == null) {
-      return () => {
-      };
+      return () => {};
     }
     const stateChangeCallbacks = this._subscriptionStateChangeCallbacksByHash[hash2] ||= new Set;
     stateChangeCallbacks.add(callback);
@@ -55749,8 +64251,7 @@ class Connection2 {
           callback(notification.result, context);
           try {
             this.removeSignatureListener(clientSubscriptionId);
-          } catch (_err) {
-          }
+          } catch (_err) {}
         }
       },
       method: "signatureSubscribe",
@@ -55772,8 +64273,7 @@ class Connection2 {
         callback(notification, context);
         try {
           this.removeSignatureListener(clientSubscriptionId);
-        } catch (_err) {
-        }
+        } catch (_err) {}
       },
       method: "signatureSubscribe",
       unsubscribeMethod: "signatureUnsubscribe"
@@ -55869,8 +64369,7 @@ var LOOKUP_TABLE_INSTRUCTION_LAYOUTS = Object.freeze({
   }
 });
 class AddressLookupTableProgram {
-  constructor() {
-  }
+  constructor() {}
   static createLookupTable(params) {
     const [lookupTableAddress, bumpSeed] = PublicKey.findProgramAddressSync([params.authority.toBuffer(), getU64Encoder().encode(params.recentSlot)], this.programId);
     const type2 = LOOKUP_TABLE_INSTRUCTION_LAYOUTS.CreateLookupTable;
@@ -56012,8 +64511,7 @@ var COMPUTE_BUDGET_INSTRUCTION_LAYOUTS = Object.freeze({
 });
 
 class ComputeBudgetProgram {
-  constructor() {
-  }
+  constructor() {}
   static requestUnits(params) {
     const type2 = COMPUTE_BUDGET_INSTRUCTION_LAYOUTS.RequestUnits;
     const data = encodeData(type2, params);
@@ -56060,8 +64558,7 @@ var SIGNATURE_BYTES = 64;
 var ED25519_INSTRUCTION_LAYOUT = BufferLayout.struct([BufferLayout.u8("numSignatures"), BufferLayout.u8("padding"), BufferLayout.u16("signatureOffset"), BufferLayout.u16("signatureInstructionIndex"), BufferLayout.u16("publicKeyOffset"), BufferLayout.u16("publicKeyInstructionIndex"), BufferLayout.u16("messageDataOffset"), BufferLayout.u16("messageDataSize"), BufferLayout.u16("messageInstructionIndex")]);
 
 class Ed25519Program {
-  constructor() {
-  }
+  constructor() {}
   static createInstructionWithPublicKey(params) {
     const {
       publicKey: publicKey2,
@@ -56133,8 +64630,7 @@ var SIGNATURE_OFFSETS_SERIALIZED_SIZE = 11;
 var SECP256K1_INSTRUCTION_LAYOUT = BufferLayout.struct([BufferLayout.u8("numSignatures"), BufferLayout.u16("signatureOffset"), BufferLayout.u8("signatureInstructionIndex"), BufferLayout.u16("ethAddressOffset"), BufferLayout.u8("ethAddressInstructionIndex"), BufferLayout.u16("messageDataOffset"), BufferLayout.u16("messageDataSize"), BufferLayout.u8("messageInstructionIndex"), BufferLayout.blob(20, "ethAddress"), BufferLayout.blob(64, "signature"), BufferLayout.u8("recoveryId")]);
 
 class Secp256k1Program {
-  constructor() {
-  }
+  constructor() {}
   static publicKeyToEthAddress(publicKey2) {
     assert3(publicKey2.length === PUBLIC_KEY_BYTES, `Public key must be ${PUBLIC_KEY_BYTES} bytes but received ${publicKey2.length} bytes`);
     try {
@@ -56287,8 +64783,7 @@ var StakeAuthorizationLayout = Object.freeze({
 });
 
 class StakeProgram {
-  constructor() {
-  }
+  constructor() {}
   static initialize(params) {
     const {
       stakePubkey,
@@ -56696,8 +65191,7 @@ var VoteAuthorizationLayout = Object.freeze({
 });
 
 class VoteProgram {
-  constructor() {
-  }
+  constructor() {}
   static initializeAccount(params) {
     const {
       votePubkey,
@@ -57044,8 +65538,6 @@ var triggerSnapshotRoute = new Elysia({ prefix: "/api" }).post("/trigger-snapsho
     const worstPerformers = sorted.slice(-5).reverse();
     console.log(`   \uD83D\uDE80 Top gainer: ${topGainers[0]?.name} (${topGainers[0]?.price_change_percentage_24h}%)`);
     console.log(`   \uD83D\uDCC9 Worst performer: ${worstPerformers[0]?.name} (${worstPerformers[0]?.price_change_percentage_24h}%)`);
-    await db.execute(sql`TRUNCATE TABLE crypto_market_cache`);
-    console.log(`   \uD83D\uDDD1\uFE0F  Purged crypto_market_cache table`);
     const cacheRecords = filteredData.map((coin) => ({
       roundId,
       coingeckoId: coin.id,
@@ -57060,6 +65552,10 @@ var triggerSnapshotRoute = new Elysia({ prefix: "/api" }).post("/trigger-snapsho
       priceChangePercentage24h: coin.price_change_percentage_24h.toString(),
       snapshotTimestamp
     }));
+    await db.insert(cryptoMarketCache).values(cacheRecords);
+    console.log(`   \uD83D\uDCBE Inserted ${cacheRecords.length} new records into crypto_market_cache (roundId: ${roundId})`);
+    await db.delete(cryptoMarketCache).where(sql`${cryptoMarketCache.roundId} != ${roundId}`);
+    console.log(`   \uD83D\uDDD1\uFE0F  Cleaned up old records from previous rounds`);
     console.log(`   \uD83E\uDE99 Checking coin metadata...`);
     let newCoinsAdded = 0;
     let coinsUpdated = 0;
@@ -57090,8 +65586,6 @@ var triggerSnapshotRoute = new Elysia({ prefix: "/api" }).post("/trigger-snapsho
       }
     }
     console.log(`   \u2728 Coin metadata: ${newCoinsAdded} new, ${coinsUpdated} updated`);
-    await db.insert(cryptoMarketCache).values(cacheRecords);
-    console.log(`   \uD83D\uDCBE Inserted ${cacheRecords.length} records into crypto_market_cache`);
     const records = [];
     for (let i = 0;i < topGainers.length; i++) {
       const coin = topGainers[i];
@@ -57301,6 +65795,136 @@ var activityRoutes = new Elysia({ prefix: "/activity" }).get("/:symbol", async (
   })
 });
 
+// src/lib/redis.ts
+var import_ioredis = __toESM(require_built3(), 1);
+var redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+var redis = new import_ioredis.default(redisUrl, {
+  maxRetriesPerRequest: 3,
+  lazyConnect: true
+});
+redis.on("connect", () => {
+  console.log("\uD83D\uDCE1 Redis connected");
+});
+redis.on("error", (err2) => {
+  console.error("\u274C Redis error:", err2.message);
+});
+var SENTIMENT_CACHE_TTL = 120;
+var SENTIMENT_CACHE_KEY = "sentiment:predictions";
+
+// src/lib/solana-predictions.ts
+var PROGRAM_ID = new PublicKey("2yAxvbLUuzNYjGiL3RPzjt8qjWGEGX5UJMm1FmA1WajM");
+var USER_PREDICTIONS_SEED = "user_predictions";
+function parseFixedString(bytes) {
+  return new TextDecoder().decode(bytes).trimEnd();
+}
+function getUserPredictionsPda(userPubkey) {
+  return PublicKey.findProgramAddressSync([Buffer.from(USER_PREDICTIONS_SEED), userPubkey.toBuffer()], PROGRAM_ID);
+}
+async function getAllInitializedUsers(connection2) {
+  try {
+    const accounts = await connection2.getProgramAccounts(PROGRAM_ID, {
+      filters: [
+        {
+          dataSize: 196
+        }
+      ]
+    });
+    const users = accounts.map((account) => {
+      try {
+        const data = account.account.data;
+        const owner = new PublicKey(data.slice(8, 40));
+        const offset2 = 40 + 30 + 30 + 40 + 40;
+        const points = Number(data.readBigUInt64LE(offset2));
+        const lastUpdated = Number(data.readBigInt64LE(offset2 + 8));
+        return {
+          pubkey: owner,
+          points,
+          lastUpdated
+        };
+      } catch (err2) {
+        console.error("Error parsing account:", err2);
+        return null;
+      }
+    }).filter((user) => user !== null);
+    return users;
+  } catch (error) {
+    console.error("Error fetching all users:", error);
+    return [];
+  }
+}
+async function fetchUserPredictions(connection2, userPubkey) {
+  try {
+    const [userPredictionsPda] = getUserPredictionsPda(userPubkey);
+    const accountInfo = await connection2.getAccountInfo(userPredictionsPda);
+    if (!accountInfo || accountInfo.data.length === 0) {
+      return null;
+    }
+    const data = accountInfo.data;
+    const owner = new PublicKey(data.slice(8, 40));
+    let offset2 = 40;
+    const topPerformer = [];
+    for (let i = 0;i < 5; i++) {
+      topPerformer.push(parseFixedString(data.slice(offset2, offset2 + 6)));
+      offset2 += 6;
+    }
+    const worstPerformer = [];
+    for (let i = 0;i < 5; i++) {
+      worstPerformer.push(parseFixedString(data.slice(offset2, offset2 + 6)));
+      offset2 += 6;
+    }
+    const topPerformerTimestamps = [];
+    for (let i = 0;i < 5; i++) {
+      topPerformerTimestamps.push(Number(data.readBigInt64LE(offset2)));
+      offset2 += 8;
+    }
+    const worstPerformerTimestamps = [];
+    for (let i = 0;i < 5; i++) {
+      worstPerformerTimestamps.push(Number(data.readBigInt64LE(offset2)));
+      offset2 += 8;
+    }
+    const points = Number(data.readBigUInt64LE(offset2));
+    const lastUpdated = Number(data.readBigInt64LE(offset2 + 8));
+    return {
+      owner,
+      topPerformer,
+      worstPerformer,
+      topPerformerTimestamps,
+      worstPerformerTimestamps,
+      points,
+      lastUpdated
+    };
+  } catch (error) {
+    console.error(`Error fetching user predictions for ${userPubkey.toBase58()}:`, error);
+    return null;
+  }
+}
+async function fetchAllUserPredictions(connection2) {
+  console.log("   \uD83D\uDCE1 Fetching all initialized users from blockchain...");
+  const allUsers = await getAllInitializedUsers(connection2);
+  console.log(`   \uD83D\uDC65 Found ${allUsers.length} initialized users`);
+  if (allUsers.length === 0) {
+    return [];
+  }
+  const usersWithPredictions = await Promise.all(allUsers.map(async (user) => {
+    try {
+      const predictions = await fetchUserPredictions(connection2, user.pubkey);
+      if (!predictions) {
+        return null;
+      }
+      return {
+        userAddress: user.pubkey.toBase58(),
+        predictions
+      };
+    } catch (err2) {
+      console.error(`   \u26A0\uFE0F  Error fetching predictions for ${user.pubkey.toBase58()}:`, err2);
+      return null;
+    }
+  }));
+  const validPredictions = usersWithPredictions.filter((item) => item !== null);
+  console.log(`   \u2705 Successfully fetched predictions for ${validPredictions.length} users`);
+  return validPredictions;
+}
+
 // src/routes/coin-sentiment.ts
 var POINTS_MAP = {
   top_performer: {
@@ -57318,32 +65942,82 @@ var POINTS_MAP = {
     5: -10
   }
 };
-var coinSentimentRoutes = new Elysia().get("/coin-sentiment", async () => {
-  try {
-    const unprocessedPredictions = await db.select().from(userPredictionsSnapshots).where(and(eq(userPredictionsSnapshots.processed, false), isNotNull(userPredictionsSnapshots.symbol)));
-    const sentimentMap = new Map;
-    for (const prediction of unprocessedPredictions) {
-      const { symbol, predictionType, rank } = prediction;
-      if (!symbol)
-        continue;
-      const points = POINTS_MAP[predictionType]?.[rank] || 0;
-      if (!sentimentMap.has(symbol)) {
-        sentimentMap.set(symbol, {
-          score: 0,
-          total: 0,
-          topCount: 0,
-          worstCount: 0
+function transformBlockchainPredictions(allUserPredictions) {
+  const cachedPredictions = [];
+  for (const { userAddress, predictions } of allUserPredictions) {
+    for (let rank = 0;rank < 5; rank++) {
+      const symbol = predictions.topPerformer[rank];
+      if (symbol && symbol.trim() !== "") {
+        cachedPredictions.push({
+          walletAddress: userAddress,
+          predictionType: "top_performer",
+          rank: rank + 1,
+          symbol: symbol.toUpperCase()
         });
       }
-      const current = sentimentMap.get(symbol);
-      current.score += points;
-      current.total += 1;
-      if (predictionType === "top_performer") {
-        current.topCount += 1;
-      } else {
-        current.worstCount += 1;
+    }
+    for (let rank = 0;rank < 5; rank++) {
+      const symbol = predictions.worstPerformer[rank];
+      if (symbol && symbol.trim() !== "") {
+        cachedPredictions.push({
+          walletAddress: userAddress,
+          predictionType: "worst_performer",
+          rank: rank + 1,
+          symbol: symbol.toUpperCase()
+        });
       }
     }
+  }
+  return cachedPredictions;
+}
+function calculateSentiment(predictions) {
+  const sentimentMap = new Map;
+  for (const prediction of predictions) {
+    const { symbol, predictionType, rank } = prediction;
+    if (!symbol)
+      continue;
+    const points = POINTS_MAP[predictionType]?.[rank] || 0;
+    if (!sentimentMap.has(symbol)) {
+      sentimentMap.set(symbol, {
+        score: 0,
+        total: 0,
+        topCount: 0,
+        worstCount: 0
+      });
+    }
+    const current = sentimentMap.get(symbol);
+    current.score += points;
+    current.total += 1;
+    if (predictionType === "top_performer") {
+      current.topCount += 1;
+    } else {
+      current.worstCount += 1;
+    }
+  }
+  return sentimentMap;
+}
+var coinSentimentRoutes = new Elysia().get("/coin-sentiment", async () => {
+  try {
+    let predictions;
+    const cachedData = await redis.get(SENTIMENT_CACHE_KEY);
+    if (cachedData) {
+      const parsed = JSON.parse(cachedData);
+      predictions = parsed.predictions;
+      console.log(`\uD83D\uDCE6 Sentiment: Cache hit (${predictions.length} predictions, cached ${Math.round((Date.now() - parsed.cachedAt) / 1000)}s ago)`);
+    } else {
+      console.log("\uD83D\uDD17 Sentiment: Cache miss, fetching from blockchain...");
+      const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+      const connection2 = new Connection2(rpcUrl, "confirmed");
+      const allUserPredictions = await fetchAllUserPredictions(connection2);
+      predictions = transformBlockchainPredictions(allUserPredictions);
+      const cacheData = {
+        predictions,
+        cachedAt: Date.now()
+      };
+      await redis.setex(SENTIMENT_CACHE_KEY, SENTIMENT_CACHE_TTL, JSON.stringify(cacheData));
+      console.log(`\u2705 Sentiment: Cached ${predictions.length} predictions for ${SENTIMENT_CACHE_TTL}s`);
+    }
+    const sentimentMap = calculateSentiment(predictions);
     const sentimentData = Array.from(sentimentMap.entries()).map(([symbol, data]) => ({
       symbol,
       sentimentScore: data.score,
@@ -57493,6 +66167,125 @@ var userPredictionsRoutes = new Elysia({ prefix: "/user-predictions" }).get("/:w
   params: t.Object({
     walletAddress: t.String()
   })
+});
+
+// src/routes/results.ts
+var resultsRoutes = new Elysia({ prefix: "/api/results" }).get("/", async ({ set: set2 }) => {
+  try {
+    const latestRecord = await db.select({
+      roundId: cryptoPerformanceLogs.roundId,
+      snapshotTimestamp: cryptoPerformanceLogs.snapshotTimestamp
+    }).from(cryptoPerformanceLogs).orderBy(desc(cryptoPerformanceLogs.snapshotTimestamp)).limit(1);
+    if (latestRecord.length === 0) {
+      set2.status = 404;
+      return {
+        success: false,
+        error: "No rounds available. Please trigger a snapshot first."
+      };
+    }
+    const roundId = latestRecord[0].roundId;
+    const roundData = await db.select().from(cryptoPerformanceLogs).where(eq(cryptoPerformanceLogs.roundId, roundId)).orderBy(cryptoPerformanceLogs.performanceRank);
+    const topGainers = roundData.filter((r) => r.performanceCategory === "top_gainer").sort((a, b2) => a.performanceRank - b2.performanceRank);
+    const worstPerformers = roundData.filter((r) => r.performanceCategory === "worst_performer").sort((a, b2) => a.performanceRank - b2.performanceRank);
+    return {
+      success: true,
+      roundId,
+      snapshotTimestamp: latestRecord[0].snapshotTimestamp.toISOString(),
+      topGainers: topGainers.map((r) => ({
+        rank: r.performanceRank,
+        symbol: r.symbol,
+        name: r.name,
+        image: r.imageUrl,
+        price: parseFloat(r.currentPrice),
+        priceChange24h: parseFloat(r.priceChangePercentage24h)
+      })),
+      worstPerformers: worstPerformers.map((r) => ({
+        rank: r.performanceRank,
+        symbol: r.symbol,
+        name: r.name,
+        image: r.imageUrl,
+        price: parseFloat(r.currentPrice),
+        priceChange24h: parseFloat(r.priceChangePercentage24h)
+      }))
+    };
+  } catch (error) {
+    console.error("Error fetching results:", error);
+    set2.status = 500;
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch results"
+    };
+  }
+}).get("/rounds", async ({ set: set2 }) => {
+  try {
+    const allRecords = await db.select({
+      roundId: cryptoPerformanceLogs.roundId,
+      snapshotTimestamp: cryptoPerformanceLogs.snapshotTimestamp
+    }).from(cryptoPerformanceLogs).orderBy(desc(cryptoPerformanceLogs.snapshotTimestamp));
+    const roundMap = new Map;
+    for (const record2 of allRecords) {
+      if (!roundMap.has(record2.roundId)) {
+        roundMap.set(record2.roundId, record2.snapshotTimestamp);
+      }
+    }
+    const rounds = Array.from(roundMap.entries()).slice(0, 10).map(([roundId, snapshotTimestamp]) => ({
+      roundId,
+      snapshotTimestamp: snapshotTimestamp.toISOString()
+    }));
+    return {
+      success: true,
+      rounds
+    };
+  } catch (error) {
+    console.error("Error fetching rounds:", error);
+    set2.status = 500;
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch rounds"
+    };
+  }
+}).get("/:roundId", async ({ params, set: set2 }) => {
+  try {
+    const { roundId } = params;
+    const roundData = await db.select().from(cryptoPerformanceLogs).where(eq(cryptoPerformanceLogs.roundId, roundId)).orderBy(cryptoPerformanceLogs.performanceRank);
+    if (roundData.length === 0) {
+      set2.status = 404;
+      return {
+        success: false,
+        error: "Round not found"
+      };
+    }
+    const topGainers = roundData.filter((r) => r.performanceCategory === "top_gainer").sort((a, b2) => a.performanceRank - b2.performanceRank);
+    const worstPerformers = roundData.filter((r) => r.performanceCategory === "worst_performer").sort((a, b2) => a.performanceRank - b2.performanceRank);
+    return {
+      success: true,
+      roundId,
+      snapshotTimestamp: roundData[0].snapshotTimestamp.toISOString(),
+      topGainers: topGainers.map((r) => ({
+        rank: r.performanceRank,
+        symbol: r.symbol,
+        name: r.name,
+        image: r.imageUrl,
+        price: parseFloat(r.currentPrice),
+        priceChange24h: parseFloat(r.priceChangePercentage24h)
+      })),
+      worstPerformers: worstPerformers.map((r) => ({
+        rank: r.performanceRank,
+        symbol: r.symbol,
+        name: r.name,
+        image: r.imageUrl,
+        price: parseFloat(r.currentPrice),
+        priceChange24h: parseFloat(r.priceChangePercentage24h)
+      }))
+    };
+  } catch (error) {
+    console.error("Error fetching round:", error);
+    set2.status = 500;
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch round"
+    };
+  }
 });
 
 // node_modules/inngest/index.js
@@ -57969,8 +66762,7 @@ var Inngest = class Inngest2 {
     this._appVersion = appVersion;
   }
   get ready() {
-    return this.middleware.then(() => {
-    });
+    return this.middleware.then(() => {});
   }
   setEnvVars(env3 = allProcessEnv()) {
     this.mode = getMode({
@@ -58309,122 +67101,6 @@ var helloWorld = inngest.createFunction({ id: "hello-world" }, { event: "hello/w
 
 // src/inngest/crypto-snapshot.ts
 import { randomUUID as randomUUID2 } from "crypto";
-
-// src/lib/solana-predictions.ts
-var PROGRAM_ID = new PublicKey("2yAxvbLUuzNYjGiL3RPzjt8qjWGEGX5UJMm1FmA1WajM");
-var USER_PREDICTIONS_SEED = "user_predictions";
-function parseFixedString(bytes) {
-  return new TextDecoder().decode(bytes).trimEnd();
-}
-function getUserPredictionsPda(userPubkey) {
-  return PublicKey.findProgramAddressSync([Buffer.from(USER_PREDICTIONS_SEED), userPubkey.toBuffer()], PROGRAM_ID);
-}
-async function getAllInitializedUsers(connection2) {
-  try {
-    const accounts = await connection2.getProgramAccounts(PROGRAM_ID, {
-      filters: [
-        {
-          dataSize: 196
-        }
-      ]
-    });
-    const users = accounts.map((account) => {
-      try {
-        const data = account.account.data;
-        const owner = new PublicKey(data.slice(8, 40));
-        const offset2 = 40 + 30 + 30 + 40 + 40;
-        const points = Number(data.readBigUInt64LE(offset2));
-        const lastUpdated = Number(data.readBigInt64LE(offset2 + 8));
-        return {
-          pubkey: owner,
-          points,
-          lastUpdated
-        };
-      } catch (err2) {
-        console.error("Error parsing account:", err2);
-        return null;
-      }
-    }).filter((user) => user !== null);
-    return users;
-  } catch (error) {
-    console.error("Error fetching all users:", error);
-    return [];
-  }
-}
-async function fetchUserPredictions(connection2, userPubkey) {
-  try {
-    const [userPredictionsPda] = getUserPredictionsPda(userPubkey);
-    const accountInfo = await connection2.getAccountInfo(userPredictionsPda);
-    if (!accountInfo || accountInfo.data.length === 0) {
-      return null;
-    }
-    const data = accountInfo.data;
-    const owner = new PublicKey(data.slice(8, 40));
-    let offset2 = 40;
-    const topPerformer = [];
-    for (let i = 0;i < 5; i++) {
-      topPerformer.push(parseFixedString(data.slice(offset2, offset2 + 6)));
-      offset2 += 6;
-    }
-    const worstPerformer = [];
-    for (let i = 0;i < 5; i++) {
-      worstPerformer.push(parseFixedString(data.slice(offset2, offset2 + 6)));
-      offset2 += 6;
-    }
-    const topPerformerTimestamps = [];
-    for (let i = 0;i < 5; i++) {
-      topPerformerTimestamps.push(Number(data.readBigInt64LE(offset2)));
-      offset2 += 8;
-    }
-    const worstPerformerTimestamps = [];
-    for (let i = 0;i < 5; i++) {
-      worstPerformerTimestamps.push(Number(data.readBigInt64LE(offset2)));
-      offset2 += 8;
-    }
-    const points = Number(data.readBigUInt64LE(offset2));
-    const lastUpdated = Number(data.readBigInt64LE(offset2 + 8));
-    return {
-      owner,
-      topPerformer,
-      worstPerformer,
-      topPerformerTimestamps,
-      worstPerformerTimestamps,
-      points,
-      lastUpdated
-    };
-  } catch (error) {
-    console.error(`Error fetching user predictions for ${userPubkey.toBase58()}:`, error);
-    return null;
-  }
-}
-async function fetchAllUserPredictions(connection2) {
-  console.log("   \uD83D\uDCE1 Fetching all initialized users from blockchain...");
-  const allUsers = await getAllInitializedUsers(connection2);
-  console.log(`   \uD83D\uDC65 Found ${allUsers.length} initialized users`);
-  if (allUsers.length === 0) {
-    return [];
-  }
-  const usersWithPredictions = await Promise.all(allUsers.map(async (user) => {
-    try {
-      const predictions = await fetchUserPredictions(connection2, user.pubkey);
-      if (!predictions) {
-        return null;
-      }
-      return {
-        userAddress: user.pubkey.toBase58(),
-        predictions
-      };
-    } catch (err2) {
-      console.error(`   \u26A0\uFE0F  Error fetching predictions for ${user.pubkey.toBase58()}:`, err2);
-      return null;
-    }
-  }));
-  const validPredictions = usersWithPredictions.filter((item) => item !== null);
-  console.log(`   \u2705 Successfully fetched predictions for ${validPredictions.length} users`);
-  return validPredictions;
-}
-
-// src/inngest/crypto-snapshot.ts
 var cryptoSnapshot = inngest.createFunction({ id: "crypto-snapshot" }, process.env.CRYPTO_SNAPSHOT_ON === "true" ? {
   cron: process.env.CRYPTO_SNAPSHOT_FREQUENCY_MINUTES ? `*/${process.env.CRYPTO_SNAPSHOT_FREQUENCY_MINUTES} * * * *` : "*/15 * * * *"
 } : { event: "crypto/snapshot.manual" }, async ({ event, step: step2 }) => {
@@ -58459,8 +67135,6 @@ var cryptoSnapshot = inngest.createFunction({ id: "crypto-snapshot" }, process.e
     return { roundId, topGainers, worstPerformers, filteredData };
   });
   const cacheCount = await step2.run("populate-cache", async () => {
-    await db.execute(sql`TRUNCATE TABLE crypto_market_cache`);
-    console.log(`   \uD83D\uDDD1\uFE0F  Purged crypto_market_cache table`);
     const cacheRecords = filterAndRank.filteredData.map((coin) => ({
       roundId: filterAndRank.roundId,
       coingeckoId: coin.id,
@@ -58475,6 +67149,10 @@ var cryptoSnapshot = inngest.createFunction({ id: "crypto-snapshot" }, process.e
       priceChangePercentage24h: coin.price_change_percentage_24h.toString(),
       snapshotTimestamp
     }));
+    await db.insert(cryptoMarketCache).values(cacheRecords);
+    console.log(`   \uD83D\uDCBE Inserted ${cacheRecords.length} new records into crypto_market_cache (roundId: ${filterAndRank.roundId})`);
+    const deleteResult = await db.delete(cryptoMarketCache).where(sql`${cryptoMarketCache.roundId} != ${filterAndRank.roundId}`);
+    console.log(`   \uD83D\uDDD1\uFE0F  Cleaned up old records from previous rounds`);
     console.log(`   \uD83E\uDE99 Checking coin metadata...`);
     let newCoinsAdded = 0;
     let coinsUpdated = 0;
@@ -58505,8 +67183,8 @@ var cryptoSnapshot = inngest.createFunction({ id: "crypto-snapshot" }, process.e
       }
     }
     console.log(`   \u2728 Coin metadata: ${newCoinsAdded} new, ${coinsUpdated} updated`);
-    await db.insert(cryptoMarketCache).values(cacheRecords);
-    console.log(`   \uD83D\uDCBE Inserted ${cacheRecords.length} records into crypto_market_cache`);
+    await db.insert(cryptoPriceHistory).values(cacheRecords);
+    console.log(`   \uD83D\uDCCA Inserted ${cacheRecords.length} records into crypto_price_history`);
     return cacheRecords.length;
   });
   const insertedCount = await step2.run("insert-performance-logs", async () => {
@@ -59153,5 +67831,5 @@ var inngestHandler = serve2({
   client: inngest,
   functions
 });
-var app = new Elysia().use(cors()).use(getCoinsRoute).use(cryptoMoversRoutes).use(cryptoCacheRoutes).use(buybackWalletRoutes).use(triggerSnapshotRoute).use(commentsRoutes).use(activityRoutes).use(coinSentimentRoutes).use(userPredictionsRoutes).all("/inngest", ({ request }) => inngestHandler(request)).get("/", () => "Hello Elysia").listen(process.env.PORT || 3000);
+var app = new Elysia().use(cors()).use(getCoinsRoute).use(cryptoMoversRoutes).use(cryptoCacheRoutes).use(buybackWalletRoutes).use(triggerSnapshotRoute).use(commentsRoutes).use(activityRoutes).use(coinSentimentRoutes).use(userPredictionsRoutes).use(resultsRoutes).all("/inngest", ({ request }) => inngestHandler(request)).get("/", () => "Hello Elysia").listen(process.env.PORT || 3000);
 console.log(`\uD83E\uDD8A Elysia is running at ${app.server?.hostname}:${app.server?.port}`);

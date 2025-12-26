@@ -9,6 +9,7 @@ import { triggerSnapshotRoute } from "./routes/trigger-snapshot";
 import { commentsRoutes } from "./routes/comments";
 import { activityRoutes } from "./routes/activity";
 import { coinSentimentRoutes } from "./routes/coin-sentiment";
+import { coinSentimentCachedRoutes } from "./routes/coin-sentiment-cached";
 import { userPredictionsRoutes } from "./routes/user-predictions";
 import { resultsRoutes } from "./routes/results";
 import { functions, inngest } from "./inngest";
@@ -29,6 +30,7 @@ const app = new Elysia()
   .use(commentsRoutes)
   .use(activityRoutes)
   .use(coinSentimentRoutes)
+  .use(coinSentimentCachedRoutes)
   .use(userPredictionsRoutes)
   .use(resultsRoutes)
   .all("/inngest", ({ request }) => inngestHandler(request))
