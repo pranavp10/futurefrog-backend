@@ -12,13 +12,34 @@ import { coinSentimentRoutes } from "./routes/coin-sentiment";
 import { coinSentimentCachedRoutes } from "./routes/coin-sentiment-cached";
 import { userPredictionsRoutes } from "./routes/user-predictions";
 import { resultsRoutes } from "./routes/results";
+import { reloadSymbolMappingsRoute } from "./routes/reload-symbol-mappings";
 import { functions, inngest } from "./inngest";
+import { loadSymbolMappings, areSymbolMappingsLoaded } from "./lib/redis";
 
 // Create Inngest handler
 const inngestHandler = serve({
   client: inngest,
   functions,
 });
+
+// Initialize symbol mappings on startup
+async function initializeSymbolMappings() {
+  try {
+    const loaded = await areSymbolMappingsLoaded();
+    if (!loaded) {
+      console.log('🔄 Loading symbol mappings into Redis...');
+      await loadSymbolMappings();
+    } else {
+      console.log('✅ Symbol mappings already loaded in Redis');
+    }
+  } catch (error) {
+    console.error('❌ Failed to load symbol mappings:', error);
+    console.log('⚠️ Application will continue, but price lookups may fail');
+  }
+}
+
+// Start symbol mapping initialization (non-blocking)
+initializeSymbolMappings();
 
 const app = new Elysia()
   .use(cors())
@@ -33,6 +54,7 @@ const app = new Elysia()
   .use(coinSentimentRoutes)
   .use(userPredictionsRoutes)
   .use(resultsRoutes)
+  .use(reloadSymbolMappingsRoute)
   .all("/inngest", ({ request }) => inngestHandler(request))
   .get("/", () => {
     return {
