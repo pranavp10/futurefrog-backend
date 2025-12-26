@@ -22,6 +22,7 @@ const inngestHandler = serve({
 
 const app = new Elysia()
   .use(cors())
+  .use(coinSentimentCachedRoutes)
   .use(getCoinsRoute)
   .use(cryptoMoversRoutes)
   .use(cryptoCacheRoutes)
@@ -30,11 +31,14 @@ const app = new Elysia()
   .use(commentsRoutes)
   .use(activityRoutes)
   .use(coinSentimentRoutes)
-  .use(coinSentimentCachedRoutes)
   .use(userPredictionsRoutes)
   .use(resultsRoutes)
   .all("/inngest", ({ request }) => inngestHandler(request))
-  .get("/", () => "Hello Elysia")
+  .get("/", () => {
+    return {
+      message: "Welcome to FutureFrog API",
+    };
+  })
   .listen(process.env.PORT || 3000);
 
 console.log(
