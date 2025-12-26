@@ -1,6 +1,6 @@
 import { inngest } from "./client";
 import { db } from "../db";
-import { cryptoPerformanceLogs, cryptoMarketCache, cryptoPriceHistory, coinMetadata, userPredictionsSnapshots, userPointTransactions, type NewUserPredictionsSnapshot } from "../db/schema";
+import { cryptoPerformanceLogs, cryptoMarketCache, coinMetadata, userPredictionsSnapshots, userPointTransactions, type NewUserPredictionsSnapshot } from "../db/schema";
 import {
     CoinGeckoMarketData,
     filterAndRankCryptos,
@@ -156,10 +156,6 @@ export const cryptoSnapshot = inngest.createFunction(
             }
 
             console.log(`   ✨ Coin metadata: ${newCoinsAdded} new, ${coinsUpdated} updated`);
-
-            // Insert into crypto_price_history (accumulates over time, never purged)
-            await db.insert(cryptoPriceHistory).values(cacheRecords);
-            console.log(`   📊 Inserted ${cacheRecords.length} records into crypto_price_history`);
 
             return cacheRecords.length;
         });
