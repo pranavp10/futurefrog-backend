@@ -6,29 +6,21 @@ import { inArray } from "drizzle-orm";
 import { redis, SENTIMENT_CACHE_TTL, SENTIMENT_CACHE_KEY } from "../lib/redis";
 import { fetchAllUserPredictions, type UserPredictions } from "../lib/solana-predictions";
 
-// Points allocation based on ranks
-const POINTS_MAP = {
-    top_performer: {
-        1: 100,
-        2: 60,
-        3: 40,
-        4: 20,
-        5: 10,
-    },
-    worst_performer: {
-        1: -100,
-        2: -60,
-        3: -40,
-        4: -20,
-        5: -10,
-    },
+// Base points - all slots have equal weight (no rank significance)
+const BASE_POINTS = {
+    top_performer: 100,    // Bullish signal
+    worst_performer: -100, // Bearish signal
 };
+
+// Minimum weight floor to prevent old predictions from being completely ignored
+const MIN_WEIGHT = 0.1;
 
 interface CachedPrediction {
     walletAddress: string;
     predictionType: "top_performer" | "worst_performer";
-    rank: number;
+    slot: number; // 0-4 (renamed from rank since rank no longer matters)
     symbol: string;
+    timestamp: number; // Unix timestamp when prediction was made
 }
 
 interface CacheData {
@@ -42,6 +34,7 @@ interface CoinSentiment {
     totalPredictions: number;
     topPerformerCount: number;
     worstPerformerCount: number;
+    avgFreshness: number; // Average time weight (0-1, higher = fresher)
     metadata?: {
         coingeckoId: string;
         name: string;
@@ -58,28 +51,32 @@ function transformBlockchainPredictions(
     const cachedPredictions: CachedPrediction[] = [];
 
     for (const { userAddress, predictions } of allUserPredictions) {
-        // Process top performers (ranks 1-5)
-        for (let rank = 0; rank < 5; rank++) {
-            const symbol = predictions.topPerformer[rank];
-            if (symbol && symbol.trim() !== "") {
+        // Process top performers (slots 0-4)
+        for (let slot = 0; slot < 5; slot++) {
+            const symbol = predictions.topPerformer[slot];
+            const timestamp = predictions.topPerformerTimestamps[slot];
+            if (symbol && symbol.trim() !== "" && timestamp > 0) {
                 cachedPredictions.push({
                     walletAddress: userAddress,
                     predictionType: "top_performer",
-                    rank: rank + 1,
+                    slot,
                     symbol: symbol.toUpperCase(),
+                    timestamp,
                 });
             }
         }
 
-        // Process worst performers (ranks 1-5)
-        for (let rank = 0; rank < 5; rank++) {
-            const symbol = predictions.worstPerformer[rank];
-            if (symbol && symbol.trim() !== "") {
+        // Process worst performers (slots 0-4)
+        for (let slot = 0; slot < 5; slot++) {
+            const symbol = predictions.worstPerformer[slot];
+            const timestamp = predictions.worstPerformerTimestamps[slot];
+            if (symbol && symbol.trim() !== "" && timestamp > 0) {
                 cachedPredictions.push({
                     walletAddress: userAddress,
                     predictionType: "worst_performer",
-                    rank: rank + 1,
+                    slot,
                     symbol: symbol.toUpperCase(),
+                    timestamp,
                 });
             }
         }
@@ -89,27 +86,52 @@ function transformBlockchainPredictions(
 }
 
 /**
- * Calculate sentiment from predictions
+ * Calculate time-based weight for a prediction
+ * Newer predictions have higher weight (up to 1.0)
+ * Older predictions have lower weight (down to MIN_WEIGHT)
  */
-function calculateSentiment(predictions: CachedPrediction[]): Map<string, {
+function calculateTimeWeight(predictionTimestamp: number, intervalMinutes: number): number {
+    const now = Date.now();
+    const predictionTimeMs = predictionTimestamp * 1000; // Convert unix seconds to ms
+    const ageMs = now - predictionTimeMs;
+    const ageMinutes = ageMs / (1000 * 60);
+    
+    // Weight decreases linearly from 1.0 to MIN_WEIGHT as prediction ages
+    const weight = Math.max(MIN_WEIGHT, 1 - (ageMinutes / intervalMinutes));
+    return weight;
+}
+
+/**
+ * Calculate sentiment from predictions with time weighting
+ */
+function calculateSentiment(predictions: CachedPrediction[], intervalMinutes: number): Map<string, {
     score: number;
     total: number;
     topCount: number;
     worstCount: number;
+    totalWeight: number;
 }> {
     const sentimentMap = new Map<string, {
         score: number;
         total: number;
         topCount: number;
         worstCount: number;
+        totalWeight: number;
     }>();
 
     for (const prediction of predictions) {
-        const { symbol, predictionType, rank } = prediction;
+        const { symbol, predictionType, timestamp } = prediction;
 
         if (!symbol) continue;
 
-        const points = POINTS_MAP[predictionType as keyof typeof POINTS_MAP]?.[rank as keyof typeof POINTS_MAP.top_performer] || 0;
+        // Get base points (no rank/slot significance - all slots equal)
+        const basePoints = BASE_POINTS[predictionType as keyof typeof BASE_POINTS] || 0;
+        
+        // Calculate time weight (newer = higher weight)
+        const timeWeight = calculateTimeWeight(timestamp, intervalMinutes);
+        
+        // Final weighted score
+        const weightedPoints = basePoints * timeWeight;
 
         if (!sentimentMap.has(symbol)) {
             sentimentMap.set(symbol, {
@@ -117,13 +139,15 @@ function calculateSentiment(predictions: CachedPrediction[]): Map<string, {
                 total: 0,
                 topCount: 0,
                 worstCount: 0,
+                totalWeight: 0,
             });
         }
 
         const current = sentimentMap.get(symbol);
         if (current) {
-            current.score += points;
+            current.score += weightedPoints;
             current.total += 1;
+            current.totalWeight += timeWeight;
 
             if (predictionType === "top_performer") {
                 current.topCount += 1;
@@ -139,9 +163,13 @@ function calculateSentiment(predictions: CachedPrediction[]): Map<string, {
 /**
  * Redis-cached coin sentiment route
  * Reads from Redis cache (2 min TTL), falls back to blockchain on cache miss
+ * Uses time-weighted scoring where newer predictions have more influence
  */
 export const coinSentimentCachedRoutes = new Elysia().get("/coin-sentiment-cached", async () => {
     try {
+        // Get prediction interval from env (default 60 minutes)
+        const predictionIntervalMinutes = parseInt(process.env.PREDICTION_INTERVAL_MINUTES || '60');
+        
         let predictions: CachedPrediction[];
 
         // Try to get cached data
@@ -161,7 +189,7 @@ export const coinSentimentCachedRoutes = new Elysia().get("/coin-sentiment-cache
 
             const allUserPredictions = await fetchAllUserPredictions(connection);
 
-            // Transform to cache format
+            // Transform to cache format (includes timestamps)
             predictions = transformBlockchainPredictions(allUserPredictions);
 
             // Store in cache with TTL
@@ -174,17 +202,18 @@ export const coinSentimentCachedRoutes = new Elysia().get("/coin-sentiment-cache
             console.log(`✅ Sentiment: Cached ${predictions.length} predictions for ${SENTIMENT_CACHE_TTL}s`);
         }
 
-        // Calculate sentiment scores
-        const sentimentMap = calculateSentiment(predictions);
+        // Calculate sentiment scores with time weighting
+        const sentimentMap = calculateSentiment(predictions, predictionIntervalMinutes);
 
         // Convert to array and sort by sentiment score (descending)
         const sentimentData: CoinSentiment[] = Array.from(sentimentMap.entries())
             .map(([symbol, data]) => ({
                 symbol,
-                sentimentScore: data.score,
+                sentimentScore: Math.round(data.score * 10) / 10, // Round to 1 decimal
                 totalPredictions: data.total,
                 topPerformerCount: data.topCount,
                 worstPerformerCount: data.worstCount,
+                avgFreshness: Math.round((data.totalWeight / data.total) * 100) / 100, // Average freshness 0-1
             }))
             .sort((a, b) => b.sentimentScore - a.sentimentScore);
 
@@ -221,6 +250,7 @@ export const coinSentimentCachedRoutes = new Elysia().get("/coin-sentiment-cache
             data: sentimentDataWithMetadata,
             count: sentimentDataWithMetadata.length,
             cached: !!cachedData,
+            predictionIntervalMinutes,
         };
     } catch (error) {
         console.error("Error calculating coin sentiment (cached):", error);

@@ -3,23 +3,14 @@ import { db } from "../db";
 import { userPredictionsSnapshots, coinMetadata } from "../db/schema";
 import { eq, and, isNotNull, inArray } from "drizzle-orm";
 
-// Points allocation based on ranks
-const POINTS_MAP = {
-    top_performer: {
-        1: 100,
-        2: 60,
-        3: 40,
-        4: 20,
-        5: 10,
-    },
-    worst_performer: {
-        1: -100,
-        2: -60,
-        3: -40,
-        4: -20,
-        5: -10,
-    },
+// Base points - all slots have equal weight (no rank significance)
+const BASE_POINTS = {
+    top_performer: 100,    // Bullish signal
+    worst_performer: -100, // Bearish signal
 };
+
+// Minimum weight floor to prevent old predictions from being completely ignored
+const MIN_WEIGHT = 0.1;
 
 interface CoinSentiment {
     symbol: string;
@@ -27,6 +18,7 @@ interface CoinSentiment {
     totalPredictions: number;
     topPerformerCount: number;
     worstPerformerCount: number;
+    avgFreshness: number; // Average time weight (0-1, higher = fresher)
     metadata?: {
         coingeckoId: string;
         name: string;
@@ -34,8 +26,27 @@ interface CoinSentiment {
     };
 }
 
+/**
+ * Calculate time-based weight for a prediction
+ * Newer predictions have higher weight (up to 1.0)
+ * Older predictions have lower weight (down to MIN_WEIGHT)
+ */
+function calculateTimeWeight(predictionTimestamp: Date, intervalMinutes: number): number {
+    const now = Date.now();
+    const predictionTime = predictionTimestamp.getTime();
+    const ageMs = now - predictionTime;
+    const ageMinutes = ageMs / (1000 * 60);
+    
+    // Weight decreases linearly from 1.0 to MIN_WEIGHT as prediction ages
+    const weight = Math.max(MIN_WEIGHT, 1 - (ageMinutes / intervalMinutes));
+    return weight;
+}
+
 export const coinSentimentRoutes = new Elysia().get("/coin-sentiment", async () => {
     try {
+        // Get prediction interval from env (default 60 minutes)
+        const predictionIntervalMinutes = parseInt(process.env.PREDICTION_INTERVAL_MINUTES || '60');
+
         // Fetch all unprocessed predictions with non-null symbols
         const unprocessedPredictions = await db
             .select()
@@ -47,20 +58,28 @@ export const coinSentimentRoutes = new Elysia().get("/coin-sentiment", async () 
                 )
             );
 
-        // Calculate sentiment scores for each coin
+        // Calculate sentiment scores for each coin with time weighting
         const sentimentMap = new Map<string, {
             score: number;
             total: number;
             topCount: number;
             worstCount: number;
+            totalWeight: number; // Sum of weights for averaging
         }>();
 
         for (const prediction of unprocessedPredictions) {
-            const { symbol, predictionType, rank } = prediction;
+            const { symbol, predictionType, snapshotTimestamp } = prediction;
             
             if (!symbol) continue;
 
-            const points = POINTS_MAP[predictionType as keyof typeof POINTS_MAP]?.[rank as keyof typeof POINTS_MAP.top_performer] || 0;
+            // Get base points (no rank significance - all slots equal)
+            const basePoints = BASE_POINTS[predictionType as keyof typeof BASE_POINTS] || 0;
+            
+            // Calculate time weight (newer = higher weight)
+            const timeWeight = calculateTimeWeight(snapshotTimestamp, predictionIntervalMinutes);
+            
+            // Final weighted score
+            const weightedPoints = basePoints * timeWeight;
 
             if (!sentimentMap.has(symbol)) {
                 sentimentMap.set(symbol, {
@@ -68,12 +87,14 @@ export const coinSentimentRoutes = new Elysia().get("/coin-sentiment", async () 
                     total: 0,
                     topCount: 0,
                     worstCount: 0,
+                    totalWeight: 0,
                 });
             }
 
             const current = sentimentMap.get(symbol)!;
-            current.score += points;
+            current.score += weightedPoints;
             current.total += 1;
+            current.totalWeight += timeWeight;
             
             if (predictionType === "top_performer") {
                 current.topCount += 1;
@@ -86,10 +107,11 @@ export const coinSentimentRoutes = new Elysia().get("/coin-sentiment", async () 
         const sentimentData: CoinSentiment[] = Array.from(sentimentMap.entries())
             .map(([symbol, data]) => ({
                 symbol,
-                sentimentScore: data.score,
+                sentimentScore: Math.round(data.score * 10) / 10, // Round to 1 decimal
                 totalPredictions: data.total,
                 topPerformerCount: data.topCount,
                 worstPerformerCount: data.worstCount,
+                avgFreshness: Math.round((data.totalWeight / data.total) * 100) / 100, // Average freshness 0-1
             }))
             .sort((a, b) => b.sentimentScore - a.sentimentScore);
 
@@ -122,6 +144,7 @@ export const coinSentimentRoutes = new Elysia().get("/coin-sentiment", async () 
             success: true,
             data: sentimentDataWithMetadata,
             count: sentimentDataWithMetadata.length,
+            predictionIntervalMinutes,
         };
     } catch (error) {
         console.error("Error calculating coin sentiment:", error);
@@ -131,5 +154,4 @@ export const coinSentimentRoutes = new Elysia().get("/coin-sentiment", async () 
         };
     }
 });
-
 
