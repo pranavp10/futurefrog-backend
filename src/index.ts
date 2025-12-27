@@ -13,6 +13,7 @@ import { coinSentimentCachedRoutes } from "./routes/coin-sentiment-cached";
 import { userPredictionsRoutes } from "./routes/user-predictions";
 import { resultsRoutes } from "./routes/results";
 import { reloadSymbolMappingsRoute } from "./routes/reload-symbol-mappings";
+import { forecastRoutes } from "./routes/forecast";
 import { functions, inngest } from "./inngest";
 import { loadSymbolMappings, areSymbolMappingsLoaded } from "./lib/redis";
 
@@ -55,6 +56,7 @@ const app = new Elysia()
   .use(userPredictionsRoutes)
   .use(resultsRoutes)
   .use(reloadSymbolMappingsRoute)
+  .use(forecastRoutes)
   .all("/inngest", ({ request }) => inngestHandler(request))
   .get("/", () => {
     return {

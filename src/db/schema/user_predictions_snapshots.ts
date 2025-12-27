@@ -35,6 +35,7 @@ export const userPredictionsSnapshots = pgTable("user_predictions_snapshots", {
     
     // Timestamp from blockchain for THIS specific prediction
     predictionTimestamp: bigint("prediction_timestamp", { mode: "number" }), // Unix timestamp when user made this prediction
+    resolutionTime: timestamp("resolution_time"), // When prediction is expected to resolve (predictionTimestamp + interval)
     
     // User metadata at time of snapshot
     points: bigint("points", { mode: "number" }).notNull().default(0),

@@ -218,8 +218,13 @@ export const cryptoSnapshot = inngest.createFunction(
         const userPredictionsCount = await step.run("fetch-user-predictions", async () => {
             const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
             const connection = new Connection(rpcUrl, 'confirmed');
+            
+            // Get prediction interval for calculating resolution time
+            const predictionIntervalMinutes = parseInt(process.env.PREDICTION_INTERVAL_MINUTES || '60');
+            const intervalMs = predictionIntervalMinutes * 60 * 1000;
 
             console.log(`\n   🔗 Connecting to Solana RPC: ${rpcUrl}`);
+            console.log(`   ⏰ Prediction interval: ${predictionIntervalMinutes} minutes`);
 
             // Fetch all user predictions from blockchain
             console.log(`   📡 Fetching user predictions from blockchain...`);
@@ -237,6 +242,13 @@ export const cryptoSnapshot = inngest.createFunction(
             let totalPredictions = 0;
             let errorCount = 0;
 
+            // Helper to calculate resolution time from prediction timestamp
+            const calculateResolutionTime = (predictionTimestamp: number | null): Date | null => {
+                if (!predictionTimestamp || predictionTimestamp === 0) return null;
+                // predictionTimestamp is unix seconds, convert to ms and add interval
+                return new Date(predictionTimestamp * 1000 + intervalMs);
+            };
+
             // Process each user's predictions
             for (const { userAddress, predictions } of allUserPredictions) {
                 console.log(`\n   👤 Processing user: ${userAddress.slice(0, 8)}...${userAddress.slice(-4)}`);
@@ -249,8 +261,9 @@ export const cryptoSnapshot = inngest.createFunction(
                     const symbol = predictions.topPerformer[slot - 1];
                     const predictionTimestamp = predictions.topPerformerTimestamps[slot - 1];
                     const predictedPercentage = predictions.topPerformerPercentages[slot - 1];
+                    const resolutionTime = calculateResolutionTime(predictionTimestamp);
 
-                    console.log(`      🔍 Top performer slot ${slot}: symbol="${symbol}" | timestamp=${predictionTimestamp} | predicted%=${predictedPercentage}`);
+                    console.log(`      🔍 Top performer slot ${slot}: symbol="${symbol}" | timestamp=${predictionTimestamp} | predicted%=${predictedPercentage} | resolves=${resolutionTime?.toISOString() || 'N/A'}`);
 
                     // Only create record if there's actually a prediction (symbol exists)
                     if (symbol && symbol.trim() !== '') {
@@ -261,6 +274,7 @@ export const cryptoSnapshot = inngest.createFunction(
                             symbol: symbol.trim(),
                             predictedPercentage: predictedPercentage || 0,
                             predictionTimestamp: predictionTimestamp || null,
+                            resolutionTime,
                             points: predictions.points,
                             lastUpdated: predictions.lastUpdated || null,
                             snapshotTimestamp,
@@ -273,8 +287,9 @@ export const cryptoSnapshot = inngest.createFunction(
                     const symbol = predictions.worstPerformer[slot - 1];
                     const predictionTimestamp = predictions.worstPerformerTimestamps[slot - 1];
                     const predictedPercentage = predictions.worstPerformerPercentages[slot - 1];
+                    const resolutionTime = calculateResolutionTime(predictionTimestamp);
 
-                    console.log(`      🔍 Worst performer slot ${slot}: symbol="${symbol}" | timestamp=${predictionTimestamp} | predicted%=${predictedPercentage}`);
+                    console.log(`      🔍 Worst performer slot ${slot}: symbol="${symbol}" | timestamp=${predictionTimestamp} | predicted%=${predictedPercentage} | resolves=${resolutionTime?.toISOString() || 'N/A'}`);
 
                     // Only create record if there's actually a prediction (symbol exists)
                     if (symbol && symbol.trim() !== '') {
@@ -285,6 +300,7 @@ export const cryptoSnapshot = inngest.createFunction(
                             symbol: symbol.trim(),
                             predictedPercentage: predictedPercentage || 0,
                             predictionTimestamp: predictionTimestamp || null,
+                            resolutionTime,
                             points: predictions.points,
                             lastUpdated: predictions.lastUpdated || null,
                             snapshotTimestamp,

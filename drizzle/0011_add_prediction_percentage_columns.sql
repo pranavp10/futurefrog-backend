@@ -17,3 +17,8 @@ ADD COLUMN IF NOT EXISTS "price_at_scoring" decimal(24, 8);
 ALTER TABLE "user_predictions_snapshots" 
 ADD COLUMN IF NOT EXISTS "actual_percentage" decimal(10, 4);
 
+-- Resolution time: when the prediction is expected to resolve
+-- Calculated as predictionTimestamp + PREDICTION_INTERVAL_MINUTES
+ALTER TABLE "user_predictions_snapshots" 
+ADD COLUMN IF NOT EXISTS "resolution_time" timestamp;
+
