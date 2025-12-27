@@ -16,3 +16,4 @@ CREATE TABLE IF NOT EXISTS "crypto_price_history" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 
+

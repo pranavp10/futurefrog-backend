@@ -285,3 +285,4 @@ async function clearUserPredictions() {
 
 clearUserPredictions();
 
+

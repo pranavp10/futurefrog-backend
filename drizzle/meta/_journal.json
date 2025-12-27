@@ -71,6 +71,20 @@
       "when": 1734720000000,
       "tag": "0009_create_coin_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1734806400000,
+      "tag": "0010_create_crypto_price_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1735286400000,
+      "tag": "0011_add_prediction_percentage_columns",
+      "breakpoints": true
     }
   ]
 }

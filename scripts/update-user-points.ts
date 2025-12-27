@@ -236,3 +236,4 @@ async function updateUserPoints() {
 updateUserPoints();
 
 
+

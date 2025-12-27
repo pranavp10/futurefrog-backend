@@ -1,165 +1,121 @@
-# Prediction Scoring System
+# Prediction Scoring System (Accuracy-Based)
 
 ## Overview
 
-The inngest crypto snapshot process now includes automatic scoring and reward distribution for user predictions. After fetching crypto performance data and user predictions, the system evaluates eligible predictions and awards points to users on the Solana blockchain.
+The scoring system awards points based on how accurately users predict percentage price changes. Each prediction is an independent bet - the 5 slots in each category (top_performer/worst_performer) are simply 5 separate opportunities to make predictions.
 
-## Eligibility Criteria
+## How Predictions Work
 
-Predictions are eligible for scoring when:
-- **Not yet processed** (`processed = false`)
-- **Older than threshold**: `snapshotTimestamp` is older than `PREDICTION_INTERVAL_MINUTES` (env variable, default: 60 minutes)
+1. **User makes a prediction**: Chooses a coin + predicted % change
+   - `top_performer`: User predicts the coin will go **UP** by X%
+   - `worst_performer`: User predicts the coin will go **DOWN** by X%
 
-## Point Scoring System
+2. **At scoring time**: 
+   - Fetch current price from CoinGecko
+   - Calculate actual % change
+   - Compare predicted vs actual percentage
 
-### Base Points (Per Prediction)
+## Scoring Logic
 
-| Match Type | Points | Description |
-|------------|--------|-------------|
-| **Exact Match** | 50 | Correct symbol AND correct rank |
-| **Category Match** | 10 | Correct symbol in correct category (top/worst), but wrong rank |
-| **Participation** | 1 | Prediction made but symbol not in results |
+### Step 1: Direction Check
 
-### Parlay Bonuses (Per User)
+First, check if the user predicted the correct direction:
 
-Bonuses are awarded for getting multiple predictions correct in the same category:
+| Category | Expected | Actual Movement | Result |
+|----------|----------|-----------------|--------|
+| top_performer | UP (+%) | Price went UP | ✓ Correct |
+| top_performer | UP (+%) | Price went DOWN | ✗ Wrong |
+| worst_performer | DOWN (-%) | Price went DOWN | ✓ Correct |
+| worst_performer | DOWN (-%) | Price went UP | ✗ Wrong |
 
-#### Same Category Bonuses
+**Wrong direction = 10 points (participation)**
 
-| Correct Predictions | Bonus Points | Cumulative |
-|---------------------|--------------|------------|
-| 2 correct symbols | +25 | 25 |
-| 3 correct symbols | +50 | 75 |
-| 4 correct symbols | +125 | 200 |
-| 5 correct symbols | +300 | 500 |
+### Step 2: Accuracy Score (if direction correct)
 
-**Note:** These bonuses apply separately to `top_performer` and `worst_performer` categories.
+Calculate **error** = `|predicted% - actual%|`
 
-#### Cross-Category Bonus
-
-- **+50 points** if user has at least one correct prediction in BOTH categories
+| Error Range | Points | Label |
+|-------------|--------|-------|
+| 0 - 1% | **1000** | Perfect |
+| 1 - 2% | **750** | Excellent |
+| 2 - 5% | **500** | Great |
+| 5 - 10% | **250** | Good |
+| 10 - 20% | **100** | Fair |
+| > 20% | **50** | Correct Direction |
 
 ## Example Scenarios
 
-### Scenario 1: Beginner Success
-- **Predictions**: 2 correct symbols in top_performer (wrong ranks)
-- **Calculation**: 
-  - Base: 2 × 10 = 20
-  - Parlay: +25
-- **Total**: **45 points**
+### Scenario 1: Perfect Prediction
+- User predicts: BTC will go UP by **+4.5%**
+- Actual: BTC went UP by **+4.8%**
+- Error: |4.5 - 4.8| = 0.3%
+- **Points: 1000** (Perfect tier)
 
-### Scenario 2: Mixed Performance
-- **Predictions**: 
-  - 1 exact match in top_performer
-  - 2 category matches in worst_performer
-  - 3 participation points
-- **Calculation**:
-  - Base: 50 + (2 × 10) + (3 × 1) = 73
-  - Parlay (worst): +25
-  - Cross-category: +50
-- **Total**: **148 points**
+### Scenario 2: Great Prediction
+- User predicts: ETH will go UP by **+8%**
+- Actual: ETH went UP by **+5%**
+- Error: |8 - 5| = 3%
+- **Points: 500** (Great tier)
 
-### Scenario 3: Expert Play
-- **Predictions**:
-  - 3 exact matches in top_performer
-  - 2 exact matches in worst_performer
-- **Calculation**:
-  - Base: (3 × 50) + (2 × 50) = 250
-  - Parlay (top): 25 + 50 = 75
-  - Parlay (worst): +25
-  - Cross-category: +50
-- **Total**: **400 points**
+### Scenario 3: Wrong Direction
+- User predicts: SOL will go DOWN by **-3%** (worst_performer)
+- Actual: SOL went UP by **+2%**
+- Direction wrong!
+- **Points: 10** (Participation)
 
-### Scenario 4: Perfect Prediction
-- **Predictions**: All 5 exact matches in both categories
-- **Calculation**:
-  - Base: 10 × 50 = 500
-  - Parlay (top): 25 + 50 + 125 + 300 = 500
-  - Parlay (worst): 25 + 50 + 125 + 300 = 500
-  - Cross-category: +50
-- **Total**: **1,550 points**
+### Scenario 4: Right Direction, Way Off
+- User predicts: DOGE will go DOWN by **-2%**
+- Actual: DOGE went DOWN by **-25%**
+- Error: |2 - 25| = 23%
+- **Points: 50** (Correct direction but very off)
+
+## Points Range Per Round
+
+- **Maximum**: 10 bets × 1000 points = **10,000 points**
+- **Minimum**: 10 bets × 10 points = **100 points** (all wrong directions)
+
+## Database Schema
+
+### user_predictions_snapshots columns
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `predicted_percentage` | integer | User's predicted % change (from blockchain) |
+| `price_at_prediction` | decimal | Price when prediction was made |
+| `price_at_scoring` | decimal | Price when prediction was scored |
+| `actual_percentage` | decimal | Actual % change at scoring |
+| `points_earned` | integer | Points awarded for this prediction |
+| `processed` | boolean | Whether prediction has been scored |
+
+### Transaction Types (user_point_transactions)
+
+| Type | Points | Description |
+|------|--------|-------------|
+| `accuracy_perfect` | 1000 | 0-1% error |
+| `accuracy_excellent` | 750 | 1-2% error |
+| `accuracy_great` | 500 | 2-5% error |
+| `accuracy_good` | 250 | 5-10% error |
+| `accuracy_fair` | 100 | 10-20% error |
+| `accuracy_correct_direction` | 50 | >20% error, right direction |
+| `accuracy_wrong_direction` | 10 | Wrong direction |
 
 ## Process Flow
 
-### Step 6: Score and Reward Predictions
-
-1. **Find Eligible Predictions**
-   - Query `user_predictions_snapshots` table
-   - Filter: `processed = false` AND `snapshotTimestamp < (now - PREDICTION_INTERVAL_MINUTES)`
-
-2. **Fetch Latest Round Results**
-   - Get top 5 gainers and worst 5 performers from `crypto_performance_logs`
-   - Build symbol-to-rank lookup maps for fast matching
-
-3. **Score Each Prediction**
-   - Compare prediction symbol against actual results
-   - Award base points (50 for exact, 10 for category, 1 for participation)
-   - Update `pointsEarned` column in database
-
-4. **Calculate Parlay Bonuses**
-   - Group predictions by user
-   - Calculate bonuses based on total correct per category
-   - Add cross-category bonus if applicable
-
-5. **Update Blockchain**
-   - Connect to Solana using admin keypair
-   - For each user, read current points
-   - Create transaction to update user points
-   - Send and confirm transaction
-
-6. **Record Transactions**
-   - Create transaction records for each prediction reward
-   - Create separate records for each parlay bonus type
-   - Include Solana transaction signature in all records
-   - Link transactions to related prediction IDs
-
-7. **Mark as Processed**
-   - Update all processed predictions: `processed = true`
-   - Predictions retain individual `pointsEarned` value for audit trail
-
-## Database Schema Updates
-
-### New Columns in `user_predictions_snapshots`
-
-```sql
-processed BOOLEAN NOT NULL DEFAULT false
-points_earned INTEGER DEFAULT 0
-```
-
-- **`processed`**: Prevents double-processing of predictions
-- **`pointsEarned`**: Records how many points this specific prediction earned (for audit/analytics)
-
-### New Table: `user_point_transactions`
-
-Complete audit trail of all point awards:
-
-```sql
-CREATE TABLE user_point_transactions (
-  id UUID PRIMARY KEY,
-  wallet_address VARCHAR(44) NOT NULL,
-  round_id UUID NOT NULL,
-  transaction_type VARCHAR(30) NOT NULL,
-  points_amount INTEGER NOT NULL,
-  solana_signature VARCHAR(88),
-  related_prediction_ids TEXT, -- JSON array of prediction IDs
-  metadata TEXT, -- JSON field for extra context
-  created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-**Transaction Types:**
-- `prediction_exact_match` - 50 points per exact match
-- `prediction_category_match` - 10 points per category match
-- `prediction_participation` - 1 point per participation
-- `parlay_bonus_top` - Bonus for multiple correct top performers
-- `parlay_bonus_worst` - Bonus for multiple correct worst performers
-- `cross_category_bonus` - 50 points for having correct predictions in both categories
-
-**Benefits:**
-- Full reconciliation: `SUM(points_amount)` = blockchain points awarded
-- Audit trail with Solana transaction signatures
-- Can trace which predictions contributed to each transaction
-- Supports analytics and leaderboards
+1. **Inngest cron runs** (every X minutes)
+2. **Find eligible predictions**: 
+   - `processed = false`
+   - `snapshotTimestamp < cutoff` (older than interval)
+3. **Fetch current prices** from CoinGecko
+4. **Score each prediction**:
+   - Check direction
+   - Calculate error
+   - Assign points based on accuracy tier
+5. **Update database**:
+   - Set `points_earned`, `price_at_scoring`, `actual_percentage`
+   - Mark `processed = true`
+6. **Update blockchain**: Add points to user's account
+7. **Record transactions**: Create audit trail in `user_point_transactions`
+8. **Clear predictions**: Reset user silos for next round
 
 ## Configuration
 
@@ -167,7 +123,6 @@ CREATE TABLE user_point_transactions (
 
 - `PREDICTION_INTERVAL_MINUTES` (default: 60)
   - Minimum age for predictions to be eligible for scoring
-  - Prevents scoring predictions made too recently
 
 - `PROGRAM_ID` (required)
   - Solana program ID for updating user points
@@ -175,80 +130,40 @@ CREATE TABLE user_point_transactions (
 - `SOLANA_RPC_URL` (default: mainnet)
   - RPC endpoint for blockchain transactions
 
-## Logging
+## API Endpoints
 
-The scoring step provides detailed logging:
+### GET /user-predictions/:walletAddress/stats
 
-```
-💰 Step 6: Scoring Eligible Predictions
-⏰ Prediction interval: 60 minutes
-📅 Cutoff time: 2024-12-19T20:00:00.000Z
-✅ Found 42 eligible predictions to process
-📈 Top performers: btc(#1), eth(#2), sol(#3), ...
-📉 Worst performers: doge(#1), shib(#2), ...
+Returns accuracy breakdown for a user:
 
-🎯 EXACT MATCH: 9WzDXwBb... predicted btc at rank 1 in top_performer (+50)
-✓ Category match: 7Xk2Pmn... predicted eth (rank 3, actual 2) in top_performer (+10)
-• Participation: 5Rt9Kla... predicted ada in top_performer (+1)
-
-💎 Calculating parlay bonuses...
-🎰 9WzDXwBb... parlay bonus: +125 (top: 4/5, worst: 2/5)
-
-🔗 Updating user points on Solana...
-✅ 9WzDXwBb... +215 points (1000 → 1215) | tx: 3k5j8h2...
-
-📊 Scoring Summary:
-   Total eligible: 42
-   Users processed: 8
-   Total points awarded: 892
-   Predictions marked processed: 42
+```json
+{
+  "walletAddress": "...",
+  "currentPoints": 15000,
+  "totalPredictions": 50,
+  "totalPointsEarned": 12500,
+  "accuracyTiers": {
+    "perfect": 5,
+    "excellent": 8,
+    "great": 15,
+    "good": 10,
+    "fair": 7,
+    "correctDirection": 3,
+    "wrongDirection": 2
+  },
+  "correctDirectionTotal": 48,
+  "directionAccuracy": "96.00",
+  "averagePoints": "250.00"
+}
 ```
 
-## Reconciliation
+## Migration
 
-To verify database points match blockchain:
+Run the migration to add new columns:
 
-```sql
--- Get total points awarded to a user in a specific round
-SELECT 
-  wallet_address,
-  SUM(points_amount) as total_points,
-  solana_signature
-FROM user_point_transactions
-WHERE wallet_address = 'USER_ADDRESS'
-  AND round_id = 'ROUND_ID'
-GROUP BY wallet_address, solana_signature;
-
--- Get breakdown by transaction type
-SELECT 
-  transaction_type,
-  COUNT(*) as count,
-  SUM(points_amount) as total_points
-FROM user_point_transactions
-WHERE wallet_address = 'USER_ADDRESS'
-GROUP BY transaction_type;
+```bash
+npx drizzle-kit push
+# or
+psql $DATABASE_URL -f drizzle/0011_add_prediction_percentage_columns.sql
 ```
-
-## Error Handling
-
-- If admin keypair cannot be loaded, scoring is skipped (logged as error)
-- If user account doesn't exist on-chain, user is skipped (logged as warning)
-- Individual transaction failures don't halt the entire process
-- Failed predictions remain `processed = false` for retry on next run
-- Transaction records are only created after blockchain confirmation succeeds
-
-## Performance Considerations
-
-- Scoring only runs for predictions older than interval threshold
-- Database queries use indexes on `processed` and `snapshotTimestamp`
-- Blockchain updates are batched per user (not per prediction)
-- Transaction confirmations use 'confirmed' commitment level for speed
-
-## Future Enhancements
-
-Potential improvements:
-- Time decay: Older predictions worth fewer points
-- Difficulty multiplier: Predicting underdog coins worth more
-- Streak bonuses: Consecutive correct rounds earn multipliers
-- Leaderboard integration: Track top performers
 

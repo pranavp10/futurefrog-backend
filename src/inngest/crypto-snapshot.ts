@@ -244,20 +244,22 @@ export const cryptoSnapshot = inngest.createFunction(
                 
                 const predictionRecords: NewUserPredictionsSnapshot[] = [];
 
-                // Process top performer predictions (ranks 1-5)
-                for (let rank = 1; rank <= 5; rank++) {
-                    const symbol = predictions.topPerformer[rank - 1];
-                    const predictionTimestamp = predictions.topPerformerTimestamps[rank - 1];
+                // Process top performer predictions (slots 1-5 - independent bets)
+                for (let slot = 1; slot <= 5; slot++) {
+                    const symbol = predictions.topPerformer[slot - 1];
+                    const predictionTimestamp = predictions.topPerformerTimestamps[slot - 1];
+                    const predictedPercentage = predictions.topPerformerPercentages[slot - 1];
 
-                    console.log(`      🔍 Top performer rank ${rank}: symbol="${symbol}" | timestamp=${predictionTimestamp}`);
+                    console.log(`      🔍 Top performer slot ${slot}: symbol="${symbol}" | timestamp=${predictionTimestamp} | predicted%=${predictedPercentage}`);
 
                     // Only create record if there's actually a prediction (symbol exists)
                     if (symbol && symbol.trim() !== '') {
                         predictionRecords.push({
                             walletAddress: userAddress,
                             predictionType: 'top_performer',
-                            rank,
+                            rank: slot,
                             symbol: symbol.trim(),
+                            predictedPercentage: predictedPercentage || 0,
                             predictionTimestamp: predictionTimestamp || null,
                             points: predictions.points,
                             lastUpdated: predictions.lastUpdated || null,
@@ -266,20 +268,22 @@ export const cryptoSnapshot = inngest.createFunction(
                     }
                 }
 
-                // Process worst performer predictions (ranks 1-5)
-                for (let rank = 1; rank <= 5; rank++) {
-                    const symbol = predictions.worstPerformer[rank - 1];
-                    const predictionTimestamp = predictions.worstPerformerTimestamps[rank - 1];
+                // Process worst performer predictions (slots 1-5 - independent bets)
+                for (let slot = 1; slot <= 5; slot++) {
+                    const symbol = predictions.worstPerformer[slot - 1];
+                    const predictionTimestamp = predictions.worstPerformerTimestamps[slot - 1];
+                    const predictedPercentage = predictions.worstPerformerPercentages[slot - 1];
 
-                    console.log(`      🔍 Worst performer rank ${rank}: symbol="${symbol}" | timestamp=${predictionTimestamp}`);
+                    console.log(`      🔍 Worst performer slot ${slot}: symbol="${symbol}" | timestamp=${predictionTimestamp} | predicted%=${predictedPercentage}`);
 
                     // Only create record if there's actually a prediction (symbol exists)
                     if (symbol && symbol.trim() !== '') {
                         predictionRecords.push({
                             walletAddress: userAddress,
                             predictionType: 'worst_performer',
-                            rank,
+                            rank: slot,
                             symbol: symbol.trim(),
+                            predictedPercentage: predictedPercentage || 0,
                             predictionTimestamp: predictionTimestamp || null,
                             points: predictions.points,
                             lastUpdated: predictions.lastUpdated || null,
@@ -379,10 +383,10 @@ export const cryptoSnapshot = inngest.createFunction(
             };
         });
 
-        // Step 6: Score and reward eligible predictions
+        // Step 6: Score and reward eligible predictions (accuracy-based scoring)
         const scoringResults = await step.run("score-and-reward-predictions", async () => {
             console.log(`\n   ========================================`);
-            console.log(`   💰 Step 6: Scoring Eligible Predictions`);
+            console.log(`   💰 Step 6: Scoring Eligible Predictions (Accuracy-Based)`);
             console.log(`   ========================================\n`);
 
             // Get PREDICTION_INTERVAL_MINUTES from env (default to 60 minutes if not set)
@@ -412,46 +416,55 @@ export const cryptoSnapshot = inngest.createFunction(
                     usersProcessed: 0,
                     totalPointsAwarded: 0,
                     predictionIds: [],
+                    processedUserAddresses: [],
                 };
             }
 
             console.log(`   ✅ Found ${eligiblePredictions.length} eligible predictions to process`);
 
-            // Get latest round's performance data
-            console.log(`\n   📊 Fetching latest round performance data...`);
-            const latestRoundData = await db
-                .select()
-                .from(cryptoPerformanceLogs)
-                .where(eq(cryptoPerformanceLogs.roundId, filterAndRank.roundId));
+            // Get unique symbols from predictions
+            const uniqueSymbols = [...new Set(eligiblePredictions.map(p => p.symbol?.toLowerCase()).filter(Boolean))];
+            console.log(`\n   🪙 Unique symbols to price: ${uniqueSymbols.join(', ')}`);
 
-            if (latestRoundData.length === 0) {
-                console.log(`   ⚠️  No performance data found for current round`);
-                return {
-                    totalEligible: eligiblePredictions.length,
-                    usersProcessed: 0,
-                    totalPointsAwarded: 0,
-                    predictionIds: [],
-                };
-            }
-
-            // Build lookup maps for quick scoring
-            const topPerformers = latestRoundData
-                .filter(r => r.performanceCategory === 'top_gainer')
-                .sort((a, b) => a.performanceRank - b.performanceRank);
+            // Fetch current prices from CoinGecko for scoring
+            console.log(`\n   📡 Fetching current prices from CoinGecko...`);
+            const apiKey = process.env.COINGECKO_API_KEY;
             
-            const worstPerformers = latestRoundData
-                .filter(r => r.performanceCategory === 'worst_performer')
-                .sort((a, b) => a.performanceRank - b.performanceRank);
+            // Build a map of symbol -> current price from the coinGeckoData we already have
+            const currentPriceMap = new Map<string, number>();
+            for (const coin of coinGeckoData) {
+                currentPriceMap.set(coin.symbol.toLowerCase(), coin.current_price);
+            }
+            console.log(`   💰 Loaded ${currentPriceMap.size} current prices`);
 
-            // Create symbol-to-rank maps for both categories
-            const topPerformerMap = new Map(topPerformers.map(p => [p.symbol.toLowerCase(), p.performanceRank]));
-            const worstPerformerMap = new Map(worstPerformers.map(p => [p.symbol.toLowerCase(), p.performanceRank]));
+            // Helper function to calculate points based on accuracy
+            const calculateAccuracyPoints = (predictedPercentage: number, actualPercentage: number, predictionType: string): { points: number; label: string } => {
+                // Check direction first
+                // top_performer expects price to go UP (positive %)
+                // worst_performer expects price to go DOWN (negative %)
+                const expectedDirection = predictionType === 'top_performer' ? 'up' : 'down';
+                const actualDirection = actualPercentage >= 0 ? 'up' : 'down';
+                
+                if (expectedDirection !== actualDirection) {
+                    return { points: 10, label: 'wrong_direction' };
+                }
 
-            console.log(`   📈 Top performers: ${topPerformers.map(p => `${p.symbol}(#${p.performanceRank})`).join(', ')}`);
-            console.log(`   📉 Worst performers: ${worstPerformers.map(p => `${p.symbol}(#${p.performanceRank})`).join(', ')}`);
+                // Direction is correct, now check accuracy
+                // For comparison, we use absolute values since direction is already validated
+                const predictedAbs = Math.abs(predictedPercentage);
+                const actualAbs = Math.abs(actualPercentage);
+                const error = Math.abs(predictedAbs - actualAbs);
+
+                if (error <= 1) return { points: 1000, label: 'perfect' };
+                if (error <= 2) return { points: 750, label: 'excellent' };
+                if (error <= 5) return { points: 500, label: 'great' };
+                if (error <= 10) return { points: 250, label: 'good' };
+                if (error <= 20) return { points: 100, label: 'fair' };
+                return { points: 50, label: 'correct_direction' };
+            };
 
             // Score each prediction and group by user
-            console.log(`\n   🎯 Scoring predictions...`);
+            console.log(`\n   🎯 Scoring predictions based on accuracy...`);
             const userScores = new Map<string, { totalPoints: number; predictions: typeof eligiblePredictions }>();
 
             for (const prediction of eligiblePredictions) {
@@ -460,33 +473,44 @@ export const cryptoSnapshot = inngest.createFunction(
                 }
 
                 const symbol = prediction.symbol.toLowerCase();
-                let pointsEarned = 0;
-
-                // Determine which category map to use
-                const relevantMap = prediction.predictionType === 'top_performer' ? topPerformerMap : worstPerformerMap;
-                const actualRank = relevantMap.get(symbol);
-
-                if (actualRank !== undefined) {
-                    // Symbol was in the results!
-                    if (actualRank === prediction.rank) {
-                        // EXACT MATCH - Correct symbol AND correct rank
-                        pointsEarned = 50;
-                        console.log(`   🎯 EXACT MATCH: ${prediction.walletAddress.slice(0, 8)}... predicted ${symbol} at rank ${prediction.rank} in ${prediction.predictionType} (+${pointsEarned})`);
-                    } else {
-                        // CATEGORY MATCH - Correct symbol, wrong rank
-                        pointsEarned = 10;
-                        console.log(`   ✓ Category match: ${prediction.walletAddress.slice(0, 8)}... predicted ${symbol} (rank ${prediction.rank}, actual ${actualRank}) in ${prediction.predictionType} (+${pointsEarned})`);
-                    }
-                } else {
-                    // No match - but we still give 1 point for participating
-                    pointsEarned = 1;
-                    console.log(`   • Participation: ${prediction.walletAddress.slice(0, 8)}... predicted ${symbol} in ${prediction.predictionType} (+${pointsEarned})`);
+                const currentPrice = currentPriceMap.get(symbol);
+                
+                if (!currentPrice) {
+                    console.log(`   ⚠️  No current price found for ${symbol}, skipping`);
+                    continue;
                 }
 
-                // Update the prediction record with earned points
+                // Get the price at prediction time from the crypto_market_cache or use a stored value
+                // For now, we'll use the price change from CoinGecko's 24h data as actual percentage
+                const coinData = coinGeckoData.find(c => c.symbol.toLowerCase() === symbol);
+                if (!coinData) {
+                    console.log(`   ⚠️  No coin data found for ${symbol}, skipping`);
+                    continue;
+                }
+
+                const actualPercentage = coinData.price_change_percentage_24h;
+                const predictedPercentage = prediction.predictedPercentage || 0;
+
+                const { points: pointsEarned, label } = calculateAccuracyPoints(predictedPercentage, actualPercentage, prediction.predictionType);
+
+                // Log the scoring
+                const emoji = label === 'wrong_direction' ? '❌' : 
+                              label === 'perfect' ? '🎯' :
+                              label === 'excellent' ? '⭐' :
+                              label === 'great' ? '✨' :
+                              label === 'good' ? '✓' :
+                              label === 'fair' ? '•' : '→';
+                
+                console.log(`   ${emoji} ${prediction.walletAddress.slice(0, 8)}... | ${symbol} | predicted: ${predictedPercentage}% | actual: ${actualPercentage.toFixed(2)}% | ${label} (+${pointsEarned})`);
+
+                // Update the prediction record with earned points and actual data
                 await db
                     .update(userPredictionsSnapshots)
-                    .set({ pointsEarned })
+                    .set({ 
+                        pointsEarned,
+                        priceAtScoring: currentPrice.toString(),
+                        actualPercentage: actualPercentage.toString(),
+                    })
                     .where(eq(userPredictionsSnapshots.id, prediction.id));
 
                 // Accumulate points per user
@@ -495,52 +519,7 @@ export const cryptoSnapshot = inngest.createFunction(
                 }
                 const userScore = userScores.get(prediction.walletAddress)!;
                 userScore.totalPoints += pointsEarned;
-                userScore.predictions.push(prediction);
-            }
-
-            console.log(`\n   💎 Calculating parlay bonuses...`);
-            // Calculate parlay bonuses per user
-            for (const [walletAddress, userScore] of userScores.entries()) {
-                const predictions = userScore.predictions;
-                
-                // Group by prediction type
-                const topPredictions = predictions.filter(p => p.predictionType === 'top_performer');
-                const worstPredictions = predictions.filter(p => p.predictionType === 'worst_performer');
-
-                let parlayBonus = 0;
-
-                // Calculate bonuses for top_performer category
-                const topCorrect = topPredictions.filter(p => {
-                    const symbol = p.symbol?.toLowerCase();
-                    return symbol && topPerformerMap.has(symbol);
-                }).length;
-
-                if (topCorrect >= 2) parlayBonus += 25;
-                if (topCorrect >= 3) parlayBonus += 50; // Total +75
-                if (topCorrect >= 4) parlayBonus += 125; // Total +200
-                if (topCorrect === 5) parlayBonus += 300; // Total +500
-
-                // Calculate bonuses for worst_performer category
-                const worstCorrect = worstPredictions.filter(p => {
-                    const symbol = p.symbol?.toLowerCase();
-                    return symbol && worstPerformerMap.has(symbol);
-                }).length;
-
-                if (worstCorrect >= 2) parlayBonus += 25;
-                if (worstCorrect >= 3) parlayBonus += 50;
-                if (worstCorrect >= 4) parlayBonus += 125;
-                if (worstCorrect === 5) parlayBonus += 300;
-
-                // Cross-category bonus
-                if (topCorrect > 0 && worstCorrect > 0) {
-                    parlayBonus += 50;
-                }
-
-                userScore.totalPoints += parlayBonus;
-
-                if (parlayBonus > 0) {
-                    console.log(`   🎰 ${walletAddress.slice(0, 8)}... parlay bonus: +${parlayBonus} (top: ${topCorrect}/5, worst: ${worstCorrect}/5)`);
-                }
+                userScore.predictions.push({ ...prediction, pointsEarned });
             }
 
             // Update user points on Solana blockchain
@@ -563,7 +542,7 @@ export const cryptoSnapshot = inngest.createFunction(
                 type UserUpdateData = {
                     walletAddress: string;
                     userPubkey: PublicKey;
-                    userScore: typeof userScores extends Map<string, infer V> ? V : never;
+                    userScore: { totalPoints: number; predictions: any[] };
                     userPredictionsPda: PublicKey;
                     currentPoints: bigint;
                     newPoints: number;
@@ -589,14 +568,15 @@ export const cryptoSnapshot = inngest.createFunction(
                         );
 
                         // Get current user account
+                        // New layout: 8 (discriminator) + 32 (owner) + 30 (top) + 30 (worst) + 40 (top_ts) + 40 (worst_ts) + 10 (top_pct) + 10 (worst_pct) = 200, then points at 200
                         const userAccount = await connection.getAccountInfo(userPredictionsPda);
                         if (!userAccount) {
                             console.log(`   ⚠️  User ${walletAddress.slice(0, 8)}... account not found, skipping`);
                             continue;
                         }
 
-                        // Read current points and calculate new total
-                        const currentPoints = userAccount.data.readBigUInt64LE(8 + 32 + 140);
+                        // Read current points: offset = 8 + 32 + 30 + 30 + 40 + 40 + 10 + 10 = 200
+                        const currentPoints = userAccount.data.readBigUInt64LE(200);
                         const newPoints = Number(currentPoints) + pointsToAdd;
 
                         userUpdates.push({
@@ -672,25 +652,29 @@ export const cryptoSnapshot = inngest.createFunction(
 
                             // Record individual prediction reward transactions
                             for (const prediction of update.userScore.predictions) {
-                                // Determine transaction type based on points earned
-                                let transactionType = 'prediction_participation';
-                                if (prediction.pointsEarned === 50) {
-                                    transactionType = 'prediction_exact_match';
-                                } else if (prediction.pointsEarned === 10) {
-                                    transactionType = 'prediction_category_match';
-                                }
+                                // Determine transaction type based on points earned (new accuracy-based tiers)
+                                let transactionType = 'accuracy_wrong_direction';
+                                const pts = prediction.pointsEarned || 0;
+                                if (pts === 1000) transactionType = 'accuracy_perfect';
+                                else if (pts === 750) transactionType = 'accuracy_excellent';
+                                else if (pts === 500) transactionType = 'accuracy_great';
+                                else if (pts === 250) transactionType = 'accuracy_good';
+                                else if (pts === 100) transactionType = 'accuracy_fair';
+                                else if (pts === 50) transactionType = 'accuracy_correct_direction';
+                                else if (pts === 10) transactionType = 'accuracy_wrong_direction';
 
                                 await db.insert(userPointTransactions).values({
                                     walletAddress: update.walletAddress,
                                     roundId: filterAndRank.roundId,
                                     transactionType,
-                                    pointsAmount: prediction.pointsEarned || 0,
+                                    pointsAmount: pts,
                                     solanaSignature: signature,
                                     relatedPredictionIds: JSON.stringify([prediction.id]),
                                     metadata: JSON.stringify({
                                         symbol: prediction.symbol,
-                                        rank: prediction.rank,
+                                        slot: prediction.rank,
                                         predictionType: prediction.predictionType,
+                                        predictedPercentage: prediction.predictedPercentage,
                                     }),
                                 });
 
@@ -700,107 +684,6 @@ export const cryptoSnapshot = inngest.createFunction(
                                     .set({ processed: true })
                                     .where(eq(userPredictionsSnapshots.id, prediction.id));
                                 processedPredictionIds.push(prediction.id);
-                            }
-
-                            // Record parlay bonus transactions if applicable
-                            const predictions = update.userScore.predictions;
-                            const topPredictions = predictions.filter(p => p.predictionType === 'top_performer');
-                            const worstPredictions = predictions.filter(p => p.predictionType === 'worst_performer');
-
-                            // Calculate individual bonus components for recording
-                            const topCorrect = topPredictions.filter(p => {
-                                const symbol = p.symbol?.toLowerCase();
-                                return symbol && topPerformerMap.has(symbol);
-                            }).length;
-
-                            const worstCorrect = worstPredictions.filter(p => {
-                                const symbol = p.symbol?.toLowerCase();
-                                return symbol && worstPerformerMap.has(symbol);
-                            }).length;
-
-                            // Record top performer parlay bonus
-                            if (topCorrect >= 2) {
-                                let topBonus = 0;
-                                if (topCorrect >= 2) topBonus += 25;
-                                if (topCorrect >= 3) topBonus += 50;
-                                if (topCorrect >= 4) topBonus += 125;
-                                if (topCorrect === 5) topBonus += 300;
-
-                                const topPredictionIds = topPredictions
-                                    .filter(p => {
-                                        const symbol = p.symbol?.toLowerCase();
-                                        return symbol && topPerformerMap.has(symbol);
-                                    })
-                                    .map(p => p.id);
-
-                                await db.insert(userPointTransactions).values({
-                                    walletAddress: update.walletAddress,
-                                    roundId: filterAndRank.roundId,
-                                    transactionType: 'parlay_bonus_top',
-                                    pointsAmount: topBonus,
-                                    solanaSignature: signature,
-                                    relatedPredictionIds: JSON.stringify(topPredictionIds),
-                                    metadata: JSON.stringify({
-                                        correctCount: topCorrect,
-                                        totalSlots: 5,
-                                    }),
-                                });
-                            }
-
-                            // Record worst performer parlay bonus
-                            if (worstCorrect >= 2) {
-                                let worstBonus = 0;
-                                if (worstCorrect >= 2) worstBonus += 25;
-                                if (worstCorrect >= 3) worstBonus += 50;
-                                if (worstCorrect >= 4) worstBonus += 125;
-                                if (worstCorrect === 5) worstBonus += 300;
-
-                                const worstPredictionIds = worstPredictions
-                                    .filter(p => {
-                                        const symbol = p.symbol?.toLowerCase();
-                                        return symbol && worstPerformerMap.has(symbol);
-                                    })
-                                    .map(p => p.id);
-
-                                await db.insert(userPointTransactions).values({
-                                    walletAddress: update.walletAddress,
-                                    roundId: filterAndRank.roundId,
-                                    transactionType: 'parlay_bonus_worst',
-                                    pointsAmount: worstBonus,
-                                    solanaSignature: signature,
-                                    relatedPredictionIds: JSON.stringify(worstPredictionIds),
-                                    metadata: JSON.stringify({
-                                        correctCount: worstCorrect,
-                                        totalSlots: 5,
-                                    }),
-                                });
-                            }
-
-                            // Record cross-category bonus
-                            if (topCorrect > 0 && worstCorrect > 0) {
-                                const allCorrectPredictionIds = [
-                                    ...topPredictions.filter(p => {
-                                        const symbol = p.symbol?.toLowerCase();
-                                        return symbol && topPerformerMap.has(symbol);
-                                    }).map(p => p.id),
-                                    ...worstPredictions.filter(p => {
-                                        const symbol = p.symbol?.toLowerCase();
-                                        return symbol && worstPerformerMap.has(symbol);
-                                    }).map(p => p.id),
-                                ];
-
-                                await db.insert(userPointTransactions).values({
-                                    walletAddress: update.walletAddress,
-                                    roundId: filterAndRank.roundId,
-                                    transactionType: 'cross_category_bonus',
-                                    pointsAmount: 50,
-                                    solanaSignature: signature,
-                                    relatedPredictionIds: JSON.stringify(allCorrectPredictionIds),
-                                    metadata: JSON.stringify({
-                                        topCorrect,
-                                        worstCorrect,
-                                    }),
-                                });
                             }
 
                             usersProcessed++;

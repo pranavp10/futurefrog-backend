@@ -33,3 +33,4 @@ export type CoinMetadata = typeof coinMetadata.$inferSelect;
 export type NewCoinMetadata = typeof coinMetadata.$inferInsert;
 
 
+

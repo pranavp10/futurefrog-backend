@@ -13,6 +13,8 @@ export interface UserPredictions {
     worstPerformer: string[];
     topPerformerTimestamps: number[];
     worstPerformerTimestamps: number[];
+    topPerformerPercentages: number[];
+    worstPerformerPercentages: number[];
     points: number;
     lastUpdated: number;
 }
@@ -51,11 +53,11 @@ export async function getAllInitializedUsers(
     connection: Connection
 ): Promise<UserListData[]> {
     try {
-        // Fixed size: 8 + 32 + 6*5 + 6*5 + 8*5 + 8*5 + 8 + 8 = 196 bytes
+        // Fixed size: 8 + 32 + 6*5 + 6*5 + 8*5 + 8*5 + 2*5 + 2*5 + 8 + 8 = 216 bytes
         const accounts = await connection.getProgramAccounts(PROGRAM_ID, {
             filters: [
                 {
-                    dataSize: 196,
+                    dataSize: 216,
                 },
             ],
         });
@@ -70,7 +72,8 @@ export async function getAllInitializedUsers(
 
                     // Skip the string arrays (30 bytes for top_performer + 30 bytes for worst_performer)
                     // Skip the timestamp arrays (40 bytes for top_performer_timestamps + 40 bytes for worst_performer_timestamps)
-                    const offset = 40 + 30 + 30 + 40 + 40;
+                    // Skip the percentage arrays (10 bytes for top_performer_percentages + 10 bytes for worst_performer_percentages)
+                    const offset = 40 + 30 + 30 + 40 + 40 + 10 + 10;
 
                     const points = Number(data.readBigUInt64LE(offset));
                     const lastUpdated = Number(data.readBigInt64LE(offset + 8));
@@ -112,7 +115,9 @@ export async function fetchUserPredictions(
         const data = accountInfo.data;
 
         // Parse account data with fixed-length layout
-        // Layout: discriminator(8) + owner(32) + top_performer(6*5) + worst_performer(6*5) + top_performer_timestamps(8*5) + worst_performer_timestamps(8*5) + points(8) + last_updated(8)
+        // Layout: discriminator(8) + owner(32) + top_performer(6*5) + worst_performer(6*5) + 
+        //         top_performer_timestamps(8*5) + worst_performer_timestamps(8*5) + 
+        //         top_performer_percentages(2*5) + worst_performer_percentages(2*5) + points(8) + last_updated(8)
         const owner = new PublicKey(data.slice(8, 40));
 
         let offset = 40;
@@ -145,6 +150,20 @@ export async function fetchUserPredictions(
             offset += 8;
         }
 
+        // Read top_performer_percentages array (5 i16 percentages)
+        const topPerformerPercentages: number[] = [];
+        for (let i = 0; i < 5; i++) {
+            topPerformerPercentages.push(data.readInt16LE(offset));
+            offset += 2;
+        }
+
+        // Read worst_performer_percentages array (5 i16 percentages)
+        const worstPerformerPercentages: number[] = [];
+        for (let i = 0; i < 5; i++) {
+            worstPerformerPercentages.push(data.readInt16LE(offset));
+            offset += 2;
+        }
+
         const points = Number(data.readBigUInt64LE(offset));
         const lastUpdated = Number(data.readBigInt64LE(offset + 8));
 
@@ -154,6 +173,8 @@ export async function fetchUserPredictions(
             worstPerformer,
             topPerformerTimestamps,
             worstPerformerTimestamps,
+            topPerformerPercentages,
+            worstPerformerPercentages,
             points,
             lastUpdated,
         };

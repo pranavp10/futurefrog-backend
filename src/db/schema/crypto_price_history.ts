@@ -43,3 +43,4 @@ export const cryptoPriceHistory = pgTable("crypto_price_history", {
 export type CryptoPriceHistory = typeof cryptoPriceHistory.$inferSelect;
 export type NewCryptoPriceHistory = typeof cryptoPriceHistory.$inferInsert;
 
+

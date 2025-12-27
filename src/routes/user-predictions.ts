@@ -264,7 +264,7 @@ export const userPredictionsRoutes = new Elysia({ prefix: "/user-predictions" })
         })
     })
 
-    // Get performance stats for a user
+    // Get performance stats for a user (accuracy-based scoring)
     .get("/:walletAddress/stats", async ({ params }) => {
         const { walletAddress } = params;
 
@@ -280,10 +280,17 @@ export const userPredictionsRoutes = new Elysia({ prefix: "/user-predictions" })
         const totalPredictions = predictions.length;
         const totalPointsEarned = predictions.reduce((sum, p) => sum + (p.pointsEarned || 0), 0);
         
-        // Calculate correct predictions (earned more than participation points)
-        const correctPredictions = predictions.filter(p => (p.pointsEarned || 0) > 1).length;
-        const exactMatches = predictions.filter(p => p.pointsEarned === 50).length;
-        const categoryMatches = predictions.filter(p => p.pointsEarned === 10).length;
+        // Calculate stats by accuracy tier (new scoring system)
+        const perfectPredictions = predictions.filter(p => p.pointsEarned === 1000).length;
+        const excellentPredictions = predictions.filter(p => p.pointsEarned === 750).length;
+        const greatPredictions = predictions.filter(p => p.pointsEarned === 500).length;
+        const goodPredictions = predictions.filter(p => p.pointsEarned === 250).length;
+        const fairPredictions = predictions.filter(p => p.pointsEarned === 100).length;
+        const correctDirectionPredictions = predictions.filter(p => p.pointsEarned === 50).length;
+        const wrongDirectionPredictions = predictions.filter(p => p.pointsEarned === 10).length;
+        
+        // Correct direction = any prediction that got direction right (not 10 points)
+        const correctDirectionTotal = predictions.filter(p => (p.pointsEarned || 0) > 10).length;
 
         // Get current points from latest snapshot
         const latest = await db
@@ -300,10 +307,25 @@ export const userPredictionsRoutes = new Elysia({ prefix: "/user-predictions" })
             currentPoints,
             totalPredictions,
             totalPointsEarned,
-            correctPredictions,
-            exactMatches,
-            categoryMatches,
-            accuracy: totalPredictions > 0 ? (correctPredictions / totalPredictions * 100).toFixed(2) : '0.00',
+            // Accuracy tiers breakdown
+            accuracyTiers: {
+                perfect: perfectPredictions,      // 1000 pts (0-1% error)
+                excellent: excellentPredictions,  // 750 pts (1-2% error)
+                great: greatPredictions,          // 500 pts (2-5% error)
+                good: goodPredictions,            // 250 pts (5-10% error)
+                fair: fairPredictions,            // 100 pts (10-20% error)
+                correctDirection: correctDirectionPredictions, // 50 pts (>20% error but right direction)
+                wrongDirection: wrongDirectionPredictions,     // 10 pts (wrong direction)
+            },
+            // Overall accuracy (predictions with correct direction)
+            correctDirectionTotal,
+            directionAccuracy: totalPredictions > 0 
+                ? ((correctDirectionTotal / totalPredictions) * 100).toFixed(2) 
+                : '0.00',
+            // Average points per prediction
+            averagePoints: totalPredictions > 0 
+                ? (totalPointsEarned / totalPredictions).toFixed(2) 
+                : '0.00',
         };
     }, {
         params: t.Object({

@@ -45,3 +45,4 @@ export type UserPointTransaction = typeof userPointTransactions.$inferSelect;
 export type NewUserPointTransaction = typeof userPointTransactions.$inferInsert;
 
 
+

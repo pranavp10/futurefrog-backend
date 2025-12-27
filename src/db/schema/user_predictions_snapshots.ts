@@ -7,6 +7,7 @@ import {
     integer,
     uniqueIndex,
     boolean,
+    decimal,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -25,8 +26,12 @@ export const userPredictionsSnapshots = pgTable("user_predictions_snapshots", {
     
     // Prediction details
     predictionType: varchar("prediction_type", { length: 20 }).notNull(), // "top_performer" or "worst_performer"
-    rank: integer("rank").notNull(), // 1-5 (which silo)
+    rank: integer("rank").notNull(), // 1-5 (which silo/slot - just independent bets now)
     symbol: varchar("symbol", { length: 10 }), // The predicted crypto symbol (can be empty/null)
+    predictedPercentage: integer("predicted_percentage").default(0), // User's predicted % change (from blockchain)
+    priceAtPrediction: decimal("price_at_prediction", { precision: 24, scale: 8 }), // Price when prediction was made
+    priceAtScoring: decimal("price_at_scoring", { precision: 24, scale: 8 }), // Price when prediction was scored
+    actualPercentage: decimal("actual_percentage", { precision: 10, scale: 4 }), // Actual % change calculated at scoring
     
     // Timestamp from blockchain for THIS specific prediction
     predictionTimestamp: bigint("prediction_timestamp", { mode: "number" }), // Unix timestamp when user made this prediction
