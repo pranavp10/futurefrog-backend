@@ -14,6 +14,7 @@ import { userPredictionsRoutes } from "./routes/user-predictions";
 import { resultsRoutes } from "./routes/results";
 import { reloadSymbolMappingsRoute } from "./routes/reload-symbol-mappings";
 import { forecastRoutes } from "./routes/forecast";
+import { configRoutes } from "./routes/config";
 import { functions, inngest } from "./inngest";
 import { loadSymbolMappings, areSymbolMappingsLoaded } from "./lib/redis";
 
@@ -57,6 +58,7 @@ const app = new Elysia()
   .use(resultsRoutes)
   .use(reloadSymbolMappingsRoute)
   .use(forecastRoutes)
+  .use(configRoutes)
   .all("/inngest", ({ request }) => inngestHandler(request))
   .get("/", () => {
     return {
