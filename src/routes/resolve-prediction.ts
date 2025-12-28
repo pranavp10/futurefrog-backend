@@ -8,6 +8,29 @@ import { eq, and } from 'drizzle-orm';
 import { getRedisClient } from '../lib/redis';
 
 const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID || 'GGw3GTVpjwLhHdsK4dY3Kb1Lb3vpz5Ns6zV3aMWcf9xe');
+
+// Lock timeout in seconds - prevents stale locks
+const RESOLUTION_LOCK_TIMEOUT = 60;
+
+/**
+ * Acquire a lock for wallet resolution to prevent race conditions
+ */
+async function acquireResolutionLock(walletAddress: string): Promise<boolean> {
+    const redis = getRedisClient();
+    const lockKey = `resolution_lock:${walletAddress}`;
+    // SET NX = only set if not exists, EX = expiry in seconds
+    const result = await redis.set(lockKey, Date.now().toString(), 'EX', RESOLUTION_LOCK_TIMEOUT, 'NX');
+    return result === 'OK';
+}
+
+/**
+ * Release the resolution lock for a wallet
+ */
+async function releaseResolutionLock(walletAddress: string): Promise<void> {
+    const redis = getRedisClient();
+    const lockKey = `resolution_lock:${walletAddress}`;
+    await redis.del(lockKey);
+}
 const RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
 const PRICE_MULTIPLIER = 1_000_000_000; // 9 decimals
 
@@ -195,6 +218,17 @@ export const resolvePredictionRoutes = new Elysia()
         console.log(`   Silo Index: ${siloIndex}`);
         console.log(`========================================\n`);
 
+        // Acquire lock to prevent race conditions when resolving multiple predictions
+        const lockAcquired = await acquireResolutionLock(walletAddress);
+        if (!lockAcquired) {
+            console.log(`⏳ Resolution already in progress for wallet ${walletAddress}`);
+            return {
+                success: false,
+                message: 'Another prediction is currently being resolved. Please wait a moment and try again.',
+                error: 'RESOLUTION_IN_PROGRESS',
+            };
+        }
+
         try {
             const connection = new Connection(RPC_URL, 'confirmed');
             const userPubkey = new PublicKey(walletAddress);
@@ -208,6 +242,7 @@ export const resolvePredictionRoutes = new Elysia()
             // Fetch account data
             const accountInfo = await connection.getAccountInfo(userPredictionsPda);
             if (!accountInfo) {
+                await releaseResolutionLock(walletAddress);
                 return {
                     success: false,
                     message: 'User predictions account not found',
@@ -237,6 +272,7 @@ export const resolvePredictionRoutes = new Elysia()
 
             // Validate prediction exists
             if (!coinId || coinId.trim() === '') {
+                await releaseResolutionLock(walletAddress);
                 return {
                     success: false,
                     message: 'No prediction found in this slot',
@@ -245,6 +281,7 @@ export const resolvePredictionRoutes = new Elysia()
             }
 
             if (!predictionTimestamp || predictionTimestamp === 0) {
+                await releaseResolutionLock(walletAddress);
                 return {
                     success: false,
                     message: 'Prediction has no timestamp',
@@ -253,6 +290,7 @@ export const resolvePredictionRoutes = new Elysia()
             }
 
             if (!duration || duration === 0) {
+                await releaseResolutionLock(walletAddress);
                 return {
                     success: false,
                     message: 'Prediction has no duration set',
@@ -265,6 +303,7 @@ export const resolvePredictionRoutes = new Elysia()
             const now = Math.floor(Date.now() / 1000);
 
             if (now < resolutionTimestamp) {
+                await releaseResolutionLock(walletAddress);
                 const remainingSeconds = resolutionTimestamp - now;
                 const remainingMinutes = Math.ceil(remainingSeconds / 60);
                 return {
@@ -287,6 +326,7 @@ export const resolvePredictionRoutes = new Elysia()
             const priceAtResolution = await fetchHistoricalPriceForResolution(coinId, resolutionTimestamp);
 
             if (priceAtResolution === null) {
+                await releaseResolutionLock(walletAddress);
                 return {
                     success: false,
                     message: `Could not fetch price for ${coinId} at resolution time. Please try again later.`,
@@ -403,6 +443,9 @@ export const resolvePredictionRoutes = new Elysia()
             await connection.confirmTransaction(signature, 'confirmed');
 
             console.log(`\n✅ Transaction confirmed: ${signature}`);
+            console.log(`   📝 Step 1: Resolution price set to $${priceAtResolution.toFixed(6)}`);
+            console.log(`   🎯 Step 2: Points updated from ${predictions.points} to ${newTotalPoints} (+${pointsAwarded})`);
+            console.log(`   🧹 Step 3: Silo cleared (${predictionType} index ${siloIndex}) - slot now available for new predictions`);
 
             // Record resolution in database (upsert to avoid duplicates)
             console.log(`\n💾 Recording resolution in database...`);
@@ -461,6 +504,9 @@ export const resolvePredictionRoutes = new Elysia()
                 console.error(`   ⚠️ Failed to record resolution in database: ${dbError.message}`);
             }
 
+            // Release lock after successful resolution
+            await releaseResolutionLock(walletAddress);
+
             return {
                 success: true,
                 message: `Prediction resolved! You earned ${pointsAwarded} points (${accuracyLabel})`,
@@ -479,6 +525,8 @@ export const resolvePredictionRoutes = new Elysia()
                 },
             };
         } catch (error: any) {
+            // Always release lock on error
+            await releaseResolutionLock(walletAddress);
             console.error(`\n❌ Error resolving prediction:`, error);
             return {
                 success: false,
