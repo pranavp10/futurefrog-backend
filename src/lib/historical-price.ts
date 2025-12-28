@@ -2,6 +2,11 @@
  * Fetch historical price directly from CoinGecko WITHOUT caching.
  * Use this for resolution to ensure we always get fresh data.
  * 
+ * CoinGecko granularity:
+ * - Within 24 hours: 5-minute intervals
+ * - 1-90 days: hourly intervals
+ * - Beyond 90 days: daily intervals
+ * 
  * @param coingeckoId - The CoinGecko ID (e.g., "bitcoin", "storj") - NOT the symbol
  * @param timestamp - Unix timestamp in seconds
  * @returns Price in USD or null if unavailable
@@ -15,8 +20,15 @@ export async function fetchHistoricalPriceForResolution(
         const now = Math.floor(Date.now() / 1000);
         const age = now - timestamp;
 
-        // Add ±1 hour buffer to ensure we get data points around the target time
-        const bufferSeconds = 60 * 60; // 1 hour
+        // Determine buffer and acceptable diff based on data age
+        // CoinGecko provides 5-min granularity within 24h, hourly for 1-90 days
+        const TWENTY_FOUR_HOURS = 24 * 60 * 60;
+        const isWithin24Hours = age <= TWENTY_FOUR_HOURS;
+
+        // Use tight buffer for recent data (5-min granularity), wider for older data
+        const bufferSeconds = isWithin24Hours ? 5 * 60 : 60 * 60; // 5 min or 1 hour
+        const maxAcceptableDiffMs = isWithin24Hours ? 10 * 60 * 1000 : 2 * 60 * 60 * 1000; // 10 min or 2 hours
+
         const fromTimestamp = timestamp - bufferSeconds;
         const toTimestamp = timestamp + bufferSeconds;
 
@@ -34,6 +46,8 @@ export async function fetchHistoricalPriceForResolution(
         console.log(`📡 [Resolution] Fetching from CoinGecko: ${coingeckoId}`);
         console.log(`   Target timestamp: ${timestamp} (${new Date(timestamp * 1000).toISOString()})`);
         console.log(`   Age: ${Math.floor(age / 3600)}h ${Math.floor((age % 3600) / 60)}m`);
+        console.log(`   Granularity: ${isWithin24Hours ? '5-minute (within 24h)' : 'hourly (>24h)'}`);
+        console.log(`   Buffer: ±${bufferSeconds / 60} minutes`);
 
         const response = await fetch(url);
 
@@ -69,10 +83,9 @@ export async function fetchHistoricalPriceForResolution(
             }
         }
 
-        // Only accept if within 2 hours
-        const maxDiffMs = 2 * 60 * 60 * 1000;
-        if (minDiff > maxDiffMs) {
-            console.warn(`⚠️ Closest price is ${Math.floor(minDiff / 60000)}min away, too far from target`);
+        // Validate the price is within acceptable range
+        if (minDiff > maxAcceptableDiffMs) {
+            console.warn(`⚠️ Closest price is ${Math.floor(minDiff / 60000)}min away, exceeds ${Math.floor(maxAcceptableDiffMs / 60000)}min threshold`);
             return null;
         }
 

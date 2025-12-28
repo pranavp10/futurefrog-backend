@@ -30,12 +30,13 @@ export const userPredictionsSnapshots = pgTable("user_predictions_snapshots", {
     symbol: varchar("symbol", { length: 10 }), // The predicted crypto symbol (can be empty/null)
     predictedPercentage: integer("predicted_percentage").default(0), // User's predicted % change (from blockchain)
     priceAtPrediction: decimal("price_at_prediction", { precision: 24, scale: 8 }), // Price when prediction was made
-    priceAtScoring: decimal("price_at_scoring", { precision: 24, scale: 8 }), // Price when prediction was scored
+    priceAtScoring: decimal("price_at_scoring", { precision: 24, scale: 8 }), // Price when prediction was scored/resolved
     actualPercentage: decimal("actual_percentage", { precision: 10, scale: 4 }), // Actual % change calculated at scoring
     
     // Timestamp from blockchain for THIS specific prediction
     predictionTimestamp: bigint("prediction_timestamp", { mode: "number" }), // Unix timestamp when user made this prediction
-    resolutionTime: timestamp("resolution_time"), // When prediction is expected to resolve (predictionTimestamp + interval)
+    duration: bigint("duration", { mode: "number" }), // Duration in seconds from blockchain
+    resolutionTime: timestamp("resolution_time"), // When prediction is expected to resolve (predictionTimestamp + duration)
     
     // User metadata at time of snapshot
     points: bigint("points", { mode: "number" }).notNull().default(0),
@@ -45,9 +46,12 @@ export const userPredictionsSnapshots = pgTable("user_predictions_snapshots", {
     snapshotTimestamp: timestamp("snapshot_timestamp").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     
-    // Processing flag and points earned for this prediction
+    // Processing/Resolution fields
     processed: boolean("processed").notNull().default(false),
     pointsEarned: integer("points_earned").default(0),
+    resolvedAt: timestamp("resolved_at"), // When resolution actually happened
+    solanaSignature: varchar("solana_signature", { length: 100 }), // Transaction signature for the resolution
+    resolvedBy: varchar("resolved_by", { length: 20 }), // "user" or "inngest"
 }, (table) => ({
     // Unique constraint to prevent duplicate predictions
     // A user can only have one record per wallet+predictionType+rank+predictionTimestamp combination

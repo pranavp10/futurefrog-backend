@@ -2,6 +2,10 @@ import { Elysia } from 'elysia';
 import { Connection, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { getBuyBackKeypair } from '../lib/buyback-utils';
 import { fetchHistoricalPriceForResolution } from '../lib/historical-price';
+import { db } from '../db';
+import { userPredictionsSnapshots } from '../db/schema';
+import { eq, and } from 'drizzle-orm';
+import { getRedisClient } from '../lib/redis';
 
 const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID || 'GGw3GTVpjwLhHdsK4dY3Kb1Lb3vpz5Ns6zV3aMWcf9xe');
 const RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
@@ -10,6 +14,7 @@ const PRICE_MULTIPLIER = 1_000_000_000; // 9 decimals
 // Instruction discriminators
 const ADMIN_SET_RESOLUTION_PRICE_IX = Buffer.from([0xcb, 0x7e, 0x48, 0x89, 0xa4, 0xfc, 0xb3, 0x89]); // admin_set_resolution_price
 const UPDATE_USER_POINTS_IX = Buffer.from([0x40, 0x04, 0xb8, 0x7e, 0x00, 0x2e, 0xc4, 0x9f]);
+const ADMIN_CLEAR_SINGLE_SILO_IX = Buffer.from([0x14, 0x85, 0x13, 0x7b, 0x4f, 0x1b, 0x9b, 0x60]); // admin_clear_single_silo
 
 interface ResolvePredictionRequest {
     walletAddress: string;
@@ -323,14 +328,15 @@ export const resolvePredictionRoutes = new Elysia()
             // Convert resolution price to u64
             const resolutionPriceU64 = BigInt(Math.floor(priceAtResolution * PRICE_MULTIPLIER));
 
-            // Build transaction with two instructions:
-            // 1. Set resolution price
+            // Build transaction with three instructions:
+            // 1. Set resolution price (for display/record keeping)
             // 2. Update user points
+            // 3. Clear the silo (free it up for new predictions)
 
             const transaction = new Transaction();
+            const vaultTypeByte = isTopPerformer ? 0 : 1;
 
             // Instruction 1: admin_set_resolution_price
-            const vaultTypeByte = isTopPerformer ? 0 : 1;
             const resolutionPriceBuffer = Buffer.alloc(8);
             resolutionPriceBuffer.writeBigUInt64LE(resolutionPriceU64);
 
@@ -366,6 +372,22 @@ export const resolvePredictionRoutes = new Elysia()
             });
             transaction.add(updatePointsIx);
 
+            // Instruction 3: admin_clear_single_silo (clear the slot after resolution)
+            const clearSiloIx = new TransactionInstruction({
+                programId: PROGRAM_ID,
+                keys: [
+                    { pubkey: userPredictionsPda, isSigner: false, isWritable: true },
+                    { pubkey: globalStatePda, isSigner: false, isWritable: false },
+                    { pubkey: adminKeypair.publicKey, isSigner: true, isWritable: false },
+                ],
+                data: Buffer.concat([
+                    ADMIN_CLEAR_SINGLE_SILO_IX,
+                    Buffer.from([vaultTypeByte]),
+                    Buffer.from([siloIndex]),
+                ]),
+            });
+            transaction.add(clearSiloIx);
+
             // Send transaction
             const { blockhash } = await connection.getLatestBlockhash('confirmed');
             transaction.recentBlockhash = blockhash;
@@ -381,6 +403,63 @@ export const resolvePredictionRoutes = new Elysia()
             await connection.confirmTransaction(signature, 'confirmed');
 
             console.log(`\n✅ Transaction confirmed: ${signature}`);
+
+            // Record resolution in database (upsert to avoid duplicates)
+            console.log(`\n💾 Recording resolution in database...`);
+            try {
+                // Check if prediction record already exists
+                const existingRecord = await db
+                    .select()
+                    .from(userPredictionsSnapshots)
+                    .where(
+                        and(
+                            eq(userPredictionsSnapshots.walletAddress, walletAddress),
+                            eq(userPredictionsSnapshots.predictionType, predictionType),
+                            eq(userPredictionsSnapshots.rank, siloIndex + 1), // rank is 1-indexed
+                            eq(userPredictionsSnapshots.predictionTimestamp, predictionTimestamp)
+                        )
+                    )
+                    .limit(1);
+
+                const resolutionData = {
+                    priceAtPrediction: priceAtPrediction.toString(),
+                    priceAtScoring: priceAtResolution.toString(),
+                    actualPercentage: actualPercentage.toFixed(4),
+                    duration,
+                    processed: true,
+                    pointsEarned: pointsAwarded,
+                    resolvedAt: new Date(),
+                    solanaSignature: signature,
+                    resolvedBy: 'user' as const,
+                };
+
+                if (existingRecord.length > 0) {
+                    // Update existing record with resolution data
+                    await db
+                        .update(userPredictionsSnapshots)
+                        .set(resolutionData)
+                        .where(eq(userPredictionsSnapshots.id, existingRecord[0].id));
+                    console.log(`   ✅ Updated existing prediction record: ${existingRecord[0].id}`);
+                } else {
+                    // Insert new record with full prediction and resolution data
+                    await db.insert(userPredictionsSnapshots).values({
+                        walletAddress,
+                        predictionType,
+                        rank: siloIndex + 1, // rank is 1-indexed
+                        symbol: coinId,
+                        predictedPercentage,
+                        predictionTimestamp,
+                        resolutionTime: new Date(resolutionTimestamp * 1000),
+                        points: newTotalPoints,
+                        snapshotTimestamp: new Date(),
+                        ...resolutionData,
+                    });
+                    console.log(`   ✅ Inserted new prediction record with resolution data`);
+                }
+            } catch (dbError: any) {
+                // Log but don't fail the resolution - blockchain tx already succeeded
+                console.error(`   ⚠️ Failed to record resolution in database: ${dbError.message}`);
+            }
 
             return {
                 success: true,
@@ -405,6 +484,102 @@ export const resolvePredictionRoutes = new Elysia()
                 success: false,
                 message: error.message || 'Failed to resolve prediction',
                 error: 'RESOLUTION_FAILED',
+            };
+        }
+    })
+
+    // Preview resolution - fetch price and calculate expected points (cached in Redis)
+    .post('/resolve-prediction/preview', async ({ body }): Promise<{
+        success: boolean;
+        data?: {
+            coinId: string;
+            priceAtPrediction: number;
+            priceAtResolution: number;
+            predictedPercentage: number;
+            actualPercentage: number;
+            accuracyLabel: string;
+            pointsAwarded: number;
+        };
+        error?: string;
+        cached?: boolean;
+    }> => {
+        const { coinId, predictionTimestamp, duration, priceAtPrediction, predictedPercentage, predictionType } = body as {
+            coinId: string;
+            predictionTimestamp: number;
+            duration: number;
+            priceAtPrediction: number;
+            predictedPercentage: number;
+            predictionType: 'top_performer' | 'worst_performer';
+        };
+
+        try {
+            const resolutionTimestamp = predictionTimestamp + duration;
+            const now = Math.floor(Date.now() / 1000);
+
+            // Check if prediction is ready
+            if (now < resolutionTimestamp) {
+                return {
+                    success: false,
+                    error: 'NOT_READY',
+                };
+            }
+
+            // Check Redis cache first
+            const redis = getRedisClient();
+            const cacheKey = `resolution_preview:${coinId}:${resolutionTimestamp}`;
+            const cachedPrice = await redis.get(cacheKey);
+
+            let priceAtResolution: number;
+            let cached = false;
+
+            if (cachedPrice) {
+                priceAtResolution = parseFloat(cachedPrice);
+                cached = true;
+                console.log(`📦 Cache hit for ${coinId} resolution price: $${priceAtResolution}`);
+            } else {
+                // Fetch from CoinGecko
+                const fetchedPrice = await fetchHistoricalPriceForResolution(coinId, resolutionTimestamp);
+                if (fetchedPrice === null) {
+                    return {
+                        success: false,
+                        error: 'PRICE_FETCH_FAILED',
+                    };
+                }
+                priceAtResolution = fetchedPrice;
+
+                // Cache for 5 minutes (resolution prices don't change for past timestamps)
+                await redis.setex(cacheKey, 300, priceAtResolution.toString());
+                console.log(`💾 Cached resolution price for ${coinId}: $${priceAtResolution}`);
+            }
+
+            // Calculate actual percentage change
+            const actualPercentage = ((priceAtResolution - priceAtPrediction) / priceAtPrediction) * 100;
+
+            // Calculate points
+            const { points: pointsAwarded, label: accuracyLabel } = calculateAccuracyPoints(
+                predictedPercentage,
+                actualPercentage,
+                predictionType
+            );
+
+            return {
+                success: true,
+                data: {
+                    coinId,
+                    priceAtPrediction,
+                    priceAtResolution,
+                    predictedPercentage,
+                    actualPercentage: Math.round(actualPercentage * 100) / 100,
+                    accuracyLabel,
+                    pointsAwarded,
+                },
+                cached,
+            };
+        } catch (error: any) {
+            console.error('Error in resolution preview:', error);
+            return {
+                success: false,
+                error: error.message || 'PREVIEW_FAILED',
             };
         }
     });

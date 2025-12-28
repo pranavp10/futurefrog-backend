@@ -285,6 +285,66 @@ export const userPredictionsRoutes = new Elysia({ prefix: "/user-predictions" })
         })
     })
 
+    // Get resolved predictions for a user (from database)
+    .get("/:walletAddress/resolved", async ({ params, query }) => {
+        const { walletAddress } = params;
+        const limit = query.limit ? parseInt(query.limit) : 50;
+        const offset = query.offset ? parseInt(query.offset) : 0;
+
+        // Get all resolved predictions for this user
+        // Resolved = processed is true AND solanaSignature exists AND resolvedAt exists
+        const resolved = await db
+            .select()
+            .from(userPredictionsSnapshots)
+            .where(
+                and(
+                    eq(userPredictionsSnapshots.walletAddress, walletAddress),
+                    eq(userPredictionsSnapshots.processed, true)
+                )
+            )
+            .orderBy(desc(userPredictionsSnapshots.resolvedAt))
+            .limit(limit)
+            .offset(offset);
+
+        // Filter to only those with resolvedAt (fully resolved predictions)
+        const fullyResolved = resolved.filter(p => p.resolvedAt !== null);
+
+        // Format the predictions
+        const predictions = fullyResolved.map(p => ({
+            id: p.id,
+            predictionType: p.predictionType,
+            rank: p.rank,
+            symbol: p.symbol,
+            predictedPercentage: p.predictedPercentage,
+            actualPercentage: p.actualPercentage ? parseFloat(p.actualPercentage) : null,
+            priceAtPrediction: p.priceAtPrediction ? parseFloat(p.priceAtPrediction) : null,
+            priceAtResolution: p.priceAtScoring ? parseFloat(p.priceAtScoring) : null,
+            duration: p.duration,
+            predictionTimestamp: p.predictionTimestamp,
+            resolutionTime: p.resolutionTime?.toISOString() || null,
+            resolvedAt: p.resolvedAt?.toISOString() || null,
+            resolvedBy: p.resolvedBy,
+            pointsEarned: p.pointsEarned || 0,
+            solanaSignature: p.solanaSignature,
+        }));
+
+        return {
+            walletAddress,
+            predictions,
+            total: predictions.length,
+            limit,
+            offset,
+        };
+    }, {
+        params: t.Object({
+            walletAddress: t.String()
+        }),
+        query: t.Object({
+            limit: t.Optional(t.String()),
+            offset: t.Optional(t.String())
+        })
+    })
+
     // Get performance stats for a user (accuracy-based scoring)
     .get("/:walletAddress/stats", async ({ params }) => {
         const { walletAddress } = params;
