@@ -1,57 +1,12 @@
-import { getRedisClient } from './redis';
-
-const PRICE_CACHE_PREFIX = 'price:';
-const PRICE_CACHE_TTL = 30 * 24 * 60 * 60; // 30 days in seconds
-
-interface PriceDataPoint {
-    timestamp: number; // milliseconds
-    price: number;
-}
-
 /**
- * Get historical price for a cryptocurrency at a specific timestamp
- * @param coingeckoId - CoinGecko ID (e.g., "bitcoin", "ethereum")
+ * Fetch historical price directly from CoinGecko WITHOUT caching.
+ * Use this for resolution to ensure we always get fresh data.
+ * 
+ * @param coingeckoId - The CoinGecko ID (e.g., "bitcoin", "storj") - NOT the symbol
  * @param timestamp - Unix timestamp in seconds
  * @returns Price in USD or null if unavailable
  */
-export async function getHistoricalPrice(
-    coingeckoId: string,
-    timestamp: number
-): Promise<number | null> {
-    try {
-        // Check Redis cache first
-        const cacheKey = `${PRICE_CACHE_PREFIX}${coingeckoId}:${timestamp}`;
-        const redis = getRedisClient();
-        const cachedPrice = await redis.get(cacheKey);
-
-        if (cachedPrice) {
-            console.log(`💰 Cache hit for ${coingeckoId} at ${timestamp}`);
-            return parseFloat(cachedPrice);
-        }
-
-        console.log(`🔍 Cache miss, fetching price for ${coingeckoId} at ${timestamp}`);
-
-        // Fetch from CoinGecko API
-        const price = await fetchPriceFromCoinGecko(coingeckoId, timestamp);
-
-        if (price !== null) {
-            // Cache the result
-            await redis.setex(cacheKey, PRICE_CACHE_TTL, price.toString());
-            console.log(`✅ Cached price for ${coingeckoId} at ${timestamp}: $${price}`);
-        }
-
-        return price;
-    } catch (error) {
-        console.error(`❌ Error getting historical price for ${coingeckoId}:`, error);
-        return null;
-    }
-}
-
-/**
- * Fetch price from CoinGecko market_chart/range API
- * Automatically handles granularity based on timestamp age
- */
-async function fetchPriceFromCoinGecko(
+export async function fetchHistoricalPriceForResolution(
     coingeckoId: string,
     timestamp: number
 ): Promise<number | null> {
@@ -60,13 +15,12 @@ async function fetchPriceFromCoinGecko(
         const now = Math.floor(Date.now() / 1000);
         const age = now - timestamp;
 
-        // CoinGecko requires timestamps in seconds, but we need some buffer
         // Add ±1 hour buffer to ensure we get data points around the target time
         const bufferSeconds = 60 * 60; // 1 hour
         const fromTimestamp = timestamp - bufferSeconds;
         const toTimestamp = timestamp + bufferSeconds;
 
-        // Build API URL
+        // Build API URL - using coingeckoId directly (no mapping needed)
         const baseUrl = 'https://api.coingecko.com/api/v3';
         const endpoint = `/coins/${coingeckoId}/market_chart/range`;
         const params = new URLSearchParams({
@@ -77,7 +31,9 @@ async function fetchPriceFromCoinGecko(
 
         const url = `${baseUrl}${endpoint}?${params}${apiKey ? `&x_cg_demo_api_key=${apiKey}` : ''}`;
 
-        console.log(`📡 Fetching from CoinGecko: ${coingeckoId} (age: ${Math.floor(age / 3600)}h)`);
+        console.log(`📡 [Resolution] Fetching from CoinGecko: ${coingeckoId}`);
+        console.log(`   Target timestamp: ${timestamp} (${new Date(timestamp * 1000).toISOString()})`);
+        console.log(`   Age: ${Math.floor(age / 3600)}h ${Math.floor((age % 3600) / 60)}m`);
 
         const response = await fetch(url);
 
@@ -85,7 +41,7 @@ async function fetchPriceFromCoinGecko(
             if (response.status === 429) {
                 console.error('⚠️ CoinGecko rate limit hit');
             } else if (response.status === 404) {
-                console.error(`⚠️ Coin not found: ${coingeckoId}`);
+                console.error(`⚠️ Coin not found on CoinGecko: ${coingeckoId}`);
             } else {
                 console.error(`⚠️ CoinGecko API error: ${response.status} ${response.statusText}`);
             }
@@ -101,78 +57,33 @@ async function fetchPriceFromCoinGecko(
         }
 
         // Find the price closest to our target timestamp
-        const targetMs = timestamp * 1000; // Convert to milliseconds
-        const priceDataPoints: PriceDataPoint[] = data.prices.map(([ts, price]: [number, number]) => ({
-            timestamp: ts,
-            price: price,
-        }));
+        const targetMs = timestamp * 1000;
+        let closest = data.prices[0];
+        let minDiff = Math.abs(data.prices[0][0] - targetMs);
 
-        const closestPrice = findClosestPrice(priceDataPoints, targetMs);
-
-        if (closestPrice) {
-            const timeDiff = Math.abs(closestPrice.timestamp - targetMs) / 1000 / 60; // in minutes
-            console.log(`📊 Found price: $${closestPrice.price} (${timeDiff.toFixed(0)}min difference)`);
-            return closestPrice.price;
+        for (const [ts, price] of data.prices) {
+            const diff = Math.abs(ts - targetMs);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closest = [ts, price];
+            }
         }
 
-        console.warn(`⚠️ Could not find close enough price for ${coingeckoId} at ${timestamp}`);
-        return null;
+        // Only accept if within 2 hours
+        const maxDiffMs = 2 * 60 * 60 * 1000;
+        if (minDiff > maxDiffMs) {
+            console.warn(`⚠️ Closest price is ${Math.floor(minDiff / 60000)}min away, too far from target`);
+            return null;
+        }
+
+        const timeDiffMin = Math.floor(minDiff / 60000);
+        console.log(`✅ [Resolution] Found price: $${closest[1]} (${timeDiffMin}min from target)`);
+        
+        return closest[1];
     } catch (error) {
-        console.error(`❌ Error fetching from CoinGecko:`, error);
+        console.error(`❌ Error fetching resolution price from CoinGecko:`, error);
         return null;
     }
-}
-
-/**
- * Find the price data point closest to the target timestamp
- */
-function findClosestPrice(
-    dataPoints: PriceDataPoint[],
-    targetTimestamp: number
-): PriceDataPoint | null {
-    if (dataPoints.length === 0) return null;
-
-    let closest = dataPoints[0];
-    let minDiff = Math.abs(dataPoints[0].timestamp - targetTimestamp);
-
-    for (const point of dataPoints) {
-        const diff = Math.abs(point.timestamp - targetTimestamp);
-        if (diff < minDiff) {
-            minDiff = diff;
-            closest = point;
-        }
-    }
-
-    // Only return if the price is within reasonable time range (e.g., 2 hours)
-    const maxDiffMs = 2 * 60 * 60 * 1000; // 2 hours
-    if (minDiff <= maxDiffMs) {
-        return closest;
-    }
-
-    return null;
-}
-
-/**
- * Batch fetch historical prices for multiple predictions
- * This is more efficient than calling getHistoricalPrice multiple times
- * @param requests - Array of {coingeckoId, timestamp} objects
- * @returns Map of cache keys to prices
- */
-export async function batchGetHistoricalPrices(
-    requests: Array<{ coingeckoId: string; timestamp: number }>
-): Promise<Map<string, number | null>> {
-    const results = new Map<string, number | null>();
-
-    // Fetch all prices in parallel
-    const promises = requests.map(async (req) => {
-        const key = `${req.coingeckoId}:${req.timestamp}`;
-        const price = await getHistoricalPrice(req.coingeckoId, req.timestamp);
-        results.set(key, price);
-    });
-
-    await Promise.all(promises);
-
-    return results;
 }
 
 

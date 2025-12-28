@@ -1,9 +1,7 @@
 import { Elysia, t } from "elysia";
 import { db } from "../db";
 import { userPredictionsSnapshots } from "../db/schema";
-import { eq, desc, and, isNotNull, isNull } from "drizzle-orm";
-import { getCoingeckoIdFromSymbol } from "../lib/redis";
-import { getHistoricalPrice } from "../lib/historical-price";
+import { eq, desc, and } from "drizzle-orm";
 import { Connection, PublicKey } from "@solana/web3.js";
 
 // Helper to get PDA address
@@ -24,9 +22,8 @@ function parseFixedString(buffer: Buffer): string {
 
 export const userPredictionsRoutes = new Elysia({ prefix: "/user-predictions" })
     // Get current predictions for a user (from blockchain with prices)
-    .get("/:walletAddress/current", async ({ params, query }) => {
+    .get("/:walletAddress/current", async ({ params }) => {
         const { walletAddress } = params;
-        const includePrices = query.includePrices !== 'false'; // default true
 
         try {
             // Fetch current predictions from blockchain
@@ -51,21 +48,21 @@ export const userPredictionsRoutes = new Elysia({ prefix: "/user-predictions" })
 
             const data = accountInfo.data;
             
-            // Parse blockchain data
+            // Parse blockchain data - updated for 32-byte CoinGecko IDs
             let offset = 40; // Skip discriminator(8) + owner(32)
             
-            // Read top_performer array (5 fixed 6-byte strings)
-            const topPerformerSymbols: string[] = [];
+            // Read top_performer array (5 fixed 32-byte strings - CoinGecko IDs)
+            const topPerformerIds: string[] = [];
             for (let i = 0; i < 5; i++) {
-                topPerformerSymbols.push(parseFixedString(data.slice(offset, offset + 6)));
-                offset += 6;
+                topPerformerIds.push(parseFixedString(data.slice(offset, offset + 32)));
+                offset += 32;
             }
             
-            // Read worst_performer array (5 fixed 6-byte strings)
-            const worstPerformerSymbols: string[] = [];
+            // Read worst_performer array (5 fixed 32-byte strings - CoinGecko IDs)
+            const worstPerformerIds: string[] = [];
             for (let i = 0; i < 5; i++) {
-                worstPerformerSymbols.push(parseFixedString(data.slice(offset, offset + 6)));
-                offset += 6;
+                worstPerformerIds.push(parseFixedString(data.slice(offset, offset + 32)));
+                offset += 32;
             }
             
             // Read top_performer_timestamps (5 i64 values)
@@ -84,63 +81,105 @@ export const userPredictionsRoutes = new Elysia({ prefix: "/user-predictions" })
                 offset += 8;
             }
             
-            // Skip percentages (5 u16 values each for top and worst)
-            offset += 2 * 5; // top_performer_percentages
-            offset += 2 * 5; // worst_performer_percentages
+            // Read percentages (5 i16 values each for top and worst)
+            const topPerformerPercentages: number[] = [];
+            for (let i = 0; i < 5; i++) {
+                topPerformerPercentages.push(data.readInt16LE(offset));
+                offset += 2;
+            }
+            
+            const worstPerformerPercentages: number[] = [];
+            for (let i = 0; i < 5; i++) {
+                worstPerformerPercentages.push(data.readInt16LE(offset));
+                offset += 2;
+            }
+            
+            // Read prices (5 u64 values each for top and worst)
+            const topPerformerPrices: number[] = [];
+            for (let i = 0; i < 5; i++) {
+                const price = data.readBigUInt64LE(offset);
+                topPerformerPrices.push(Number(price) / 1_000_000_000); // Convert from 9 decimals
+                offset += 8;
+            }
+            
+            const worstPerformerPrices: number[] = [];
+            for (let i = 0; i < 5; i++) {
+                const price = data.readBigUInt64LE(offset);
+                worstPerformerPrices.push(Number(price) / 1_000_000_000);
+                offset += 8;
+            }
+            
+            // Skip resolution prices (5 u64 each for top and worst)
+            offset += 8 * 5; // top_performer_resolution_prices
+            offset += 8 * 5; // worst_performer_resolution_prices
+            
+            // Read durations (5 i64 each for top and worst)
+            const topPerformerDurations: number[] = [];
+            for (let i = 0; i < 5; i++) {
+                topPerformerDurations.push(Number(data.readBigInt64LE(offset)));
+                offset += 8;
+            }
+            
+            const worstPerformerDurations: number[] = [];
+            for (let i = 0; i < 5; i++) {
+                worstPerformerDurations.push(Number(data.readBigInt64LE(offset)));
+                offset += 8;
+            }
+            
+            // Read prediction_count
+            const predictionCount = Number(data.readBigUInt64LE(offset));
+            offset += 8;
             
             // Read points and last_updated
-            const points = Number(data.readBigInt64LE(offset));
+            const points = Number(data.readBigUInt64LE(offset));
             offset += 8;
             const lastUpdated = Number(data.readBigInt64LE(offset));
 
-            // Helper function to enrich prediction with price
-            const enrichPrediction = async (symbol: string, timestamp: number, rank: number) => {
-                const cleanSymbol = symbol.trim();
-                const prediction = {
+            // Helper function to build prediction object
+            // CoinGecko ID is stored directly on-chain, no mapping needed
+            const buildPrediction = (coingeckoId: string, timestamp: number, rank: number, percentage: number, priceAtPrediction: number, duration: number) => {
+                const cleanId = coingeckoId.trim();
+                return {
                     rank,
-                    symbol: cleanSymbol,
+                    coingeckoId: cleanId,
                     timestamp,
+                    percentage,
+                    priceAtPrediction: priceAtPrediction > 0 ? priceAtPrediction : null,
+                    duration,
                     pointsEarned: 0,
                     processed: false,
-                    priceAtPrediction: null as number | null,
                 };
-
-                if (includePrices && cleanSymbol !== '' && timestamp > 0) {
-                    try {
-                        const coingeckoId = await getCoingeckoIdFromSymbol(cleanSymbol);
-                        if (coingeckoId) {
-                            const price = await getHistoricalPrice(coingeckoId, timestamp);
-                            prediction.priceAtPrediction = price;
-                        } else {
-                            console.warn(`⚠️ No CoinGecko ID for symbol: ${cleanSymbol}`);
-                        }
-                    } catch (error) {
-                        console.error(`❌ Error fetching price for ${cleanSymbol}:`, error);
-                    }
-                }
-
-                return prediction;
             };
 
-            // Enrich all predictions in parallel
-            const topPerformersPromises = topPerformerSymbols.map((symbol, index) => 
-                enrichPrediction(symbol, topPerformerTimestamps[index], index)
+            // Build all predictions (prices are already stored on-chain, no need to fetch)
+            const topPerformers = topPerformerIds.map((id, index) => 
+                buildPrediction(
+                    id, 
+                    topPerformerTimestamps[index], 
+                    index,
+                    topPerformerPercentages[index],
+                    topPerformerPrices[index],
+                    topPerformerDurations[index]
+                )
             );
             
-            const worstPerformersPromises = worstPerformerSymbols.map((symbol, index) => 
-                enrichPrediction(symbol, worstPerformerTimestamps[index], index)
+            const worstPerformers = worstPerformerIds.map((id, index) => 
+                buildPrediction(
+                    id, 
+                    worstPerformerTimestamps[index], 
+                    index,
+                    worstPerformerPercentages[index],
+                    worstPerformerPrices[index],
+                    worstPerformerDurations[index]
+                )
             );
-
-            const [topPerformers, worstPerformers] = await Promise.all([
-                Promise.all(topPerformersPromises),
-                Promise.all(worstPerformersPromises),
-            ]);
 
             return {
                 walletAddress,
                 topPerformers,
                 worstPerformers,
                 points,
+                predictionCount,
                 lastUpdated,
                 snapshotTimestamp: new Date().toISOString(),
             };
@@ -159,9 +198,6 @@ export const userPredictionsRoutes = new Elysia({ prefix: "/user-predictions" })
     }, {
         params: t.Object({
             walletAddress: t.String()
-        }),
-        query: t.Object({
-            includePrices: t.Optional(t.String())
         })
     })
 
@@ -170,7 +206,6 @@ export const userPredictionsRoutes = new Elysia({ prefix: "/user-predictions" })
         const { walletAddress } = params;
         const limit = query.limit ? parseInt(query.limit) : 50;
         const offset = query.offset ? parseInt(query.offset) : 0;
-        const includePrices = query.includePrices !== 'false'; // default true
 
         // Get all snapshots for this user, grouped by snapshot timestamp
         const snapshots = await db
@@ -192,30 +227,19 @@ export const userPredictionsRoutes = new Elysia({ prefix: "/user-predictions" })
             groupedBySnapshot.get(key)!.push(snapshot);
         }
 
-        // Helper function to enrich prediction with price
-        const enrichPrediction = async (p: typeof snapshots[0]) => {
-            const prediction = {
+        // Helper function to format prediction from database
+        // The symbol field in DB actually stores the CoinGecko ID now
+        const formatPrediction = (p: typeof snapshots[0]) => {
+            return {
                 rank: p.rank,
-                symbol: p.symbol || '',
+                coingeckoId: p.symbol || '', // symbol field stores CoinGecko ID
                 timestamp: p.predictionTimestamp,
+                predictedPercentage: p.predictedPercentage,
+                actualPercentage: p.actualPercentage,
+                priceAtScoring: p.priceAtScoring,
                 pointsEarned: p.pointsEarned || 0,
                 processed: p.processed,
-                priceAtPrediction: null as number | null,
             };
-
-            if (includePrices && p.symbol && p.predictionTimestamp) {
-                try {
-                    const coingeckoId = await getCoingeckoIdFromSymbol(p.symbol);
-                    if (coingeckoId) {
-                        const price = await getHistoricalPrice(coingeckoId, p.predictionTimestamp);
-                        prediction.priceAtPrediction = price;
-                    }
-                } catch (error) {
-                    console.error(`❌ Error fetching price for ${p.symbol}:`, error);
-                }
-            }
-
-            return prediction;
         };
 
         // Format the grouped snapshots with prices
@@ -229,11 +253,9 @@ export const userPredictionsRoutes = new Elysia({ prefix: "/user-predictions" })
                     .filter(p => p.predictionType === 'worst_performer')
                     .sort((a, b) => a.rank - b.rank);
 
-                // Enrich all predictions in parallel
-                const [topPerformers, worstPerformers] = await Promise.all([
-                    Promise.all(topPerformersSnapshots.map(enrichPrediction)),
-                    Promise.all(worstPerformersSnapshots.map(enrichPrediction)),
-                ]);
+                // Format all predictions
+                const topPerformers = topPerformersSnapshots.map(formatPrediction);
+                const worstPerformers = worstPerformersSnapshots.map(formatPrediction);
 
                 return {
                     snapshotTimestamp: timestamp,
@@ -259,8 +281,7 @@ export const userPredictionsRoutes = new Elysia({ prefix: "/user-predictions" })
         }),
         query: t.Object({
             limit: t.Optional(t.String()),
-            offset: t.Optional(t.String()),
-            includePrices: t.Optional(t.String())
+            offset: t.Optional(t.String())
         })
     })
 

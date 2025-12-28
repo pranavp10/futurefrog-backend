@@ -2,7 +2,6 @@ import { Elysia, t } from "elysia";
 import { db } from "../db";
 import { userPredictionsSnapshots } from "../db/schema";
 import { eq, and } from "drizzle-orm";
-import { getCoingeckoIdFromSymbol } from "../lib/redis";
 
 interface HistoricalDataPoint {
     time: string;
@@ -17,7 +16,7 @@ interface PredictedDataPoint {
 }
 
 interface ForecastResponse {
-    symbol: string;
+    coingeckoId: string;
     intervalMinutes: number;
     currentPrice: number;
     currentTime: string;
@@ -100,9 +99,9 @@ async function getCurrentPrice(coingeckoId: string): Promise<number | null> {
 }
 
 export const forecastRoutes = new Elysia({ prefix: "/forecast" })
-    .get("/:symbol", async ({ params }) => {
-        const { symbol } = params;
-        const symbolUpper = symbol.toUpperCase();
+    // Now accepts CoinGecko ID directly (e.g., "bitcoin", "ethereum", "storj")
+    .get("/:coingeckoId", async ({ params }) => {
+        const { coingeckoId } = params;
 
         try {
             // Get prediction interval from env
@@ -110,21 +109,12 @@ export const forecastRoutes = new Elysia({ prefix: "/forecast" })
             const intervalMs = predictionIntervalMinutes * 60 * 1000;
             const now = Date.now();
 
-            // Get CoinGecko ID for this symbol
-            const coingeckoId = await getCoingeckoIdFromSymbol(symbolUpper);
-            if (!coingeckoId) {
-                return {
-                    success: false,
-                    error: `Unknown symbol: ${symbolUpper}`,
-                };
-            }
-
-            // Fetch current price
+            // Fetch current price using CoinGecko ID directly
             const currentPrice = await getCurrentPrice(coingeckoId);
             if (!currentPrice) {
                 return {
                     success: false,
-                    error: `Failed to fetch current price for ${symbolUpper}`,
+                    error: `Failed to fetch current price for ${coingeckoId}. Make sure it's a valid CoinGecko ID.`,
                 };
             }
 
@@ -133,18 +123,18 @@ export const forecastRoutes = new Elysia({ prefix: "/forecast" })
             const historicalTo = Math.floor(now / 1000);
             const historical = await fetchHistoricalPrices(coingeckoId, historicalFrom, historicalTo);
 
-            // Query unprocessed predictions for this symbol
+            // Query unprocessed predictions for this coin (symbol field stores CoinGecko ID)
             const predictions = await db
                 .select()
                 .from(userPredictionsSnapshots)
                 .where(
                     and(
                         eq(userPredictionsSnapshots.processed, false),
-                        eq(userPredictionsSnapshots.symbol, symbolUpper)
+                        eq(userPredictionsSnapshots.symbol, coingeckoId)
                     )
                 );
 
-            console.log(`Found ${predictions.length} unprocessed predictions for ${symbolUpper}`);
+            console.log(`Found ${predictions.length} unprocessed predictions for ${coingeckoId}`);
 
             // Calculate future prices and group by 1-hour buckets
             const hourBuckets = new Map<string, { prices: number[]; directions: string[] }>();
@@ -204,7 +194,7 @@ export const forecastRoutes = new Elysia({ prefix: "/forecast" })
                 .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 
             const response: ForecastResponse = {
-                symbol: symbolUpper,
+                coingeckoId,
                 intervalMinutes: predictionIntervalMinutes,
                 currentPrice,
                 currentTime: new Date(now).toISOString(),
