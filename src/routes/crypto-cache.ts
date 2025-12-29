@@ -1,7 +1,64 @@
 import { Elysia } from 'elysia';
 import { db } from '../db';
-import { cryptoMarketCache } from '../db/schema';
-import { desc, eq } from 'drizzle-orm';
+import { cryptoMarketCache, cryptoPriceHistory } from '../db/schema';
+import { desc, eq, sql } from 'drizzle-orm';
+
+interface SparklineData {
+    [coingeckoId: string]: number[];
+}
+
+/**
+ * Fetch sparkline data from the crypto_price_history table
+ * Returns a map of coingeckoId -> price array (last 24 hours of data points)
+ * Uses the historical data stored from snapshot runs instead of calling CoinGecko API
+ */
+async function fetchSparklineData(coinIds: string[]): Promise<SparklineData> {
+    try {
+        if (coinIds.length === 0) {
+            return {};
+        }
+
+        // Get data from the last 24 hours
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        // Query the crypto_price_history table for price data
+        const historyData = await db
+            .select({
+                coingeckoId: cryptoPriceHistory.coingeckoId,
+                currentPrice: cryptoPriceHistory.currentPrice,
+                snapshotTimestamp: cryptoPriceHistory.snapshotTimestamp,
+            })
+            .from(cryptoPriceHistory)
+            .where(
+                sql`${cryptoPriceHistory.coingeckoId} = ANY(${coinIds}) AND ${cryptoPriceHistory.snapshotTimestamp} >= ${twentyFourHoursAgo}`
+            )
+            .orderBy(cryptoPriceHistory.coingeckoId, cryptoPriceHistory.snapshotTimestamp);
+
+        // Group by coingeckoId and build sparkline arrays
+        const sparklineMap: SparklineData = {};
+
+        for (const record of historyData) {
+            const coinId = record.coingeckoId;
+            if (!sparklineMap[coinId]) {
+                sparklineMap[coinId] = [];
+            }
+            sparklineMap[coinId].push(parseFloat(record.currentPrice));
+        }
+
+        // Ensure we have at least 2 data points for each coin (for meaningful chart)
+        // If we have less, we'll return empty for that coin so the frontend can generate fallback
+        for (const coinId of Object.keys(sparklineMap)) {
+            if (sparklineMap[coinId].length < 2) {
+                delete sparklineMap[coinId];
+            }
+        }
+
+        return sparklineMap;
+    } catch (error) {
+        console.error('Error fetching sparkline data from database:', error);
+        return {};
+    }
+}
 
 /**
  * Crypto cache routes
@@ -9,8 +66,10 @@ import { desc, eq } from 'drizzle-orm';
  * Data is updated by the crypto snapshot process
  */
 export const cryptoCacheRoutes = new Elysia({ prefix: '/api/crypto-cache' })
-    .get('/', async ({ set }) => {
+    .get('/', async ({ set, query }) => {
         try {
+            const includeSparklines = query.sparklines === 'true';
+
             // Get the latest roundId first (by most recent snapshotTimestamp)
             const latestRound = await db
                 .select({
@@ -47,6 +106,13 @@ export const cryptoCacheRoutes = new Elysia({ prefix: '/api/crypto-cache' })
                 };
             }
 
+            // Fetch sparkline data if requested
+            let sparklineData: SparklineData = {};
+            if (includeSparklines) {
+                const coinIds = cachedData.map(coin => coin.coingeckoId);
+                sparklineData = await fetchSparklineData(coinIds);
+            }
+
             // Transform to match the CoinGecko API format for backward compatibility
             const formattedData = cachedData.map(coin => ({
                 id: coin.coingeckoId,
@@ -59,6 +125,11 @@ export const cryptoCacheRoutes = new Elysia({ prefix: '/api/crypto-cache' })
                 total_volume: coin.totalVolume ? parseFloat(coin.totalVolume) : null,
                 price_change_percentage_24h: parseFloat(coin.priceChangePercentage24h),
                 volume_rank: coin.volumeRank,
+                ...(includeSparklines && sparklineData[coin.coingeckoId] ? {
+                    sparkline_in_7d: {
+                        price: sparklineData[coin.coingeckoId],
+                    },
+                } : {}),
             }));
 
             // Get metadata from the first record

@@ -16,7 +16,7 @@ export const cryptoMoversRoutes = new Elysia({ prefix: '/api/crypto-movers' })
 
             // Fetch top 200 by volume to ensure we get 100 after filtering
             const response = await fetch(
-                `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc&per_page=200&page=1&sparkline=false&price_change_percentage=24h${apiKey ? `&x_cg_demo_api_key=${apiKey}` : ''}`
+                `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc&per_page=200&page=1&sparkline=true&price_change_percentage=24h${apiKey ? `&x_cg_demo_api_key=${apiKey}` : ''}`
             );
 
             if (!response.ok) {

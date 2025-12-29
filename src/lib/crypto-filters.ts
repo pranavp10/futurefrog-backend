@@ -14,6 +14,9 @@ export interface CoinGeckoMarketData {
     total_volume: number;
     price_change_percentage_24h: number;
     volume_rank?: number; // Our custom volume rank
+    sparkline_in_7d?: {
+        price: number[];
+    };
 }
 
 // List of known stablecoins
