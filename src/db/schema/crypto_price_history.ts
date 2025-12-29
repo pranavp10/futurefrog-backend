@@ -45,3 +45,4 @@ export type NewCryptoPriceHistory = typeof cryptoPriceHistory.$inferInsert;
 
 
 
+

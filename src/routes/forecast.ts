@@ -1,7 +1,9 @@
 import { Elysia, t } from "elysia";
+import { Connection } from "@solana/web3.js";
 import { db } from "../db";
-import { userPredictionsSnapshots } from "../db/schema";
-import { eq, and } from "drizzle-orm";
+import { userPredictionsSnapshots, coinMetadata } from "../db/schema";
+import { eq, and, inArray, isNull, sql } from "drizzle-orm";
+import { fetchAllUserPredictions, type UserPredictions } from "../lib/solana-predictions";
 
 interface HistoricalDataPoint {
     time: string;
@@ -99,7 +101,85 @@ async function getCurrentPrice(coingeckoId: string): Promise<number | null> {
 }
 
 export const forecastRoutes = new Elysia({ prefix: "/forecast" })
+    // Get list of assets with active (unresolved) predictions from chain
+    .get("/active-assets", async () => {
+        try {
+            const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+            const connection = new Connection(rpcUrl, "confirmed");
+
+            console.log("📡 Fetching active predictions from blockchain...");
+            const allUserPredictions = await fetchAllUserPredictions(connection);
+
+            // Collect unique symbols with active predictions (timestamp > 0 and resolution_price == 0)
+            const activeSymbols = new Set<string>();
+
+            for (const { predictions } of allUserPredictions) {
+                // Check top performers
+                for (let i = 0; i < 5; i++) {
+                    const symbol = predictions.topPerformer[i];
+                    const timestamp = predictions.topPerformerTimestamps[i];
+                    const resolutionPrice = predictions.topPerformerResolutionPrices[i];
+                    
+                    // Active = has symbol, has timestamp, no resolution price yet
+                    if (symbol && symbol.trim() !== '' && timestamp > 0 && resolutionPrice === 0) {
+                        activeSymbols.add(symbol);
+                    }
+                }
+
+                // Check worst performers
+                for (let i = 0; i < 5; i++) {
+                    const symbol = predictions.worstPerformer[i];
+                    const timestamp = predictions.worstPerformerTimestamps[i];
+                    const resolutionPrice = predictions.worstPerformerResolutionPrices[i];
+                    
+                    if (symbol && symbol.trim() !== '' && timestamp > 0 && resolutionPrice === 0) {
+                        activeSymbols.add(symbol);
+                    }
+                }
+            }
+
+            const symbols = Array.from(activeSymbols);
+            console.log(`✅ Found ${symbols.length} assets with active predictions:`, symbols);
+
+            // Fetch metadata for these symbols
+            const metadata = symbols.length > 0
+                ? await db
+                    .select()
+                    .from(coinMetadata)
+                    .where(inArray(coinMetadata.coingeckoId, symbols))
+                : [];
+
+            // Create metadata map
+            const metadataMap = new Map(
+                metadata.map(m => [m.coingeckoId, m])
+            );
+
+            // Build response with metadata
+            const assets = symbols.map(symbol => {
+                const meta = metadataMap.get(symbol);
+                return {
+                    coingeckoId: symbol,
+                    name: meta?.name || symbol,
+                    symbol: meta?.symbol?.toUpperCase() || symbol.toUpperCase(),
+                    imageUrl: meta?.imageUrl || null,
+                };
+            });
+
+            return {
+                success: true,
+                data: assets,
+                count: assets.length,
+            };
+        } catch (error) {
+            console.error('Error fetching active assets:', error);
+            return {
+                success: false,
+                error: 'Failed to fetch active assets',
+            };
+        }
+    })
     // Now accepts CoinGecko ID directly (e.g., "bitcoin", "ethereum", "storj")
+    // Future predictions come from on-chain data, historical from CoinGecko
     .get("/:coingeckoId", async ({ params }) => {
         const { coingeckoId } = params;
 
@@ -123,30 +203,75 @@ export const forecastRoutes = new Elysia({ prefix: "/forecast" })
             const historicalTo = Math.floor(now / 1000);
             const historical = await fetchHistoricalPrices(coingeckoId, historicalFrom, historicalTo);
 
-            // Query unprocessed predictions for this coin (symbol field stores CoinGecko ID)
-            const predictions = await db
-                .select()
-                .from(userPredictionsSnapshots)
-                .where(
-                    and(
-                        eq(userPredictionsSnapshots.processed, false),
-                        eq(userPredictionsSnapshots.symbol, coingeckoId)
-                    )
-                );
+            // Fetch active predictions from blockchain
+            const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+            const connection = new Connection(rpcUrl, "confirmed");
+            const allUserPredictions = await fetchAllUserPredictions(connection);
 
-            console.log(`Found ${predictions.length} unprocessed predictions for ${coingeckoId}`);
+            // Collect active predictions for this coingeckoId from chain
+            // Active = timestamp > 0 AND resolution_price == 0
+            interface ChainPrediction {
+                priceAtPrediction: number;  // Price with 9 decimals
+                predictedPercentage: number;
+                predictionType: 'top_performer' | 'worst_performer';
+                timestamp: number;
+                duration: number;
+            }
 
-            // Calculate future prices and group by 1-hour buckets
-            const hourBuckets = new Map<string, { prices: number[]; directions: string[] }>();
+            const activePredictions: ChainPrediction[] = [];
 
-            for (const prediction of predictions) {
-                // Skip if missing required data
-                if (!prediction.priceAtPrediction || !prediction.resolutionTime) {
-                    continue;
+            for (const { predictions } of allUserPredictions) {
+                // Check top performers
+                for (let i = 0; i < 5; i++) {
+                    const symbol = predictions.topPerformer[i];
+                    const timestamp = predictions.topPerformerTimestamps[i];
+                    const resolutionPrice = predictions.topPerformerResolutionPrices[i];
+                    const price = predictions.topPerformerPrices[i];
+                    const percentage = predictions.topPerformerPercentages[i];
+                    const duration = predictions.topPerformerDurations[i];
+                    
+                    // Check if this is an active prediction for the requested coin
+                    if (symbol === coingeckoId && timestamp > 0 && resolutionPrice === 0 && price > 0) {
+                        activePredictions.push({
+                            priceAtPrediction: price,
+                            predictedPercentage: percentage,
+                            predictionType: 'top_performer',
+                            timestamp,
+                            duration,
+                        });
+                    }
                 }
 
-                const priceAtPrediction = parseFloat(prediction.priceAtPrediction);
-                const predictedPercentage = prediction.predictedPercentage || 0;
+                // Check worst performers
+                for (let i = 0; i < 5; i++) {
+                    const symbol = predictions.worstPerformer[i];
+                    const timestamp = predictions.worstPerformerTimestamps[i];
+                    const resolutionPrice = predictions.worstPerformerResolutionPrices[i];
+                    const price = predictions.worstPerformerPrices[i];
+                    const percentage = predictions.worstPerformerPercentages[i];
+                    const duration = predictions.worstPerformerDurations[i];
+                    
+                    if (symbol === coingeckoId && timestamp > 0 && resolutionPrice === 0 && price > 0) {
+                        activePredictions.push({
+                            priceAtPrediction: price,
+                            predictedPercentage: percentage,
+                            predictionType: 'worst_performer',
+                            timestamp,
+                            duration,
+                        });
+                    }
+                }
+            }
+
+            console.log(`Found ${activePredictions.length} active on-chain predictions for ${coingeckoId}`);
+
+            // Calculate future prices and group by time buckets
+            const timeBuckets = new Map<string, { prices: number[]; directions: string[] }>();
+
+            for (const prediction of activePredictions) {
+                // Convert price from 9 decimals to actual price
+                const priceAtPrediction = prediction.priceAtPrediction / 1_000_000_000;
+                const predictedPercentage = prediction.predictedPercentage;
                 
                 // Calculate future price based on prediction
                 let percentage = predictedPercentage;
@@ -158,23 +283,25 @@ export const forecastRoutes = new Elysia({ prefix: "/forecast" })
 
                 const futurePrice = priceAtPrediction * (1 + percentage / 100);
 
-                // Group by 1-hour bucket based on resolution time
-                const resolutionTime = new Date(prediction.resolutionTime);
-                const hourBucket = new Date(resolutionTime);
-                hourBucket.setMinutes(0, 0, 0); // Round down to hour
-                const bucketKey = hourBucket.toISOString();
+                // Calculate resolution time (prediction timestamp + duration)
+                const resolutionTimeMs = (prediction.timestamp + prediction.duration) * 1000;
+                const resolutionTime = new Date(resolutionTimeMs);
+                
+                // Round to nearest minute for bucketing
+                resolutionTime.setSeconds(0, 0);
+                const bucketKey = resolutionTime.toISOString();
 
-                if (!hourBuckets.has(bucketKey)) {
-                    hourBuckets.set(bucketKey, { prices: [], directions: [] });
+                if (!timeBuckets.has(bucketKey)) {
+                    timeBuckets.set(bucketKey, { prices: [], directions: [] });
                 }
 
-                const bucket = hourBuckets.get(bucketKey)!;
+                const bucket = timeBuckets.get(bucketKey)!;
                 bucket.prices.push(futurePrice);
-                bucket.directions.push(prediction.predictionType || 'unknown');
+                bucket.directions.push(prediction.predictionType);
             }
 
             // Convert buckets to predicted data points
-            const predicted: PredictedDataPoint[] = Array.from(hourBuckets.entries())
+            const predicted: PredictedDataPoint[] = Array.from(timeBuckets.entries())
                 .map(([time, data]) => {
                     // Average the prices in this bucket
                     const avgPrice = data.prices.reduce((sum, p) => sum + p, 0) / data.prices.length;
@@ -215,7 +342,7 @@ export const forecastRoutes = new Elysia({ prefix: "/forecast" })
         }
     }, {
         params: t.Object({
-            symbol: t.String()
+            coingeckoId: t.String()
         })
     });
 

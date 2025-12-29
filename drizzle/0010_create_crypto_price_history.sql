@@ -17,3 +17,4 @@ CREATE TABLE IF NOT EXISTS "crypto_price_history" (
 );
 
 
+

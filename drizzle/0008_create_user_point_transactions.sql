@@ -17,3 +17,4 @@ CREATE INDEX idx_user_point_txns_round ON "user_point_transactions"("round_id");
 CREATE INDEX idx_user_point_txns_type ON "user_point_transactions"("transaction_type");
 
 
+

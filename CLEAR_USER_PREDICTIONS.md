@@ -285,3 +285,4 @@ export const dailyPredictionReset = inngest.createFunction(
 - `USER_PREDICTIONS_FEATURE.md` - For understanding prediction structure
 - `EXAMPLE_USAGE.md` - For point update examples
 
+

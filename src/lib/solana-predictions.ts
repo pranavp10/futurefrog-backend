@@ -1,22 +1,33 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 
 // Program constants (from the smart contract)
-const PROGRAM_ID = new PublicKey('2yAxvbLUuzNYjGiL3RPzjt8qjWGEGX5UJMm1FmA1WajM');
+const PROGRAM_ID = new PublicKey('GGw3GTVpjwLhHdsK4dY3Kb1Lb3vpz5Ns6zV3aMWcf9xe');
 const USER_PREDICTIONS_SEED = 'user_predictions';
+
+// Account size: 724 bytes (from lib.rs)
+const ACCOUNT_SIZE = 724;
 
 /**
  * User predictions data structure from blockchain
+ * Matches the on-chain UserPredictions struct
  */
 export interface UserPredictions {
     owner: PublicKey;
-    topPerformer: string[];
-    worstPerformer: string[];
-    topPerformerTimestamps: number[];
-    worstPerformerTimestamps: number[];
-    topPerformerPercentages: number[];
-    worstPerformerPercentages: number[];
-    points: number;
-    lastUpdated: number;
+    topPerformer: string[];              // 5 x 32-byte strings (CoinGecko IDs)
+    worstPerformer: string[];            // 5 x 32-byte strings (CoinGecko IDs)
+    topPerformerTimestamps: number[];    // 5 x i64
+    worstPerformerTimestamps: number[];  // 5 x i64
+    topPerformerPercentages: number[];   // 5 x i16
+    worstPerformerPercentages: number[]; // 5 x i16
+    topPerformerPrices: number[];        // 5 x u64 (price at prediction, 9 decimals)
+    worstPerformerPrices: number[];      // 5 x u64 (price at prediction, 9 decimals)
+    topPerformerResolutionPrices: number[];  // 5 x u64 (resolution price, 0 = unresolved)
+    worstPerformerResolutionPrices: number[]; // 5 x u64 (resolution price, 0 = unresolved)
+    topPerformerDurations: number[];     // 5 x i64 (duration in seconds)
+    worstPerformerDurations: number[];   // 5 x i64 (duration in seconds)
+    predictionCount: number;             // u64
+    points: number;                      // u64
+    lastUpdated: number;                 // i64
 }
 
 /**
@@ -29,10 +40,10 @@ export interface UserListData {
 }
 
 /**
- * Helper function to parse fixed-length strings from blockchain data
+ * Helper function to parse fixed-length strings from blockchain data (32 bytes)
  */
-function parseFixedString(bytes: Uint8Array): string {
-    return new TextDecoder().decode(bytes).trimEnd();
+function parseFixedString32(bytes: Uint8Array): string {
+    return new TextDecoder().decode(bytes).trim();
 }
 
 /**
@@ -53,11 +64,11 @@ export async function getAllInitializedUsers(
     connection: Connection
 ): Promise<UserListData[]> {
     try {
-        // Fixed size: 8 + 32 + 6*5 + 6*5 + 8*5 + 8*5 + 2*5 + 2*5 + 8 + 8 = 216 bytes
+        // Account size: 724 bytes (from lib.rs)
         const accounts = await connection.getProgramAccounts(PROGRAM_ID, {
             filters: [
                 {
-                    dataSize: 216,
+                    dataSize: ACCOUNT_SIZE,
                 },
             ],
         });
@@ -70,13 +81,13 @@ export async function getAllInitializedUsers(
                     // Parse with fixed-length layout
                     const owner = new PublicKey(data.slice(8, 40));
 
-                    // Skip the string arrays (30 bytes for top_performer + 30 bytes for worst_performer)
-                    // Skip the timestamp arrays (40 bytes for top_performer_timestamps + 40 bytes for worst_performer_timestamps)
-                    // Skip the percentage arrays (10 bytes for top_performer_percentages + 10 bytes for worst_performer_percentages)
-                    const offset = 40 + 30 + 30 + 40 + 40 + 10 + 10;
-
-                    const points = Number(data.readBigUInt64LE(offset));
-                    const lastUpdated = Number(data.readBigInt64LE(offset + 8));
+                    // Calculate offset to points/lastUpdated at end of struct
+                    // Layout: discriminator(8) + owner(32) + strings(320) + timestamps(80) + percentages(20) + 
+                    //         prices(80) + resolution_prices(80) + durations(80) + prediction_count(8) + points(8) + last_updated(8)
+                    const offsetToPredictionCount = 8 + 32 + 320 + 80 + 20 + 80 + 80 + 80;
+                    const predictionCount = Number(data.readBigUInt64LE(offsetToPredictionCount));
+                    const points = Number(data.readBigUInt64LE(offsetToPredictionCount + 8));
+                    const lastUpdated = Number(data.readBigInt64LE(offsetToPredictionCount + 16));
 
                     return {
                         pubkey: owner,
@@ -114,26 +125,30 @@ export async function fetchUserPredictions(
 
         const data = accountInfo.data;
 
-        // Parse account data with fixed-length layout
-        // Layout: discriminator(8) + owner(32) + top_performer(6*5) + worst_performer(6*5) + 
+        // Parse account data with fixed-length layout (724 bytes total)
+        // Layout: discriminator(8) + owner(32) + top_performer(32*5) + worst_performer(32*5) + 
         //         top_performer_timestamps(8*5) + worst_performer_timestamps(8*5) + 
-        //         top_performer_percentages(2*5) + worst_performer_percentages(2*5) + points(8) + last_updated(8)
+        //         top_performer_percentages(2*5) + worst_performer_percentages(2*5) +
+        //         top_performer_prices(8*5) + worst_performer_prices(8*5) +
+        //         top_performer_resolution_prices(8*5) + worst_performer_resolution_prices(8*5) +
+        //         top_performer_durations(8*5) + worst_performer_durations(8*5) +
+        //         prediction_count(8) + points(8) + last_updated(8)
         const owner = new PublicKey(data.slice(8, 40));
 
         let offset = 40;
 
-        // Read top_performer array (5 fixed 6-byte strings)
+        // Read top_performer array (5 fixed 32-byte strings - CoinGecko IDs)
         const topPerformer: string[] = [];
         for (let i = 0; i < 5; i++) {
-            topPerformer.push(parseFixedString(data.slice(offset, offset + 6)));
-            offset += 6;
+            topPerformer.push(parseFixedString32(data.slice(offset, offset + 32)));
+            offset += 32;
         }
 
-        // Read worst_performer array (5 fixed 6-byte strings)
+        // Read worst_performer array (5 fixed 32-byte strings - CoinGecko IDs)
         const worstPerformer: string[] = [];
         for (let i = 0; i < 5; i++) {
-            worstPerformer.push(parseFixedString(data.slice(offset, offset + 6)));
-            offset += 6;
+            worstPerformer.push(parseFixedString32(data.slice(offset, offset + 32)));
+            offset += 32;
         }
 
         // Read top_performer_timestamps array (5 i64 timestamps)
@@ -164,8 +179,51 @@ export async function fetchUserPredictions(
             offset += 2;
         }
 
-        const points = Number(data.readBigUInt64LE(offset));
-        const lastUpdated = Number(data.readBigInt64LE(offset + 8));
+        // Read top_performer_prices array (5 u64 prices)
+        const topPerformerPrices: number[] = [];
+        for (let i = 0; i < 5; i++) {
+            topPerformerPrices.push(Number(data.readBigUInt64LE(offset)));
+            offset += 8;
+        }
+
+        // Read worst_performer_prices array (5 u64 prices)
+        const worstPerformerPrices: number[] = [];
+        for (let i = 0; i < 5; i++) {
+            worstPerformerPrices.push(Number(data.readBigUInt64LE(offset)));
+            offset += 8;
+        }
+
+        // Read top_performer_resolution_prices array (5 u64 prices - 0 = unresolved)
+        const topPerformerResolutionPrices: number[] = [];
+        for (let i = 0; i < 5; i++) {
+            topPerformerResolutionPrices.push(Number(data.readBigUInt64LE(offset)));
+            offset += 8;
+        }
+
+        // Read worst_performer_resolution_prices array (5 u64 prices - 0 = unresolved)
+        const worstPerformerResolutionPrices: number[] = [];
+        for (let i = 0; i < 5; i++) {
+            worstPerformerResolutionPrices.push(Number(data.readBigUInt64LE(offset)));
+            offset += 8;
+        }
+
+        // Read top_performer_durations array (5 i64 durations in seconds)
+        const topPerformerDurations: number[] = [];
+        for (let i = 0; i < 5; i++) {
+            topPerformerDurations.push(Number(data.readBigInt64LE(offset)));
+            offset += 8;
+        }
+
+        // Read worst_performer_durations array (5 i64 durations in seconds)
+        const worstPerformerDurations: number[] = [];
+        for (let i = 0; i < 5; i++) {
+            worstPerformerDurations.push(Number(data.readBigInt64LE(offset)));
+            offset += 8;
+        }
+
+        const predictionCount = Number(data.readBigUInt64LE(offset));
+        const points = Number(data.readBigUInt64LE(offset + 8));
+        const lastUpdated = Number(data.readBigInt64LE(offset + 16));
 
         return {
             owner,
@@ -175,6 +233,13 @@ export async function fetchUserPredictions(
             worstPerformerTimestamps,
             topPerformerPercentages,
             worstPerformerPercentages,
+            topPerformerPrices,
+            worstPerformerPrices,
+            topPerformerResolutionPrices,
+            worstPerformerResolutionPrices,
+            topPerformerDurations,
+            worstPerformerDurations,
+            predictionCount,
             points,
             lastUpdated,
         };

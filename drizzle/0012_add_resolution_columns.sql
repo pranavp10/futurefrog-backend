@@ -13,3 +13,4 @@ ALTER TABLE "user_predictions_snapshots" ADD COLUMN IF NOT EXISTS "solana_signat
 -- Who triggered the resolution: "user" or "inngest"
 ALTER TABLE "user_predictions_snapshots" ADD COLUMN IF NOT EXISTS "resolved_by" varchar(20);
 
+
