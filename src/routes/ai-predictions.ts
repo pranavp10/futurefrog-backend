@@ -9,10 +9,14 @@ import {
     LAMPORTS_PER_SOL
 } from '@solana/web3.js';
 import { randomUUID } from 'crypto';
+import { eq, desc, and, inArray } from 'drizzle-orm';
 import { db } from '../db';
 import { aiAgentPredictions, aiAgentPredictionSessions } from '../db/schema/ai_agent_predictions';
 import { AI_KEYPAIR_NAMES, getAIKeypair, getAIPublicKey, type AIKeypairName } from '../lib/ai-keypairs-utils';
 import { getRedisClient, AI_PREDICTIONS_CACHE_TTL, AI_PREDICTIONS_CACHE_PREFIX } from '../lib/redis';
+
+// Cache key prefix for reasoning data
+const AI_REASONING_CACHE_PREFIX = 'ai_reasoning:';
 
 // Program constants
 const PROGRAM_ID = new PublicKey('GGw3GTVpjwLhHdsK4dY3Kb1Lb3vpz5Ns6zV3aMWcf9xe');
@@ -665,6 +669,126 @@ export const aiPredictionsRoutes = new Elysia({ prefix: '/api/ai-predictions' })
             return {
                 success: false,
                 error: error.message || 'Failed to fetch predictions',
+            };
+        }
+    })
+
+    // Get reasoning data for AI agent predictions (from database)
+    .get('/reasoning/:agentName', async ({ params, set }) => {
+        try {
+            const { agentName } = params;
+
+            if (!AI_KEYPAIR_NAMES.includes(agentName as AIKeypairName)) {
+                set.status = 400;
+                return {
+                    success: false,
+                    error: `Invalid agent name. Valid names: ${AI_KEYPAIR_NAMES.join(', ')}`,
+                };
+            }
+
+            // Check Redis cache first
+            const cacheKey = `${AI_REASONING_CACHE_PREFIX}${agentName}`;
+            const redis = getRedisClient();
+            
+            try {
+                const cachedData = await redis.get(cacheKey);
+                if (cachedData) {
+                    console.log(`📦 Cache hit for AI reasoning: ${agentName}`);
+                    return JSON.parse(cachedData);
+                }
+            } catch (cacheErr) {
+                console.warn('Redis cache read failed for reasoning:', cacheErr);
+            }
+
+            console.log(`🔍 Cache miss, fetching reasoning from database: ${agentName}`);
+
+            // Get the latest predictions for this agent grouped by coingeckoId
+            // We want the most recent reasoning for each asset
+            const predictions = await db
+                .select({
+                    coingeckoId: aiAgentPredictions.coingeckoId,
+                    symbol: aiAgentPredictions.symbol,
+                    predictionType: aiAgentPredictions.predictionType,
+                    rank: aiAgentPredictions.rank,
+                    reasoning: aiAgentPredictions.reasoning,
+                    keyFactors: aiAgentPredictions.keyFactors,
+                    confidence: aiAgentPredictions.confidence,
+                    expectedPercentage: aiAgentPredictions.expectedPercentage,
+                    predictionTimestamp: aiAgentPredictions.predictionTimestamp,
+                })
+                .from(aiAgentPredictions)
+                .where(
+                    and(
+                        eq(aiAgentPredictions.agentName, agentName),
+                        eq(aiAgentPredictions.onChainSubmitted, true)
+                    )
+                )
+                .orderBy(desc(aiAgentPredictions.predictionTimestamp));
+
+            // Build a map of coingeckoId -> latest reasoning
+            // Only keep the most recent prediction for each asset
+            const reasoningMap: Record<string, {
+                symbol: string;
+                predictionType: string;
+                rank: number;
+                reasoning: string;
+                keyFactors: string[];
+                confidence: string;
+                expectedPercentage: string;
+                predictionTimestamp: Date;
+            }> = {};
+
+            for (const pred of predictions) {
+                // Only add if we don't have this asset yet (first one is most recent due to ordering)
+                if (!reasoningMap[pred.coingeckoId]) {
+                    let keyFactors: string[] = [];
+                    try {
+                        if (pred.keyFactors) {
+                            keyFactors = typeof pred.keyFactors === 'string' 
+                                ? JSON.parse(pred.keyFactors) 
+                                : pred.keyFactors;
+                        }
+                    } catch (e) {
+                        // If parsing fails, keep empty array
+                    }
+
+                    reasoningMap[pred.coingeckoId] = {
+                        symbol: pred.symbol || pred.coingeckoId,
+                        predictionType: pred.predictionType,
+                        rank: pred.rank,
+                        reasoning: pred.reasoning,
+                        keyFactors,
+                        confidence: pred.confidence,
+                        expectedPercentage: pred.expectedPercentage,
+                        predictionTimestamp: pred.predictionTimestamp,
+                    };
+                }
+            }
+
+            const result = {
+                success: true,
+                data: {
+                    agentName,
+                    reasoning: reasoningMap,
+                    count: Object.keys(reasoningMap).length,
+                },
+            };
+
+            // Cache for 10 minutes (reasoning data doesn't change often)
+            try {
+                await redis.setex(cacheKey, 600, JSON.stringify(result));
+                console.log(`💾 Cached AI reasoning for ${agentName} (TTL: 600s)`);
+            } catch (cacheErr) {
+                console.warn('Redis cache write failed for reasoning:', cacheErr);
+            }
+
+            return result;
+        } catch (error: any) {
+            console.error('Error fetching AI reasoning:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error.message || 'Failed to fetch reasoning',
             };
         }
     })
