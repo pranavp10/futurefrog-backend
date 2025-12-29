@@ -196,10 +196,198 @@ export const cryptoCacheRoutes = new Elysia({ prefix: '/api/crypto-cache' })
                 error: error instanceof Error ? error.message : 'Failed to fetch cache metadata',
             };
         }
+    })
+    // Get detailed coin information with 24hr price history
+    .get('/:coinId/details', async ({ params, set }) => {
+        const { coinId } = params;
+
+        try {
+            const apiKey = process.env.COINGECKO_API_KEY;
+            const baseUrl = 'https://api.coingecko.com/api/v3';
+
+            // Fetch 24hr market chart data (returns 5-minute intervals)
+            const marketChartUrl = `${baseUrl}/coins/${coinId}/market_chart?vs_currency=usd&days=1${apiKey ? `&x_cg_demo_api_key=${apiKey}` : ''}`;
+
+            const marketChartResponse = await fetch(marketChartUrl);
+
+            if (!marketChartResponse.ok) {
+                if (marketChartResponse.status === 404) {
+                    set.status = 404;
+                    return {
+                        success: false,
+                        error: `Coin with ID "${coinId}" not found`,
+                    };
+                }
+                throw new Error(`CoinGecko API error: ${marketChartResponse.status}`);
+            }
+
+            const marketChartData = await marketChartResponse.json();
+
+            // Transform price data to our format
+            const priceHistory = (marketChartData.prices || []).map(([timestamp, price]: [number, number]) => ({
+                timestamp: new Date(timestamp).toISOString(),
+                price: price,
+            }));
+
+            // Get current price and calculate 24h change
+            const currentPrice = priceHistory.length > 0
+                ? priceHistory[priceHistory.length - 1].price
+                : 0;
+            const oldestPrice = priceHistory.length > 0
+                ? priceHistory[0].price
+                : 0;
+            const priceChange24h = oldestPrice > 0
+                ? ((currentPrice - oldestPrice) / oldestPrice) * 100
+                : 0;
+
+            // Try to get coin metadata from our cache first
+            const cachedCoin = await db
+                .select()
+                .from(cryptoMarketCache)
+                .where(eq(cryptoMarketCache.coingeckoId, coinId))
+                .orderBy(desc(cryptoMarketCache.snapshotTimestamp))
+                .limit(1);
+
+            let coinMetadata = {
+                coingeckoId: coinId,
+                symbol: coinId,
+                name: coinId,
+                imageUrl: null as string | null,
+                marketCap: null as number | null,
+                totalVolume: null as number | null,
+                marketCapRank: null as number | null,
+            };
+
+            if (cachedCoin.length > 0) {
+                const cached = cachedCoin[0];
+                coinMetadata = {
+                    coingeckoId: cached.coingeckoId,
+                    symbol: cached.symbol,
+                    name: cached.name,
+                    imageUrl: cached.imageUrl,
+                    marketCap: cached.marketCap ? parseFloat(cached.marketCap) : null,
+                    totalVolume: cached.totalVolume ? parseFloat(cached.totalVolume) : null,
+                    marketCapRank: cached.marketCapRank,
+                };
+            }
+
+            return {
+                success: true,
+                data: {
+                    ...coinMetadata,
+                    currentPrice,
+                    priceChange24h: Math.round(priceChange24h * 100) / 100,
+                    priceHistory,
+                    historyCount: priceHistory.length,
+                },
+            };
+        } catch (error) {
+            console.error('Error fetching coin details:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to fetch coin details',
+            };
+        }
+    })
+    // Get 24hr price history for a specific coin (for chart)
+    .get('/:coinId/history', async ({ params, set }) => {
+        const { coinId } = params;
+
+        try {
+            // First try to get data from our database
+            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+            const historyData = await db
+                .select({
+                    currentPrice: cryptoPriceHistory.currentPrice,
+                    snapshotTimestamp: cryptoPriceHistory.snapshotTimestamp,
+                })
+                .from(cryptoPriceHistory)
+                .where(
+                    sql`${cryptoPriceHistory.coingeckoId} = ${coinId} AND ${cryptoPriceHistory.snapshotTimestamp} >= ${twentyFourHoursAgo}`
+                )
+                .orderBy(cryptoPriceHistory.snapshotTimestamp);
+
+            // If we have enough data from the database, use it
+            if (historyData.length >= 10) {
+                // Get coin metadata
+                const cachedCoin = await db
+                    .select()
+                    .from(cryptoMarketCache)
+                    .where(eq(cryptoMarketCache.coingeckoId, coinId))
+                    .orderBy(desc(cryptoMarketCache.snapshotTimestamp))
+                    .limit(1);
+
+                const priceHistory = historyData.map(record => ({
+                    timestamp: record.snapshotTimestamp.toISOString(),
+                    price: parseFloat(record.currentPrice),
+                }));
+
+                return {
+                    success: true,
+                    data: {
+                        coingeckoId: coinId,
+                        symbol: cachedCoin[0]?.symbol || coinId,
+                        name: cachedCoin[0]?.name || coinId,
+                        priceHistory,
+                        count: priceHistory.length,
+                    },
+                };
+            }
+
+            // Otherwise, fetch from CoinGecko API
+            const apiKey = process.env.COINGECKO_API_KEY;
+            const baseUrl = 'https://api.coingecko.com/api/v3';
+
+            const marketChartUrl = `${baseUrl}/coins/${coinId}/market_chart?vs_currency=usd&days=1${apiKey ? `&x_cg_demo_api_key=${apiKey}` : ''}`;
+
+            const response = await fetch(marketChartUrl);
+
+            if (!response.ok) {
+                if (response.status === 404) {
+                    set.status = 404;
+                    return {
+                        success: false,
+                        error: `Coin with ID "${coinId}" not found`,
+                    };
+                }
+                throw new Error(`CoinGecko API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            const priceHistory = (data.prices || []).map(([timestamp, price]: [number, number]) => ({
+                timestamp: new Date(timestamp).toISOString(),
+                price: price,
+            }));
+
+            // Get coin metadata from cache
+            const cachedCoin = await db
+                .select()
+                .from(cryptoMarketCache)
+                .where(eq(cryptoMarketCache.coingeckoId, coinId))
+                .orderBy(desc(cryptoMarketCache.snapshotTimestamp))
+                .limit(1);
+
+            return {
+                success: true,
+                data: {
+                    coingeckoId: coinId,
+                    symbol: cachedCoin[0]?.symbol || coinId,
+                    name: cachedCoin[0]?.name || coinId,
+                    priceHistory,
+                    count: priceHistory.length,
+                },
+            };
+        } catch (error) {
+            console.error('Error fetching coin history:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to fetch coin history',
+            };
+        }
     });
-
-
-
-
 
 
