@@ -12,6 +12,7 @@ import { randomUUID } from 'crypto';
 import { db } from '../db';
 import { aiAgentPredictions, aiAgentPredictionSessions } from '../db/schema/ai_agent_predictions';
 import { AI_KEYPAIR_NAMES, getAIKeypair, getAIPublicKey, type AIKeypairName } from '../lib/ai-keypairs-utils';
+import { getRedisClient, AI_PREDICTIONS_CACHE_TTL, AI_PREDICTIONS_CACHE_PREFIX } from '../lib/redis';
 
 // Program constants
 const PROGRAM_ID = new PublicKey('GGw3GTVpjwLhHdsK4dY3Kb1Lb3vpz5Ns6zV3aMWcf9xe');
@@ -481,6 +482,22 @@ export const aiPredictionsRoutes = new Elysia({ prefix: '/api/ai-predictions' })
                 };
             }
 
+            // Check Redis cache first
+            const cacheKey = `${AI_PREDICTIONS_CACHE_PREFIX}${agentName}`;
+            const redis = getRedisClient();
+            
+            try {
+                const cachedData = await redis.get(cacheKey);
+                if (cachedData) {
+                    console.log(`📦 Cache hit for AI predictions: ${agentName}`);
+                    return JSON.parse(cachedData);
+                }
+            } catch (cacheErr) {
+                console.warn('Redis cache read failed, continuing with blockchain fetch:', cacheErr);
+            }
+
+            console.log(`🔗 Cache miss, fetching from blockchain: ${agentName}`);
+
             const rpcUrl = process.env.SOLANA_RPC_URL;
             if (!rpcUrl) {
                 set.status = 500;
@@ -495,7 +512,7 @@ export const aiPredictionsRoutes = new Elysia({ prefix: '/api/ai-predictions' })
             const accountInfo = await connection.getAccountInfo(userPredictionsPda);
 
             if (!accountInfo || accountInfo.data.length === 0) {
-                return {
+                const result = {
                     success: true,
                     data: {
                         initialized: false,
@@ -503,6 +520,13 @@ export const aiPredictionsRoutes = new Elysia({ prefix: '/api/ai-predictions' })
                         publicKey,
                     },
                 };
+                // Cache even uninitialized state (shorter TTL - 1 minute)
+                try {
+                    await redis.setex(cacheKey, 60, JSON.stringify(result));
+                } catch (cacheErr) {
+                    console.warn('Redis cache write failed:', cacheErr);
+                }
+                return result;
             }
 
             // Parse account data - same layout as frontend
@@ -601,7 +625,7 @@ export const aiPredictionsRoutes = new Elysia({ prefix: '/api/ai-predictions' })
             // Get balance
             const balance = await connection.getBalance(pubkey);
 
-            return {
+            const result = {
                 success: true,
                 data: {
                     initialized: true,
@@ -625,6 +649,16 @@ export const aiPredictionsRoutes = new Elysia({ prefix: '/api/ai-predictions' })
                     worstPerformerDurations,
                 },
             };
+
+            // Cache the result for 5 minutes
+            try {
+                await redis.setex(cacheKey, AI_PREDICTIONS_CACHE_TTL, JSON.stringify(result));
+                console.log(`💾 Cached AI predictions for ${agentName} (TTL: ${AI_PREDICTIONS_CACHE_TTL}s)`);
+            } catch (cacheErr) {
+                console.warn('Redis cache write failed:', cacheErr);
+            }
+
+            return result;
         } catch (error: any) {
             console.error('Error fetching on-chain predictions:', error);
             set.status = 500;
@@ -669,6 +703,19 @@ export const aiPredictionsRoutes = new Elysia({ prefix: '/api/ai-predictions' })
             });
 
             const result = await response.json();
+
+            // Invalidate cache after successful resolution
+            if (result.success) {
+                try {
+                    const redis = getRedisClient();
+                    const cacheKey = `${AI_PREDICTIONS_CACHE_PREFIX}${agentName}`;
+                    await redis.del(cacheKey);
+                    console.log(`🗑️ Cache invalidated for ${agentName} after resolution`);
+                } catch (cacheErr) {
+                    console.warn('Redis cache invalidation failed:', cacheErr);
+                }
+            }
+
             return result;
         } catch (error: any) {
             console.error('Error resolving AI prediction:', error);

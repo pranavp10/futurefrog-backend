@@ -45,3 +45,9 @@ export const SENTIMENT_CACHE_TTL = 120;
 
 // Cache key for sentiment predictions
 export const SENTIMENT_CACHE_KEY = 'sentiment:predictions';
+
+// AI Predictions cache TTL in seconds (5 minutes)
+export const AI_PREDICTIONS_CACHE_TTL = 300;
+
+// Cache key prefix for AI predictions
+export const AI_PREDICTIONS_CACHE_PREFIX = 'ai-predictions:onchain:';
