@@ -16,6 +16,11 @@ export const activityRoutes = new Elysia({ prefix: "/activity" })
                 predictionType: userPredictionsSnapshots.predictionType,
                 timestamp: userPredictionsSnapshots.snapshotTimestamp,
                 rank: userPredictionsSnapshots.rank,
+                predictedPercentage: userPredictionsSnapshots.predictedPercentage,
+                priceAtPrediction: userPredictionsSnapshots.priceAtPrediction,
+                duration: userPredictionsSnapshots.duration,
+                points: userPredictionsSnapshots.points,
+                pointsEarned: userPredictionsSnapshots.pointsEarned,
             })
             .from(userPredictionsSnapshots)
             .where(and(
@@ -26,11 +31,25 @@ export const activityRoutes = new Elysia({ prefix: "/activity" })
             .limit(50);
 
         // Transform to activity format
-        const activity = predictions.map(p => ({
-            walletAddress: p.walletAddress,
-            type: p.predictionType === "top_performer" ? "gainer" : "loser",
-            timestamp: p.timestamp,
-        }));
+        const activity = predictions.map(p => {
+            const entryPrice = p.priceAtPrediction ? parseFloat(p.priceAtPrediction) : null;
+            const percentage = p.predictedPercentage || 0;
+            const predictedPrice = entryPrice && percentage !== 0
+                ? entryPrice * (1 + percentage / 100)
+                : null;
+
+            return {
+                walletAddress: p.walletAddress,
+                type: p.predictionType === "top_performer" ? "gainer" : "loser",
+                timestamp: p.timestamp,
+                entryPrice,
+                predictedPrice,
+                predictedPercentage: percentage,
+                duration: p.duration,
+                points: p.points || 0,
+                pointsEarned: p.pointsEarned || 0,
+            };
+        });
 
         return { activity };
     }, {
@@ -38,3 +57,4 @@ export const activityRoutes = new Elysia({ prefix: "/activity" })
             symbol: t.String()
         })
     });
+
