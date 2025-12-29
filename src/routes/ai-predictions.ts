@@ -11,8 +11,7 @@ import {
 import { randomUUID } from 'crypto';
 import { db } from '../db';
 import { aiAgentPredictions, aiAgentPredictionSessions } from '../db/schema/ai_agent_predictions';
-import { AI_KEYPAIR_NAMES, getAIKeypair, type AIKeypairName } from '../lib/ai-keypairs-utils';
-import { eq, desc } from 'drizzle-orm';
+import { AI_KEYPAIR_NAMES, getAIKeypair, getAIPublicKey, type AIKeypairName } from '../lib/ai-keypairs-utils';
 
 // Program constants
 const PROGRAM_ID = new PublicKey('GGw3GTVpjwLhHdsK4dY3Kb1Lb3vpz5Ns6zV3aMWcf9xe');
@@ -465,6 +464,218 @@ export const aiPredictionsRoutes = new Elysia({ prefix: '/api/ai-predictions' })
                 success: false,
                 error: error.message || 'Failed to submit predictions',
                 logs: error.logs || undefined,
+            };
+        }
+    })
+
+    // Get on-chain predictions for an AI agent
+    .get('/onchain/:agentName', async ({ params, set }) => {
+        try {
+            const { agentName } = params;
+
+            if (!AI_KEYPAIR_NAMES.includes(agentName as AIKeypairName)) {
+                set.status = 400;
+                return {
+                    success: false,
+                    error: `Invalid agent name. Valid names: ${AI_KEYPAIR_NAMES.join(', ')}`,
+                };
+            }
+
+            const rpcUrl = process.env.SOLANA_RPC_URL;
+            if (!rpcUrl) {
+                set.status = 500;
+                return { success: false, error: 'SOLANA_RPC_URL not configured' };
+            }
+
+            const connection = new Connection(rpcUrl, 'confirmed');
+            const publicKey = await getAIPublicKey(agentName as AIKeypairName);
+            const pubkey = new PublicKey(publicKey);
+            const [userPredictionsPda] = getUserPredictionsPda(pubkey);
+
+            const accountInfo = await connection.getAccountInfo(userPredictionsPda);
+
+            if (!accountInfo || accountInfo.data.length === 0) {
+                return {
+                    success: true,
+                    data: {
+                        initialized: false,
+                        agentName,
+                        publicKey,
+                    },
+                };
+            }
+
+            // Parse account data - same layout as frontend
+            const data = accountInfo.data;
+            const parseFixedString = (bytes: Uint8Array): string => {
+                return new TextDecoder().decode(bytes).replace(/\0/g, '').trim();
+            };
+
+            let offset = 40; // Skip discriminator (8) + owner (32)
+
+            // Read top_performer array (5 fixed 32-byte strings)
+            const topPerformer: string[] = [];
+            for (let i = 0; i < 5; i++) {
+                topPerformer.push(parseFixedString(data.slice(offset, offset + 32)));
+                offset += 32;
+            }
+
+            // Read worst_performer array (5 fixed 32-byte strings)
+            const worstPerformer: string[] = [];
+            for (let i = 0; i < 5; i++) {
+                worstPerformer.push(parseFixedString(data.slice(offset, offset + 32)));
+                offset += 32;
+            }
+
+            // Read timestamps
+            const topPerformerTimestamps: number[] = [];
+            for (let i = 0; i < 5; i++) {
+                topPerformerTimestamps.push(Number(data.readBigInt64LE(offset)));
+                offset += 8;
+            }
+
+            const worstPerformerTimestamps: number[] = [];
+            for (let i = 0; i < 5; i++) {
+                worstPerformerTimestamps.push(Number(data.readBigInt64LE(offset)));
+                offset += 8;
+            }
+
+            // Read percentages
+            const topPerformerPercentages: number[] = [];
+            for (let i = 0; i < 5; i++) {
+                topPerformerPercentages.push(data.readInt16LE(offset));
+                offset += 2;
+            }
+
+            const worstPerformerPercentages: number[] = [];
+            for (let i = 0; i < 5; i++) {
+                worstPerformerPercentages.push(data.readInt16LE(offset));
+                offset += 2;
+            }
+
+            // Read prices
+            const topPerformerPrices: number[] = [];
+            for (let i = 0; i < 5; i++) {
+                topPerformerPrices.push(Number(data.readBigUInt64LE(offset)) / PRICE_MULTIPLIER);
+                offset += 8;
+            }
+
+            const worstPerformerPrices: number[] = [];
+            for (let i = 0; i < 5; i++) {
+                worstPerformerPrices.push(Number(data.readBigUInt64LE(offset)) / PRICE_MULTIPLIER);
+                offset += 8;
+            }
+
+            // Read resolution prices
+            const topPerformerResolutionPrices: number[] = [];
+            for (let i = 0; i < 5; i++) {
+                topPerformerResolutionPrices.push(Number(data.readBigUInt64LE(offset)) / PRICE_MULTIPLIER);
+                offset += 8;
+            }
+
+            const worstPerformerResolutionPrices: number[] = [];
+            for (let i = 0; i < 5; i++) {
+                worstPerformerResolutionPrices.push(Number(data.readBigUInt64LE(offset)) / PRICE_MULTIPLIER);
+                offset += 8;
+            }
+
+            // Read durations
+            const topPerformerDurations: number[] = [];
+            for (let i = 0; i < 5; i++) {
+                topPerformerDurations.push(Number(data.readBigInt64LE(offset)));
+                offset += 8;
+            }
+
+            const worstPerformerDurations: number[] = [];
+            for (let i = 0; i < 5; i++) {
+                worstPerformerDurations.push(Number(data.readBigInt64LE(offset)));
+                offset += 8;
+            }
+
+            const predictionCount = Number(data.readBigUInt64LE(offset));
+            offset += 8;
+            const points = Number(data.readBigUInt64LE(offset));
+            offset += 8;
+            const lastUpdated = Number(data.readBigInt64LE(offset));
+
+            // Get balance
+            const balance = await connection.getBalance(pubkey);
+
+            return {
+                success: true,
+                data: {
+                    initialized: true,
+                    agentName,
+                    publicKey,
+                    balance: balance / LAMPORTS_PER_SOL,
+                    points,
+                    predictionCount,
+                    lastUpdated,
+                    topPerformer,
+                    worstPerformer,
+                    topPerformerTimestamps,
+                    worstPerformerTimestamps,
+                    topPerformerPercentages,
+                    worstPerformerPercentages,
+                    topPerformerPrices,
+                    worstPerformerPrices,
+                    topPerformerResolutionPrices,
+                    worstPerformerResolutionPrices,
+                    topPerformerDurations,
+                    worstPerformerDurations,
+                },
+            };
+        } catch (error: any) {
+            console.error('Error fetching on-chain predictions:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error.message || 'Failed to fetch predictions',
+            };
+        }
+    })
+
+    // Resolve an AI agent prediction
+    .post('/resolve', async ({ body, set }) => {
+        try {
+            const { agentName, predictionType, siloIndex } = body as {
+                agentName: string;
+                predictionType: 'top_performer' | 'worst_performer';
+                siloIndex: number;
+            };
+
+            if (!AI_KEYPAIR_NAMES.includes(agentName as AIKeypairName)) {
+                set.status = 400;
+                return {
+                    success: false,
+                    error: `Invalid agent name. Valid names: ${AI_KEYPAIR_NAMES.join(', ')}`,
+                };
+            }
+
+            // Get the AI agent's public key
+            const publicKey = await getAIPublicKey(agentName as AIKeypairName);
+
+            // Forward to the existing resolve-prediction endpoint
+            const resolveUrl = `${process.env.BACKEND_URL || 'http://localhost:8000'}/resolve-prediction`;
+            
+            const response = await fetch(resolveUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    walletAddress: publicKey,
+                    predictionType,
+                    siloIndex,
+                }),
+            });
+
+            const result = await response.json();
+            return result;
+        } catch (error: any) {
+            console.error('Error resolving AI prediction:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error.message || 'Failed to resolve prediction',
             };
         }
     });
