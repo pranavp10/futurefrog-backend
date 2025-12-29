@@ -14,6 +14,7 @@ import { resultsRoutes } from "./routes/results";
 import { forecastRoutes } from "./routes/forecast";
 import { configRoutes } from "./routes/config";
 import { resolvePredictionRoutes } from "./routes/resolve-prediction";
+import { aiKeypairsRoutes } from "./routes/ai-keypairs";
 import { functions, inngest } from "./inngest";
 
 // Create Inngest handler
@@ -37,6 +38,7 @@ const app = new Elysia()
   .use(forecastRoutes)
   .use(configRoutes)
   .use(resolvePredictionRoutes)
+  .use(aiKeypairsRoutes)
   .all("/inngest", ({ request }) => inngestHandler(request))
   .get("/", () => {
     return {

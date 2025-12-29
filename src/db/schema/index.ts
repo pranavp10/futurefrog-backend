@@ -9,3 +9,5 @@ export * from "./user_predictions_snapshots";
 export * from "./user_point_transactions";
 export * from "./comments";
 export * from "./comment_hearts";
+export * from "./ai_agent_methodologies";
+export * from "./ai_agent_predictions";
