@@ -1,4 +1,12 @@
 /**
+ * Map of incorrect/truncated CoinGecko IDs to their correct values.
+ * This handles cases where the AI submitted shortened IDs.
+ */
+const COINGECKO_ID_CORRECTIONS: Record<string, string> = {
+    'canton': 'canton-network',  // CC coin - correct ID is canton-network
+};
+
+/**
  * Fetch historical price directly from CoinGecko WITHOUT caching.
  * Use this for resolution to ensure we always get fresh data.
  * 
@@ -16,6 +24,12 @@ export async function fetchHistoricalPriceForResolution(
     timestamp: number
 ): Promise<number | null> {
     try {
+        // Apply ID corrections for known mismatches
+        const correctedId = COINGECKO_ID_CORRECTIONS[coingeckoId.toLowerCase()] || coingeckoId;
+        if (correctedId !== coingeckoId) {
+            console.log(`🔄 Corrected CoinGecko ID: ${coingeckoId} → ${correctedId}`);
+        }
+        
         const apiKey = process.env.COINGECKO_API_KEY;
         const now = Math.floor(Date.now() / 1000);
         const age = now - timestamp;
@@ -32,9 +46,9 @@ export async function fetchHistoricalPriceForResolution(
         const fromTimestamp = timestamp - bufferSeconds;
         const toTimestamp = timestamp + bufferSeconds;
 
-        // Build API URL - using coingeckoId directly (no mapping needed)
+        // Build API URL - using correctedId
         const baseUrl = 'https://api.coingecko.com/api/v3';
-        const endpoint = `/coins/${coingeckoId}/market_chart/range`;
+        const endpoint = `/coins/${correctedId}/market_chart/range`;
         const params = new URLSearchParams({
             vs_currency: 'usd',
             from: fromTimestamp.toString(),
@@ -43,7 +57,7 @@ export async function fetchHistoricalPriceForResolution(
 
         const url = `${baseUrl}${endpoint}?${params}${apiKey ? `&x_cg_demo_api_key=${apiKey}` : ''}`;
 
-        console.log(`📡 [Resolution] Fetching from CoinGecko: ${coingeckoId}`);
+        console.log(`📡 [Resolution] Fetching from CoinGecko: ${correctedId}`);
         console.log(`   Target timestamp: ${timestamp} (${new Date(timestamp * 1000).toISOString()})`);
         console.log(`   Age: ${Math.floor(age / 3600)}h ${Math.floor((age % 3600) / 60)}m`);
         console.log(`   Granularity: ${isWithin24Hours ? '5-minute (within 24h)' : 'hourly (>24h)'}`);
@@ -55,7 +69,7 @@ export async function fetchHistoricalPriceForResolution(
             if (response.status === 429) {
                 console.error('⚠️ CoinGecko rate limit hit');
             } else if (response.status === 404) {
-                console.error(`⚠️ Coin not found on CoinGecko: ${coingeckoId}`);
+                console.error(`⚠️ Coin not found on CoinGecko: ${correctedId}`);
             } else {
                 console.error(`⚠️ CoinGecko API error: ${response.status} ${response.statusText}`);
             }
@@ -66,7 +80,7 @@ export async function fetchHistoricalPriceForResolution(
 
         // CoinGecko returns { prices: [[timestamp_ms, price], ...] }
         if (!data.prices || !Array.isArray(data.prices) || data.prices.length === 0) {
-            console.warn(`⚠️ No price data returned for ${coingeckoId}`);
+            console.warn(`⚠️ No price data returned for ${correctedId}`);
             return null;
         }
 
