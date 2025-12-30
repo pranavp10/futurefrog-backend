@@ -849,5 +849,74 @@ export const aiPredictionsRoutes = new Elysia({ prefix: '/api/ai-predictions' })
                 error: error.message || 'Failed to resolve prediction',
             };
         }
+    })
+
+    // Get resolved predictions history for an AI agent
+    .get('/resolved/:agentName', async ({ params, query, set }) => {
+        try {
+            const { agentName } = params;
+            const limit = query.limit ? parseInt(query.limit as string) : 50;
+            const offset = query.offset ? parseInt(query.offset as string) : 0;
+
+            if (!AI_KEYPAIR_NAMES.includes(agentName as AIKeypairName)) {
+                set.status = 400;
+                return {
+                    success: false,
+                    error: `Invalid agent name. Valid names: ${AI_KEYPAIR_NAMES.join(', ')}`,
+                };
+            }
+
+            // Fetch resolved predictions from database
+            const resolved = await db
+                .select()
+                .from(aiAgentPredictions)
+                .where(
+                    and(
+                        eq(aiAgentPredictions.agentName, agentName),
+                        eq(aiAgentPredictions.resolved, true),
+                        eq(aiAgentPredictions.onChainSubmitted, true)
+                    )
+                )
+                .orderBy(desc(aiAgentPredictions.resolvedAt))
+                .limit(limit)
+                .offset(offset);
+
+            // Format the predictions
+            const predictions = resolved.map(p => ({
+                id: p.id,
+                predictionType: p.predictionType,
+                rank: p.rank,
+                symbol: p.symbol || p.coingeckoId,
+                coingeckoId: p.coingeckoId,
+                predictedPercentage: p.expectedPercentage ? parseFloat(p.expectedPercentage) : 0,
+                actualPercentage: p.actualPercentage ? parseFloat(p.actualPercentage) : null,
+                priceAtPrediction: p.priceAtPrediction ? parseFloat(p.priceAtPrediction) : null,
+                priceAtResolution: p.priceAtResolution ? parseFloat(p.priceAtResolution) : null,
+                confidence: p.confidence,
+                reasoning: p.reasoning,
+                keyFactors: p.keyFactors ? JSON.parse(p.keyFactors) : [],
+                directionCorrect: p.directionCorrect,
+                accuracyScore: p.accuracyScore ? parseFloat(p.accuracyScore) : null,
+                predictionTimestamp: p.predictionTimestamp?.toISOString() || null,
+                resolvedAt: p.resolvedAt?.toISOString() || null,
+                solanaSignature: p.solanaSignature,
+            }));
+
+            return {
+                success: true,
+                agentName,
+                predictions,
+                count: predictions.length,
+                limit,
+                offset,
+            };
+        } catch (error: any) {
+            console.error('Error fetching resolved AI predictions:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error.message || 'Failed to fetch resolved predictions',
+            };
+        }
     });
 
