@@ -57,11 +57,12 @@ export async function fetchHistoricalPriceForResolution(
 
         const url = `${baseUrl}${endpoint}?${params}${apiKey ? `&x_cg_demo_api_key=${apiKey}` : ''}`;
 
-        console.log(`📡 [Resolution] Fetching from CoinGecko: ${correctedId}`);
+        console.log(`\n📡 [Resolution] Fetching from CoinGecko: ${correctedId}`);
         console.log(`   Target timestamp: ${timestamp} (${new Date(timestamp * 1000).toISOString()})`);
         console.log(`   Age: ${Math.floor(age / 3600)}h ${Math.floor((age % 3600) / 60)}m`);
         console.log(`   Granularity: ${isWithin24Hours ? '5-minute (within 24h)' : 'hourly (>24h)'}`);
         console.log(`   Buffer: ±${bufferSeconds / 60} minutes`);
+        console.log(`   API URL: ${url.replace(apiKey || '', 'API_KEY_HIDDEN')}`);
 
         const response = await fetch(url);
 
@@ -104,7 +105,11 @@ export async function fetchHistoricalPriceForResolution(
         }
 
         const timeDiffMin = Math.floor(minDiff / 60000);
-        console.log(`✅ [Resolution] Found price: $${closest[1]} (${timeDiffMin}min from target)`);
+        const timeDiffSec = Math.floor(minDiff / 1000);
+        console.log(`✅ [Resolution] Found price: $${closest[1]}`);
+        console.log(`   Timestamp: ${closest[0]} (${new Date(closest[0]).toISOString()})`);
+        console.log(`   Time diff: ${timeDiffMin}min ${timeDiffSec % 60}s from target`);
+        console.log(`   Total data points received: ${data.prices.length}`);
         
         return closest[1];
     } catch (error) {

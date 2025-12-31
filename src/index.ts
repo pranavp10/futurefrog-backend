@@ -14,6 +14,7 @@ import { resultsRoutes } from "./routes/results";
 import { forecastRoutes } from "./routes/forecast";
 import { configRoutes } from "./routes/config";
 import { resolvePredictionRoutes } from "./routes/resolve-prediction";
+import { resolvePredictionBatchRoutes } from "./routes/resolve-prediction-batch";
 import { aiKeypairsRoutes } from "./routes/ai-keypairs";
 import { aiPredictionsRoutes } from "./routes/ai-predictions";
 import { coinDetailsRoutes } from "./routes/coin-details";
@@ -40,6 +41,7 @@ const app = new Elysia()
   .use(forecastRoutes)
   .use(configRoutes)
   .use(resolvePredictionRoutes)
+  .use(resolvePredictionBatchRoutes)
   .use(aiKeypairsRoutes)
   .use(aiPredictionsRoutes)
   .use(coinDetailsRoutes)

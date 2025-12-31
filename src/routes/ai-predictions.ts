@@ -9,9 +9,10 @@ import {
     LAMPORTS_PER_SOL
 } from '@solana/web3.js';
 import { randomUUID } from 'crypto';
-import { eq, desc, and, inArray } from 'drizzle-orm';
+import { eq, desc, and, inArray, isNotNull } from 'drizzle-orm';
 import { db } from '../db';
 import { aiAgentPredictions, aiAgentPredictionSessions } from '../db/schema/ai_agent_predictions';
+import { userPredictionsSnapshots } from '../db/schema';
 import { AI_KEYPAIR_NAMES, getAIKeypair, getAIPublicKey, type AIKeypairName } from '../lib/ai-keypairs-utils';
 import { getRedisClient, AI_PREDICTIONS_CACHE_TTL, AI_PREDICTIONS_CACHE_PREFIX } from '../lib/redis';
 
@@ -793,7 +794,7 @@ export const aiPredictionsRoutes = new Elysia({ prefix: '/api/ai-predictions' })
         }
     })
 
-    // Resolve an AI agent prediction
+    // Resolve an AI agent prediction (single)
     .post('/resolve', async ({ body, set }) => {
         try {
             const { agentName, predictionType, siloIndex } = body as {
@@ -851,6 +852,53 @@ export const aiPredictionsRoutes = new Elysia({ prefix: '/api/ai-predictions' })
         }
     })
 
+    // Batch resolve all ready predictions for an AI agent
+    .post('/resolve-all', async ({ body, set }) => {
+        try {
+            const { agentName } = body as { agentName: string };
+
+            if (!AI_KEYPAIR_NAMES.includes(agentName as AIKeypairName)) {
+                set.status = 400;
+                return {
+                    success: false,
+                    error: `Invalid agent name. Valid names: ${AI_KEYPAIR_NAMES.join(', ')}`,
+                };
+            }
+
+            // Forward to batch resolution endpoint
+            const resolveUrl = `${process.env.BACKEND_URL || 'http://localhost:8000'}/resolve-prediction/batch`;
+            
+            const response = await fetch(resolveUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ agentName }),
+            });
+
+            const result = await response.json();
+
+            // Invalidate cache after successful resolution
+            if (result.success) {
+                try {
+                    const redis = getRedisClient();
+                    const cacheKey = `${AI_PREDICTIONS_CACHE_PREFIX}${agentName}`;
+                    await redis.del(cacheKey);
+                    console.log(`🗑️ Cache invalidated for ${agentName} after batch resolution`);
+                } catch (cacheErr) {
+                    console.warn('Redis cache invalidation failed:', cacheErr);
+                }
+            }
+
+            return result;
+        } catch (error: any) {
+            console.error('Error batch resolving AI predictions:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error.message || 'Failed to batch resolve predictions',
+            };
+        }
+    })
+
     // Get resolved predictions history for an AI agent
     .get('/resolved/:agentName', async ({ params, query, set }) => {
         try {
@@ -866,41 +914,101 @@ export const aiPredictionsRoutes = new Elysia({ prefix: '/api/ai-predictions' })
                 };
             }
 
-            // Fetch resolved predictions from database
+            // Get the AI agent's wallet address
+            const walletAddress = await getAIPublicKey(agentName as AIKeypairName);
+
+            // Fetch resolved predictions from userPredictionsSnapshots using wallet address
             const resolved = await db
                 .select()
-                .from(aiAgentPredictions)
+                .from(userPredictionsSnapshots)
                 .where(
                     and(
-                        eq(aiAgentPredictions.agentName, agentName),
-                        eq(aiAgentPredictions.resolved, true),
-                        eq(aiAgentPredictions.onChainSubmitted, true)
+                        eq(userPredictionsSnapshots.walletAddress, walletAddress),
+                        eq(userPredictionsSnapshots.processed, true)
                     )
                 )
-                .orderBy(desc(aiAgentPredictions.resolvedAt))
+                .orderBy(desc(userPredictionsSnapshots.resolvedAt))
                 .limit(limit)
                 .offset(offset);
 
+            // Filter to only those with resolvedAt (fully resolved predictions)
+            const fullyResolved = resolved.filter(p => p.resolvedAt !== null);
+
+            // Get reasoning data from aiAgentPredictions for these predictions
+            const reasoningMap = new Map<string, { reasoning: string; keyFactors: string[]; confidence: string }>();
+            
+            // Fetch reasoning for all resolved symbols
+            const symbols = Array.from(new Set(fullyResolved.map(p => p.symbol).filter(Boolean)));
+            if (symbols.length > 0) {
+                const reasoningData = await db
+                    .select({
+                        coingeckoId: aiAgentPredictions.coingeckoId,
+                        reasoning: aiAgentPredictions.reasoning,
+                        keyFactors: aiAgentPredictions.keyFactors,
+                        confidence: aiAgentPredictions.confidence,
+                    })
+                    .from(aiAgentPredictions)
+                    .where(
+                        and(
+                            eq(aiAgentPredictions.agentName, agentName),
+                            inArray(aiAgentPredictions.coingeckoId, symbols as string[])
+                        )
+                    )
+                    .orderBy(desc(aiAgentPredictions.predictionTimestamp));
+
+                // Build map with most recent reasoning per symbol
+                for (const r of reasoningData) {
+                    if (!reasoningMap.has(r.coingeckoId)) {
+                        let keyFactors: string[] = [];
+                        try {
+                            if (r.keyFactors) {
+                                keyFactors = typeof r.keyFactors === 'string' 
+                                    ? JSON.parse(r.keyFactors) 
+                                    : r.keyFactors;
+                            }
+                        } catch (e) {
+                            // Keep empty array
+                        }
+                        reasoningMap.set(r.coingeckoId, {
+                            reasoning: r.reasoning,
+                            keyFactors,
+                            confidence: r.confidence,
+                        });
+                    }
+                }
+            }
+
             // Format the predictions
-            const predictions = resolved.map(p => ({
-                id: p.id,
-                predictionType: p.predictionType,
-                rank: p.rank,
-                symbol: p.symbol || p.coingeckoId,
-                coingeckoId: p.coingeckoId,
-                predictedPercentage: p.expectedPercentage ? parseFloat(p.expectedPercentage) : 0,
-                actualPercentage: p.actualPercentage ? parseFloat(p.actualPercentage) : null,
-                priceAtPrediction: p.priceAtPrediction ? parseFloat(p.priceAtPrediction) : null,
-                priceAtResolution: p.priceAtResolution ? parseFloat(p.priceAtResolution) : null,
-                confidence: p.confidence,
-                reasoning: p.reasoning,
-                keyFactors: p.keyFactors ? JSON.parse(p.keyFactors) : [],
-                directionCorrect: p.directionCorrect,
-                accuracyScore: p.accuracyScore ? parseFloat(p.accuracyScore) : null,
-                predictionTimestamp: p.predictionTimestamp?.toISOString() || null,
-                resolvedAt: p.resolvedAt?.toISOString() || null,
-                solanaSignature: p.solanaSignature,
-            }));
+            const predictions = fullyResolved.map(p => {
+                const reasoning = reasoningMap.get(p.symbol || '');
+                
+                // Calculate direction correctness
+                const predictedPct = p.predictedPercentage || 0;
+                const actualPct = p.actualPercentage ? parseFloat(p.actualPercentage) : 0;
+                const expectedDirection = p.predictionType === 'top_performer' ? 'up' : 'down';
+                const actualDirection = actualPct >= 0 ? 'up' : 'down';
+                const directionCorrect = expectedDirection === actualDirection;
+
+                return {
+                    id: p.id,
+                    predictionType: p.predictionType,
+                    rank: p.rank,
+                    symbol: p.symbol,
+                    coingeckoId: p.symbol,
+                    predictedPercentage: predictedPct / 100, // Convert from basis points
+                    actualPercentage: p.actualPercentage ? parseFloat(p.actualPercentage) : null,
+                    priceAtPrediction: p.priceAtPrediction ? parseFloat(p.priceAtPrediction) : null,
+                    priceAtResolution: p.priceAtScoring ? parseFloat(p.priceAtScoring) : null,
+                    confidence: reasoning?.confidence || 'medium',
+                    reasoning: reasoning?.reasoning || '',
+                    keyFactors: reasoning?.keyFactors || [],
+                    directionCorrect,
+                    accuracyScore: p.pointsEarned || 0,
+                    predictionTimestamp: p.predictionTimestamp ? new Date(p.predictionTimestamp * 1000).toISOString() : null,
+                    resolvedAt: p.resolvedAt?.toISOString() || null,
+                    solanaSignature: p.solanaSignature,
+                };
+            });
 
             return {
                 success: true,
