@@ -35,8 +35,9 @@ const PRICE_MULTIPLIER = 1_000_000_000; // 10^9
 // Discriminator for update_silo instruction
 const UPDATE_SILO_DISCRIMINATOR = Buffer.from([0xcb, 0x6b, 0x8a, 0xe3, 0xfd, 0xfb, 0x9b, 0xd3]);
 
-// Prediction window in hours
-const PREDICTION_WINDOW_HOURS = 12;
+// Get prediction duration from environment variable
+const PREDICTION_INTERVAL_MINUTES = parseInt(process.env.PREDICTION_INTERVAL_MINUTES || '720'); // Default to 12 hours (720 minutes)
+const PREDICTION_WINDOW_HOURS = PREDICTION_INTERVAL_MINUTES / 60;
 
 // Types for the AI prediction JSON
 interface PredictionItem {
@@ -232,6 +233,12 @@ async function main() {
         const now = new Date();
         const resolutionTime = new Date(now.getTime() + PREDICTION_WINDOW_HOURS * 60 * 60 * 1000);
         const durationSeconds = PREDICTION_WINDOW_HOURS * 60 * 60;
+
+        console.log(`\n⏱️  Prediction Duration Configuration:`);
+        console.log(`   PREDICTION_INTERVAL_MINUTES: ${PREDICTION_INTERVAL_MINUTES}`);
+        console.log(`   Duration: ${PREDICTION_WINDOW_HOURS}h (${durationSeconds}s)`);
+        console.log(`   Prediction time: ${now.toISOString()}`);
+        console.log(`   Resolution time: ${resolutionTime.toISOString()}`);
 
         console.log(`\n📊 Market Context:`);
         console.log(`   Sentiment: ${predictionData.market_context.overall_sentiment}`);

@@ -44,7 +44,8 @@ export const aiAgentPredictions = pgTable("ai_agent_predictions", {
     
     // Timing
     predictionTimestamp: timestamp("prediction_timestamp").notNull(), // When prediction was made
-    predictionWindowHours: integer("prediction_window_hours").notNull().default(12), // How long the prediction is for
+    predictionWindowHours: integer("prediction_window_hours").notNull().default(12), // How long the prediction is for (DEPRECATED - use predictionWindowMinutes)
+    predictionWindowMinutes: integer("prediction_window_minutes"), // Duration in minutes (preferred)
     resolutionTimestamp: timestamp("resolution_timestamp"), // When prediction should be resolved
     
     // Market context at time of prediction
@@ -90,7 +91,8 @@ export const aiAgentPredictionSessions = pgTable("ai_agent_prediction_sessions",
     
     // Session timing
     sessionTimestamp: timestamp("session_timestamp").notNull(),
-    predictionWindowHours: integer("prediction_window_hours").notNull().default(12),
+    predictionWindowHours: integer("prediction_window_hours").notNull().default(12), // DEPRECATED - use predictionWindowMinutes
+    predictionWindowMinutes: integer("prediction_window_minutes"), // Duration in minutes (preferred)
     resolutionTimestamp: timestamp("resolution_timestamp"),
     
     // Market context at time of session

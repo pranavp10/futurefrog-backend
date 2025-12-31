@@ -24,7 +24,10 @@ const PROGRAM_ID = new PublicKey('GGw3GTVpjwLhHdsK4dY3Kb1Lb3vpz5Ns6zV3aMWcf9xe')
 const ADMIN_PUBKEY = new PublicKey('J8yaYVhBtTQ6zfNv92iYumYhGsgi5euBAWUz7L3qXFeo');
 const PRICE_MULTIPLIER = 1_000_000_000;
 const UPDATE_SILO_DISCRIMINATOR = Buffer.from([0xcb, 0x6b, 0x8a, 0xe3, 0xfd, 0xfb, 0x9b, 0xd3]);
-const PREDICTION_WINDOW_HOURS = 12;
+
+// Get prediction duration from environment variable
+const PREDICTION_INTERVAL_MINUTES = parseInt(process.env.PREDICTION_INTERVAL_MINUTES || '720'); // Default to 12 hours (720 minutes)
+const PREDICTION_WINDOW_HOURS = PREDICTION_INTERVAL_MINUTES / 60;
 
 // Types
 interface PredictionItem {
@@ -337,15 +340,22 @@ export const aiPredictionsRoutes = new Elysia({ prefix: '/api/ai-predictions' })
             // Create session
             const sessionId = randomUUID();
             const now = new Date();
-            const resolutionTime = new Date(now.getTime() + PREDICTION_WINDOW_HOURS * 60 * 60 * 1000);
-            const durationSeconds = PREDICTION_WINDOW_HOURS * 60 * 60;
+            const resolutionTime = new Date(now.getTime() + PREDICTION_INTERVAL_MINUTES * 60 * 1000);
+            const durationSeconds = PREDICTION_INTERVAL_MINUTES * 60;
+            
+            console.log(`\n⏱️  Prediction Duration Configuration:`);
+            console.log(`   PREDICTION_INTERVAL_MINUTES: ${PREDICTION_INTERVAL_MINUTES}`);
+            console.log(`   Duration: ${PREDICTION_WINDOW_HOURS}h (${durationSeconds}s)`);
+            console.log(`   Prediction time: ${now.toISOString()}`);
+            console.log(`   Resolution time: ${resolutionTime.toISOString()}`);
+            console.log('');
 
             // Create session in database
             await db.insert(aiAgentPredictionSessions).values({
                 id: sessionId,
                 agentName,
                 sessionTimestamp: now,
-                predictionWindowHours: PREDICTION_WINDOW_HOURS,
+                predictionWindowHours: Math.max(1, Math.ceil(PREDICTION_WINDOW_HOURS)), // Round up to nearest hour
                 resolutionTimestamp: resolutionTime,
                 btcPrice: predictionData.market_context.btc_price?.toString(),
                 ethPrice: predictionData.market_context.eth_price?.toString(),
@@ -435,7 +445,7 @@ export const aiPredictionsRoutes = new Elysia({ prefix: '/api/ai-predictions' })
                 reasoning: pred.item.reasoning,
                 keyFactors: JSON.stringify(pred.item.key_factors || []),
                 predictionTimestamp: now,
-                predictionWindowHours: PREDICTION_WINDOW_HOURS,
+                predictionWindowHours: Math.max(1, Math.ceil(PREDICTION_WINDOW_HOURS)), // Round up to nearest hour
                 resolutionTimestamp: resolutionTime,
                 marketContext: JSON.stringify(predictionData.market_context),
                 onChainSubmitted: true,
