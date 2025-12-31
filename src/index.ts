@@ -18,6 +18,7 @@ import { resolvePredictionBatchRoutes } from "./routes/resolve-prediction-batch"
 import { aiKeypairsRoutes } from "./routes/ai-keypairs";
 import { aiPredictionsRoutes } from "./routes/ai-predictions";
 import { coinDetailsRoutes } from "./routes/coin-details";
+import { communityPredictionsRoutes } from "./routes/community-predictions";
 import { functions, inngest } from "./inngest";
 
 // Create Inngest handler
@@ -45,6 +46,7 @@ const app = new Elysia()
   .use(aiKeypairsRoutes)
   .use(aiPredictionsRoutes)
   .use(coinDetailsRoutes)
+  .use(communityPredictionsRoutes)
   .all("/inngest", ({ request }) => inngestHandler(request))
   .get("/", () => {
     return {
