@@ -19,6 +19,7 @@ import { aiKeypairsRoutes } from "./routes/ai-keypairs";
 import { aiPredictionsRoutes } from "./routes/ai-predictions";
 import { coinDetailsRoutes } from "./routes/coin-details";
 import { communityPredictionsRoutes } from "./routes/community-predictions";
+import { kalshiMarketsRoutes } from "./routes/kalshi-markets";
 import { functions, inngest } from "./inngest";
 
 // Create Inngest handler
@@ -47,6 +48,7 @@ const app = new Elysia()
   .use(aiPredictionsRoutes)
   .use(coinDetailsRoutes)
   .use(communityPredictionsRoutes)
+  .use(kalshiMarketsRoutes)
   .all("/inngest", ({ request }) => inngestHandler(request))
   .get("/", () => {
     return {
