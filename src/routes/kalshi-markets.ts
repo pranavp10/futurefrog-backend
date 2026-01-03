@@ -319,16 +319,12 @@ export const kalshiMarketsRoutes = new Elysia({ prefix: '/api/kalshi' })
             const seriesData = await seriesResponse.json();
             const allSeries = seriesData.series || [];
             
-            // Create tag mappings from series data
+            // Create tag mappings from series data - Only BTC, ETH, SOL
             const seriesByTag: Record<string, string[]> = {
                 'All': [],
                 'BTC': [],
                 'ETH': [],
                 'SOL': [],
-                'Dogecoin': [],
-                'SHIBA': [],
-                'Hourly': [],
-                'Pre-Market': [],
             };
             
             // Also track by frequency
@@ -342,43 +338,32 @@ export const kalshiMarketsRoutes = new Elysia({ prefix: '/api/kalshi' })
             
             for (const s of allSeries) {
                 const ticker = s.ticker;
+                const title = (s.title || '').toLowerCase();
+                const tags = s.tags || [];
+                
+                // Only include BTC, ETH, SOL series
+                let isBTC = tags.includes('BTC') || title.includes('bitcoin') || title.includes('btc');
+                let isETH = tags.includes('ETH') || title.includes('ethereum') || title.includes('eth');
+                let isSOL = tags.includes('SOL') || title.includes('solana') || title.includes('sol');
+                
+                // Skip if not BTC, ETH, or SOL
+                if (!isBTC && !isETH && !isSOL) continue;
+                
                 seriesByTag['All'].push(ticker);
                 
-                // Map by tags
-                const tags = s.tags || [];
-                for (const tag of tags) {
-                    if (seriesByTag[tag]) {
-                        seriesByTag[tag].push(ticker);
-                    }
+                if (isBTC) {
+                    seriesByTag['BTC'].push(ticker);
                 }
-                
-                // Also check title for tag keywords if no tags
-                const title = (s.title || '').toLowerCase();
-                if (title.includes('bitcoin') || title.includes('btc')) {
-                    if (!seriesByTag['BTC'].includes(ticker)) seriesByTag['BTC'].push(ticker);
+                if (isETH) {
+                    seriesByTag['ETH'].push(ticker);
                 }
-                if (title.includes('ethereum') || title.includes('eth')) {
-                    if (!seriesByTag['ETH'].includes(ticker)) seriesByTag['ETH'].push(ticker);
-                }
-                if (title.includes('solana') || title.includes('sol')) {
-                    if (!seriesByTag['SOL'].includes(ticker)) seriesByTag['SOL'].push(ticker);
-                }
-                if (title.includes('doge')) {
-                    if (!seriesByTag['Dogecoin'].includes(ticker)) seriesByTag['Dogecoin'].push(ticker);
-                }
-                if (title.includes('shiba') || title.includes('shib')) {
-                    if (!seriesByTag['SHIBA'].includes(ticker)) seriesByTag['SHIBA'].push(ticker);
-                }
-                if (title.includes('token') || title.includes('airdrop') || title.includes('launch')) {
-                    if (!seriesByTag['Pre-Market'].includes(ticker)) seriesByTag['Pre-Market'].push(ticker);
+                if (isSOL) {
+                    seriesByTag['SOL'].push(ticker);
                 }
                 
                 // Map by frequency
                 const freq = s.frequency || '';
-                if (freq === 'hourly') {
-                    seriesByFrequency['hourly'].push(ticker);
-                    if (!seriesByTag['Hourly'].includes(ticker)) seriesByTag['Hourly'].push(ticker);
-                }
+                if (freq === 'hourly') seriesByFrequency['hourly'].push(ticker);
                 if (freq === 'daily') seriesByFrequency['daily'].push(ticker);
                 if (freq === 'weekly') seriesByFrequency['weekly'].push(ticker);
                 if (freq === 'monthly') seriesByFrequency['monthly'].push(ticker);
@@ -440,7 +425,7 @@ export const kalshiMarketsRoutes = new Elysia({ prefix: '/api/kalshi' })
                 events: cryptoEvents,
                 cursor: null,
                 count: cryptoEvents.length,
-                tags: ['All', 'BTC', 'ETH', 'SOL', 'Dogecoin', 'SHIBA', 'Hourly', 'Pre-Market'],
+                tags: ['All', 'BTC', 'ETH', 'SOL'],
                 seriesByFrequency, // Include frequency data for frontend filtering
                 timestamp: new Date().toISOString(),
             };
