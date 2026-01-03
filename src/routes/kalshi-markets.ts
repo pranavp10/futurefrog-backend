@@ -292,7 +292,7 @@ export const kalshiMarketsRoutes = new Elysia({ prefix: '/api/kalshi' })
         }
     })
 
-    // Get crypto markets - simplified approach using key series only
+    // Get crypto markets - fetches all crypto series dynamically
     .get('/crypto', async ({ query, set }) => {
         try {
             const apiKey = process.env.DFLOW_API_KEY;
@@ -301,52 +301,9 @@ export const kalshiMarketsRoutes = new Elysia({ prefix: '/api/kalshi' })
                 return { success: false, error: 'DFlow API key not configured' };
             }
 
-            // Key crypto series that have active markets - curated list for faster response
-            const keyCryptoSeries = [
-                // BTC
-                'KXBTCMAXY', 'BTCMAXY', 'KXBTCMAX150', 'KXBTCMINY', 'BTCMINY', 'KXBTC2025100',
-                'KXBTC2026200', 'KXBTCRESERVE', 'KXBTC', 'KXBTCMAXW', 'KXBTCMAXM',
-                // ETH
-                'KXETHMAXY', 'ETHMAXY', 'KXETHMINY', 'ETHMINY', 'KXETH', 'KXETHMAXM',
-                // SOL
-                'KXSOLMAXY', 'KXSOL', 'KXSOLMAXM', 'KXSOLFLIPETH',
-                // Other crypto
-                'KXDOGEMAXY', 'KXDOGE', 'KXDOGEMAX1',
-                'KXSHIBAMAXY', 'KXSHIBA',
-                'KXCRYPTORETURNY', 'KXCRYPTORESERVE',
-                // Pre-market / Tokens
-                'KXTOKENLAUNCH', 'KXNEWCOINLAUNCH', 'KXAIRDROPMEGA', 'KXAIRDROPMONAD',
-                // XRP, LTC
-                'KXXRPMAXY', 'KXXRP', 'KXLTCMAXY',
-            ];
-
-            // Filter by tag if specified
-            const tag = query.tags;
-            let seriesToFetch = keyCryptoSeries;
-            
-            if (tag && tag !== 'All') {
-                // Filter based on tag
-                const tagFilters: Record<string, string[]> = {
-                    'BTC': ['KXBTCMAXY', 'BTCMAXY', 'KXBTCMAX150', 'KXBTCMINY', 'BTCMINY', 'KXBTC2025100', 'KXBTC2026200', 'KXBTCRESERVE', 'KXBTC', 'KXBTCMAXW', 'KXBTCMAXM'],
-                    'ETH': ['KXETHMAXY', 'ETHMAXY', 'KXETHMINY', 'ETHMINY', 'KXETH', 'KXETHMAXM'],
-                    'SOL': ['KXSOLMAXY', 'KXSOL', 'KXSOLMAXM', 'KXSOLFLIPETH', 'KXCRYPTORESERVE'],
-                    'Dogecoin': ['KXDOGEMAXY', 'KXDOGE', 'KXDOGEMAX1'],
-                    'SHIBA': ['KXSHIBAMAXY', 'KXSHIBA'],
-                    'Hourly': ['KXBTC', 'KXETH', 'KXSOL', 'KXXRP'],
-                    'Pre-Market': ['KXTOKENLAUNCH', 'KXNEWCOINLAUNCH', 'KXAIRDROPMEGA', 'KXAIRDROPMONAD'],
-                };
-                seriesToFetch = tagFilters[tag] || keyCryptoSeries;
-            }
-
-            // Fetch events - single batch for key series
-            const params = new URLSearchParams();
-            params.append('withNestedMarkets', 'true');
-            params.append('limit', '200');
-            params.append('seriesTickers', seriesToFetch.slice(0, 25).join(',')); // API limit is 25
-            if (query.status && query.status !== '') params.append('status', query.status);
-
-            const response = await fetch(
-                `${DFLOW_METADATA_API}/api/v1/events?${params.toString()}`,
+            // Step 1: Get all crypto series from DFlow
+            const seriesResponse = await fetch(
+                `${DFLOW_METADATA_API}/api/v1/series?category=Crypto&limit=500`,
                 {
                     headers: {
                         'Content-Type': 'application/json',
@@ -355,12 +312,121 @@ export const kalshiMarketsRoutes = new Elysia({ prefix: '/api/kalshi' })
                 }
             );
 
-            if (!response.ok) {
-                throw new Error(`DFlow API error: ${response.status} ${response.statusText}`);
+            if (!seriesResponse.ok) {
+                throw new Error(`DFlow API error fetching series: ${seriesResponse.status}`);
             }
 
-            const data: DFlowEventsResponse = await response.json();
-            let cryptoEvents = data.events;
+            const seriesData = await seriesResponse.json();
+            const allSeries = seriesData.series || [];
+            
+            // Create tag mappings from series data
+            const seriesByTag: Record<string, string[]> = {
+                'All': [],
+                'BTC': [],
+                'ETH': [],
+                'SOL': [],
+                'Dogecoin': [],
+                'SHIBA': [],
+                'Hourly': [],
+                'Pre-Market': [],
+            };
+            
+            // Also track by frequency
+            const seriesByFrequency: Record<string, string[]> = {
+                'hourly': [],
+                'daily': [],
+                'weekly': [],
+                'monthly': [],
+                'annual': [],
+            };
+            
+            for (const s of allSeries) {
+                const ticker = s.ticker;
+                seriesByTag['All'].push(ticker);
+                
+                // Map by tags
+                const tags = s.tags || [];
+                for (const tag of tags) {
+                    if (seriesByTag[tag]) {
+                        seriesByTag[tag].push(ticker);
+                    }
+                }
+                
+                // Also check title for tag keywords if no tags
+                const title = (s.title || '').toLowerCase();
+                if (title.includes('bitcoin') || title.includes('btc')) {
+                    if (!seriesByTag['BTC'].includes(ticker)) seriesByTag['BTC'].push(ticker);
+                }
+                if (title.includes('ethereum') || title.includes('eth')) {
+                    if (!seriesByTag['ETH'].includes(ticker)) seriesByTag['ETH'].push(ticker);
+                }
+                if (title.includes('solana') || title.includes('sol')) {
+                    if (!seriesByTag['SOL'].includes(ticker)) seriesByTag['SOL'].push(ticker);
+                }
+                if (title.includes('doge')) {
+                    if (!seriesByTag['Dogecoin'].includes(ticker)) seriesByTag['Dogecoin'].push(ticker);
+                }
+                if (title.includes('shiba') || title.includes('shib')) {
+                    if (!seriesByTag['SHIBA'].includes(ticker)) seriesByTag['SHIBA'].push(ticker);
+                }
+                if (title.includes('token') || title.includes('airdrop') || title.includes('launch')) {
+                    if (!seriesByTag['Pre-Market'].includes(ticker)) seriesByTag['Pre-Market'].push(ticker);
+                }
+                
+                // Map by frequency
+                const freq = s.frequency || '';
+                if (freq === 'hourly') {
+                    seriesByFrequency['hourly'].push(ticker);
+                    if (!seriesByTag['Hourly'].includes(ticker)) seriesByTag['Hourly'].push(ticker);
+                }
+                if (freq === 'daily') seriesByFrequency['daily'].push(ticker);
+                if (freq === 'weekly') seriesByFrequency['weekly'].push(ticker);
+                if (freq === 'monthly') seriesByFrequency['monthly'].push(ticker);
+                if (freq === 'annual' || freq === 'one_off') seriesByFrequency['annual'].push(ticker);
+            }
+
+            // Determine which series to fetch based on tag filter
+            const tag = query.tags;
+            let seriesToFetch = seriesByTag['All'];
+            
+            if (tag && tag !== 'All' && seriesByTag[tag]) {
+                seriesToFetch = seriesByTag[tag];
+            }
+
+            // Step 2: Fetch events in batches (API limit is 25 tickers per request)
+            const allEvents: DFlowEvent[] = [];
+            const batchSize = 25;
+            
+            for (let i = 0; i < seriesToFetch.length; i += batchSize) {
+                const batch = seriesToFetch.slice(i, i + batchSize);
+                const params = new URLSearchParams();
+                params.append('withNestedMarkets', 'true');
+                params.append('limit', '100');
+                params.append('seriesTickers', batch.join(','));
+                if (query.status && query.status !== '') params.append('status', query.status);
+
+                const response = await fetch(
+                    `${DFLOW_METADATA_API}/api/v1/events?${params.toString()}`,
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-api-key': apiKey,
+                        },
+                    }
+                );
+
+                if (response.ok) {
+                    const data: DFlowEventsResponse = await response.json();
+                    allEvents.push(...data.events);
+                }
+            }
+            
+            // Deduplicate by ticker
+            const eventMap = new Map<string, DFlowEvent>();
+            for (const event of allEvents) {
+                eventMap.set(event.ticker, event);
+            }
+            let cryptoEvents = Array.from(eventMap.values());
 
             // Sort by total volume across all markets
             cryptoEvents.sort((a, b) => {
@@ -372,9 +438,10 @@ export const kalshiMarketsRoutes = new Elysia({ prefix: '/api/kalshi' })
             return {
                 success: true,
                 events: cryptoEvents,
-                cursor: data.cursor,
+                cursor: null,
                 count: cryptoEvents.length,
                 tags: ['All', 'BTC', 'ETH', 'SOL', 'Dogecoin', 'SHIBA', 'Hourly', 'Pre-Market'],
+                seriesByFrequency, // Include frequency data for frontend filtering
                 timestamp: new Date().toISOString(),
             };
         } catch (error) {
