@@ -197,11 +197,29 @@ export const cryptoCacheRoutes = new Elysia({ prefix: '/api/crypto-cache' })
             };
         }
     })
-    // Get detailed coin information with 24hr price history
+    // Get detailed coin information with 24hr price history (with Redis caching)
     .get('/:coinId/details', async ({ params, set }) => {
         const { coinId } = params;
+        const CACHE_TTL = 300; // 5 minutes cache
+        const cacheKey = `crypto-details:${coinId}`;
 
         try {
+            // Import redis inside the handler to avoid circular deps
+            const { getRedisClient } = await import('../lib/redis');
+            const redis = getRedisClient();
+
+            // Check Redis cache first
+            try {
+                const cachedData = await redis.get(cacheKey);
+                if (cachedData) {
+                    console.log(`✅ Cache hit for ${coinId} details`);
+                    return JSON.parse(cachedData);
+                }
+            } catch (cacheErr) {
+                console.warn('Redis cache read failed:', cacheErr);
+            }
+
+            console.log(`📡 Fetching ${coinId} details from CoinGecko...`);
             const apiKey = process.env.COINGECKO_API_KEY;
             const baseUrl = 'https://api.coingecko.com/api/v3';
 
@@ -271,16 +289,25 @@ export const cryptoCacheRoutes = new Elysia({ prefix: '/api/crypto-cache' })
                 };
             }
 
-            return {
+            const result = {
                 success: true,
-                data: {
-                    ...coinMetadata,
-                    currentPrice,
-                    priceChange24h: Math.round(priceChange24h * 100) / 100,
-                    priceHistory,
-                    historyCount: priceHistory.length,
-                },
+                coinId,
+                ...coinMetadata,
+                currentPrice,
+                priceChange24h: Math.round(priceChange24h * 100) / 100,
+                priceHistory,
+                historyCount: priceHistory.length,
             };
+
+            // Cache the result in Redis
+            try {
+                await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(result));
+                console.log(`💾 Cached ${coinId} details for ${CACHE_TTL}s`);
+            } catch (cacheErr) {
+                console.warn('Redis cache write failed:', cacheErr);
+            }
+
+            return result;
         } catch (error) {
             console.error('Error fetching coin details:', error);
             set.status = 500;

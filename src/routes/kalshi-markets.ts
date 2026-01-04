@@ -1,6 +1,10 @@
 import { Elysia, t } from 'elysia';
 
 const DFLOW_METADATA_API = 'https://b.prediction-markets-api.dflow.net';
+const DFLOW_QUOTE_API = 'https://b.quote-api.dflow.net';
+
+// USDC mint on Solana mainnet
+const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
 interface DFlowMarketAccount {
     yesMint: string;
@@ -530,6 +534,154 @@ export const kalshiMarketsRoutes = new Elysia({ prefix: '/api/kalshi' })
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Failed to fetch orderbook',
+            };
+        }
+    })
+
+    // Get order quote from DFlow Quote API
+    // This returns a transaction that the user needs to sign
+    .get('/quote', async ({ query, set }) => {
+        try {
+            const apiKey = process.env.DFLOW_API_KEY;
+            if (!apiKey) {
+                set.status = 500;
+                return { success: false, error: 'DFlow API key not configured' };
+            }
+
+            const { userPublicKey, marketTicker, side, amount, slippageBps } = query;
+
+            if (!userPublicKey || !marketTicker || !side || !amount) {
+                set.status = 400;
+                return { success: false, error: 'Missing required parameters: userPublicKey, marketTicker, side, amount' };
+            }
+
+            // First, get the market details to find the outcome token mints
+            const marketResponse = await fetch(
+                `${DFLOW_METADATA_API}/api/v1/market/${marketTicker}`,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                    },
+                }
+            );
+
+            if (!marketResponse.ok) {
+                throw new Error(`Failed to fetch market: ${marketResponse.status}`);
+            }
+
+            const market = await marketResponse.json();
+            const accounts = market.accounts?.solana || market.accounts?.Solana || Object.values(market.accounts || {})[0];
+            
+            if (!accounts) {
+                throw new Error('Market accounts not found');
+            }
+
+            // Determine input/output mints based on side
+            // Buying YES: Input USDC, Output yesMint
+            // Buying NO: Input USDC, Output noMint
+            const inputMint = USDC_MINT;
+            const outputMint = side === 'yes' ? accounts.yesMint : accounts.noMint;
+
+            if (!outputMint) {
+                throw new Error(`${side}Mint not found for market`);
+            }
+
+            // Build query params for Quote API
+            const params = new URLSearchParams({
+                userPublicKey,
+                inputMint,
+                outputMint,
+                amount: amount.toString(),
+                slippageBps: (slippageBps || 100).toString(), // Default 1% slippage
+            });
+
+            // Get order quote from DFlow Quote API
+            const quoteResponse = await fetch(
+                `${DFLOW_QUOTE_API}/order?${params.toString()}`,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                    },
+                }
+            );
+
+            if (!quoteResponse.ok) {
+                const errorText = await quoteResponse.text();
+                console.error('DFlow Quote API error:', errorText);
+                throw new Error(`DFlow Quote API error: ${quoteResponse.status} - ${errorText}`);
+            }
+
+            const quoteData = await quoteResponse.json();
+
+            return {
+                success: true,
+                quote: {
+                    ...quoteData,
+                    marketTicker,
+                    side,
+                    inputMint,
+                    outputMint,
+                },
+                timestamp: new Date().toISOString(),
+            };
+        } catch (error) {
+            console.error('Error getting quote:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to get quote',
+            };
+        }
+    }, {
+        query: t.Object({
+            userPublicKey: t.String(),
+            marketTicker: t.String(),
+            side: t.String(),
+            amount: t.String(),
+            slippageBps: t.Optional(t.String()),
+        })
+    })
+
+    // Get market accounts for reference
+    .get('/market-accounts/:ticker', async ({ params, set }) => {
+        try {
+            const apiKey = process.env.DFLOW_API_KEY;
+            if (!apiKey) {
+                set.status = 500;
+                return { success: false, error: 'DFlow API key not configured' };
+            }
+
+            const response = await fetch(
+                `${DFLOW_METADATA_API}/api/v1/market/${params.ticker}`,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`DFlow API error: ${response.status}`);
+            }
+
+            const market = await response.json();
+
+            return {
+                success: true,
+                ticker: params.ticker,
+                market,
+                accounts: market.accounts || {},
+                timestamp: new Date().toISOString(),
+            };
+        } catch (error) {
+            console.error('Error fetching market accounts:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to fetch market accounts',
             };
         }
     });
