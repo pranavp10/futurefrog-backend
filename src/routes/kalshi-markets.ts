@@ -548,52 +548,84 @@ export const kalshiMarketsRoutes = new Elysia({ prefix: '/api/kalshi' })
                 return { success: false, error: 'DFlow API key not configured' };
             }
 
-            const { userPublicKey, marketTicker, side, amount, slippageBps } = query;
+            const { userPublicKey, marketTicker, side, amount, slippageBps, outputMint: providedOutputMint } = query;
 
             if (!userPublicKey || !marketTicker || !side || !amount) {
                 set.status = 400;
                 return { success: false, error: 'Missing required parameters: userPublicKey, marketTicker, side, amount' };
             }
 
-            // First, get the market details to find the outcome token mints
-            const marketResponse = await fetch(
-                `${DFLOW_METADATA_API}/api/v1/market/${marketTicker}`,
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-api-key': apiKey,
-                    },
-                }
-            );
-
-            if (!marketResponse.ok) {
-                throw new Error(`Failed to fetch market: ${marketResponse.status}`);
-            }
-
-            const market = await marketResponse.json();
-            const accounts = market.accounts?.solana || market.accounts?.Solana || Object.values(market.accounts || {})[0];
-            
-            if (!accounts) {
-                throw new Error('Market accounts not found');
-            }
-
-            // Determine input/output mints based on side
-            // Buying YES: Input USDC, Output yesMint
-            // Buying NO: Input USDC, Output noMint
             const inputMint = USDC_MINT;
-            const outputMint = side === 'yes' ? accounts.yesMint : accounts.noMint;
+            let outputMint = providedOutputMint;
 
+            // If outputMint not provided, fetch from market details
             if (!outputMint) {
-                throw new Error(`${side}Mint not found for market`);
+                const marketResponse = await fetch(
+                    `${DFLOW_METADATA_API}/api/v1/market/${marketTicker}`,
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-api-key': apiKey,
+                        },
+                    }
+                );
+
+                if (!marketResponse.ok) {
+                    const errText = await marketResponse.text();
+                    console.error('Market fetch error:', errText);
+                    throw new Error(`Failed to fetch market: ${marketResponse.status}`);
+                }
+
+                const market = await marketResponse.json();
+                
+                // Debug log the market structure
+                console.log('Market response for', marketTicker, ':', JSON.stringify(market, null, 2));
+                
+                // Try multiple ways to get accounts - DFlow API structure varies
+                let accounts = null;
+                if (market.accounts) {
+                    accounts = market.accounts.solana || 
+                               market.accounts.Solana || 
+                               market.accounts.SOLANA ||
+                               market.accounts.mainnet ||
+                               Object.values(market.accounts)[0];
+                }
+                
+                // If market has yesMint/noMint directly at the top level
+                if (!accounts && (market.yesMint || market.noMint)) {
+                    accounts = {
+                        yesMint: market.yesMint,
+                        noMint: market.noMint,
+                        marketLedger: market.marketLedger,
+                    };
+                }
+                
+                console.log('Extracted accounts:', accounts);
+                
+                if (!accounts) {
+                    throw new Error(`Market accounts not found. Market structure: ${JSON.stringify(Object.keys(market))}`);
+                }
+
+                outputMint = side === 'yes' ? accounts.yesMint : accounts.noMint;
+
+                if (!outputMint) {
+                    throw new Error(`${side}Mint not found for market. Available keys: ${JSON.stringify(Object.keys(accounts))}`);
+                }
             }
 
-            // Build query params for Quote API
+            console.log(`Trading ${side} on ${marketTicker}: inputMint=${inputMint}, outputMint=${outputMint}`);
+
+            // Build query params for Quote API  
+            // Minimize costs - avoid SOL wrapping and optimize routing
             const params = new URLSearchParams({
                 userPublicKey,
                 inputMint,
                 outputMint,
                 amount: amount.toString(),
-                slippageBps: (slippageBps || 100).toString(), // Default 1% slippage
+                slippageBps: (slippageBps || 100).toString(),
+                wrapAndUnwrapSol: 'false', // Don't wrap/unwrap SOL
+                onlyDirectRoutes: 'true', // Avoid intermediate token hops  
+                restrictIntermediateTokens: 'true', // Minimize intermediate tokens
             });
 
             // Get order quote from DFlow Quote API
@@ -610,10 +642,65 @@ export const kalshiMarketsRoutes = new Elysia({ prefix: '/api/kalshi' })
             if (!quoteResponse.ok) {
                 const errorText = await quoteResponse.text();
                 console.error('DFlow Quote API error:', errorText);
-                throw new Error(`DFlow Quote API error: ${quoteResponse.status} - ${errorText}`);
+                
+                let errorJson;
+                try {
+                    errorJson = JSON.parse(errorText);
+                } catch {
+                    errorJson = { msg: errorText };
+                }
+                
+                // Handle route_not_found - try to initialize the market
+                if (errorJson.code === 'route_not_found') {
+                    console.log('Route not found, attempting to check market initialization...');
+                    
+                    const initCheckParams = new URLSearchParams({
+                        userPublicKey,
+                        inputMint,
+                        outputMint,
+                        amount: amount.toString(),
+                        slippageBps: (slippageBps || 100).toString(),
+                    });
+                    
+                    const initResponse = await fetch(
+                        `${DFLOW_QUOTE_API}/prediction-market-init?${initCheckParams.toString()}`,
+                        {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'x-api-key': apiKey,
+                            },
+                        }
+                    );
+                    
+                    if (initResponse.ok) {
+                        const initData = await initResponse.json();
+                        if (initData.transaction) {
+                            return {
+                                success: true,
+                                needsInit: true,
+                                quote: {
+                                    ...initData,
+                                    marketTicker,
+                                    side,
+                                    inputMint,
+                                    outputMint,
+                                    message: 'This market needs to be initialized first. Sign this transaction to initialize it, then try trading again.',
+                                },
+                                timestamp: new Date().toISOString(),
+                            };
+                        }
+                    }
+                    
+                    throw new Error(`Trading route not available for this market. The market may not be initialized on DFlow. Try a different market.`);
+                }
+                
+                throw new Error(`DFlow Quote API error: ${quoteResponse.status} - ${errorJson.msg || errorText}`);
             }
 
             const quoteData = await quoteResponse.json();
+            
+            // Log the full quote response for debugging
+            console.log('DFlow quote response:', JSON.stringify(quoteData, null, 2));
 
             return {
                 success: true,
@@ -641,7 +728,190 @@ export const kalshiMarketsRoutes = new Elysia({ prefix: '/api/kalshi' })
             side: t.String(),
             amount: t.String(),
             slippageBps: t.Optional(t.String()),
+            outputMint: t.Optional(t.String()),
         })
+    })
+
+    // Get user positions using DFlow's recommended approach
+    // https://pond.dflow.net/quickstart/user-prediction-positions
+    .get('/positions/:publicKey', async ({ params, set }) => {
+        try {
+            const apiKey = process.env.DFLOW_API_KEY;
+            const rpcEndpoint = process.env.SOLANA_RPC_ENDPOINT || 'https://api.mainnet-beta.solana.com';
+            
+            // Step 1: Fetch Token-2022 accounts (used by DFlow prediction markets)
+            const tokenAccountsResponse = await fetch(rpcEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: 1,
+                    method: 'getTokenAccountsByOwner',
+                    params: [
+                        params.publicKey,
+                        { programId: 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb' }, // Token-2022 program
+                        { encoding: 'jsonParsed' }
+                    ]
+                })
+            });
+
+            if (!tokenAccountsResponse.ok) {
+                throw new Error('Failed to fetch token accounts from Solana RPC');
+            }
+
+            const tokenAccountsData = await tokenAccountsResponse.json();
+            const tokenAccounts = tokenAccountsData.result?.value || [];
+            
+            // Map to simpler structure and filter non-zero balances
+            const userTokens = tokenAccounts
+                .map((account: any) => {
+                    const info = account.account?.data?.parsed?.info;
+                    return {
+                        mint: info?.mint,
+                        balance: info?.tokenAmount?.uiAmount || 0,
+                        decimals: info?.tokenAmount?.decimals || 6,
+                    };
+                })
+                .filter((t: any) => t.balance > 0 && t.mint);
+
+            if (userTokens.length === 0) {
+                return {
+                    success: true,
+                    positions: [],
+                    message: 'No token balances found',
+                    timestamp: new Date().toISOString(),
+                };
+            }
+
+            const allMintAddresses = userTokens.map((t: any) => t.mint);
+            console.log(`Found ${allMintAddresses.length} non-zero token balances for ${params.publicKey}`);
+
+            // Step 2: Filter to get only prediction market outcome mints
+            const filterResponse = await fetch(
+                `${DFLOW_METADATA_API}/api/v1/filter_outcome_mints`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(apiKey && { 'x-api-key': apiKey }),
+                    },
+                    body: JSON.stringify({ addresses: allMintAddresses }),
+                }
+            );
+
+            if (!filterResponse.ok) {
+                console.error('Failed to filter outcome mints:', await filterResponse.text());
+                throw new Error('Failed to filter outcome mints');
+            }
+
+            const filterData = await filterResponse.json();
+            const predictionMintAddresses = filterData.outcomeMints || [];
+            
+            console.log(`Found ${predictionMintAddresses.length} prediction market tokens`);
+
+            if (predictionMintAddresses.length === 0) {
+                return {
+                    success: true,
+                    positions: [],
+                    message: 'No prediction market positions found',
+                    timestamp: new Date().toISOString(),
+                };
+            }
+
+            // Step 3: Fetch market details for all outcome tokens in batch
+            const marketsResponse = await fetch(
+                `${DFLOW_METADATA_API}/api/v1/markets/batch`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(apiKey && { 'x-api-key': apiKey }),
+                    },
+                    body: JSON.stringify({ mints: predictionMintAddresses }),
+                }
+            );
+
+            if (!marketsResponse.ok) {
+                console.error('Failed to fetch markets batch:', await marketsResponse.text());
+                throw new Error('Failed to fetch market details');
+            }
+
+            const marketsData = await marketsResponse.json();
+            const markets = marketsData.markets || [];
+            
+            console.log(`Got details for ${markets.length} markets`);
+
+            // Create a map by mint address for efficient lookup
+            const marketsByMint = new Map<string, any>();
+            markets.forEach((market: any) => {
+                Object.values(market.accounts || {}).forEach((account: any) => {
+                    if (account.yesMint) marketsByMint.set(account.yesMint, { ...market, _mintType: 'yes' });
+                    if (account.noMint) marketsByMint.set(account.noMint, { ...market, _mintType: 'no' });
+                });
+            });
+
+            // Step 4: Build positions with market data
+            const positions = userTokens
+                .filter((token: any) => predictionMintAddresses.includes(token.mint))
+                .map((token: any) => {
+                    const marketData = marketsByMint.get(token.mint);
+                    
+                    if (!marketData) {
+                        return {
+                            mint: token.mint,
+                            quantity: token.balance,
+                            side: 'unknown' as const,
+                            marketTitle: `Unknown Token`,
+                            eventTitle: token.mint.slice(0, 8) + '...',
+                        };
+                    }
+
+                    // Determine if YES or NO token
+                    const isYesToken = Object.values(marketData.accounts || {}).some(
+                        (account: any) => account.yesMint === token.mint
+                    );
+                    const side = isYesToken ? 'yes' : 'no';
+                    
+                    // Get current price
+                    const currentPrice = side === 'yes'
+                        ? (marketData.yesAsk || marketData.yesBid || 0.5)
+                        : (marketData.noAsk || marketData.noBid || 0.5);
+                    
+                    // Calculate value (contracts * price)
+                    const value = token.balance * currentPrice;
+
+                    return {
+                        marketTicker: marketData.ticker,
+                        eventTicker: marketData.eventTicker,
+                        marketTitle: marketData.yesSubTitle || marketData.title || marketData.ticker,
+                        eventTitle: marketData.eventTitle || marketData.title,
+                        side,
+                        quantity: token.balance,
+                        currentPrice,
+                        value,
+                        mint: token.mint,
+                        status: marketData.status,
+                        result: marketData.result,
+                        closeTime: marketData.closeTime,
+                    };
+                });
+
+            return {
+                success: true,
+                positions,
+                tokenAccountCount: userTokens.length,
+                predictionTokenCount: predictionMintAddresses.length,
+                timestamp: new Date().toISOString(),
+            };
+        } catch (error) {
+            console.error('Error fetching positions:', error);
+            return {
+                success: true,
+                positions: [],
+                error: error instanceof Error ? error.message : 'Failed to fetch positions',
+                timestamp: new Date().toISOString(),
+            };
+        }
     })
 
     // Get market accounts for reference

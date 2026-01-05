@@ -200,7 +200,7 @@ export const cryptoCacheRoutes = new Elysia({ prefix: '/api/crypto-cache' })
     // Get detailed coin information with 24hr price history (with Redis caching)
     .get('/:coinId/details', async ({ params, set }) => {
         const { coinId } = params;
-        const CACHE_TTL = 300; // 5 minutes cache
+        const CACHE_TTL = 60; // 1 minute cache for fresh price data
         const cacheKey = `crypto-details:${coinId}`;
 
         try {
@@ -299,10 +299,10 @@ export const cryptoCacheRoutes = new Elysia({ prefix: '/api/crypto-cache' })
                 historyCount: priceHistory.length,
             };
 
-            // Cache the result in Redis
+            // Cache the result in Redis (1 minute)
             try {
                 await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(result));
-                console.log(`💾 Cached ${coinId} details for ${CACHE_TTL}s`);
+                console.log(`💾 Cached ${coinId} details for ${CACHE_TTL}s (1 min)`);
             } catch (cacheErr) {
                 console.warn('Redis cache write failed:', cacheErr);
             }
