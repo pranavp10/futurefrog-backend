@@ -1046,6 +1046,113 @@ export const kalshiMarketsRoutes = new Elysia({ prefix: '/api/kalshi' })
         })
     })
 
+    // Get trades for a market or user's mints
+    .get('/trades', async ({ query, set }) => {
+        try {
+            const apiKey = process.env.DFLOW_API_KEY;
+            if (!apiKey) {
+                set.status = 500;
+                return { success: false, error: 'DFlow API key not configured' };
+            }
+
+            const params = new URLSearchParams();
+            params.append('limit', query.limit || '100');
+            
+            if (query.ticker) params.append('ticker', query.ticker);
+            if (query.minTs) params.append('minTs', query.minTs);
+            if (query.maxTs) params.append('maxTs', query.maxTs);
+            if (query.cursor) params.append('cursor', query.cursor);
+
+            const response = await fetch(
+                `${DFLOW_METADATA_API}/api/v1/trades?${params.toString()}`,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`DFlow API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            return {
+                success: true,
+                trades: data.trades || [],
+                cursor: data.cursor,
+                timestamp: new Date().toISOString(),
+            };
+        } catch (error) {
+            console.error('Error fetching trades:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to fetch trades',
+            };
+        }
+    }, {
+        query: t.Object({
+            ticker: t.Optional(t.String()),
+            limit: t.Optional(t.String()),
+            minTs: t.Optional(t.String()),
+            maxTs: t.Optional(t.String()),
+            cursor: t.Optional(t.String()),
+        })
+    })
+
+    // Get trades by outcome mint address
+    .get('/trades/by-mint/:mint', async ({ params, query, set }) => {
+        try {
+            const apiKey = process.env.DFLOW_API_KEY;
+            if (!apiKey) {
+                set.status = 500;
+                return { success: false, error: 'DFlow API key not configured' };
+            }
+
+            const queryParams = new URLSearchParams();
+            queryParams.append('limit', query.limit || '100');
+            if (query.cursor) queryParams.append('cursor', query.cursor);
+
+            const response = await fetch(
+                `${DFLOW_METADATA_API}/api/v1/trades/by-mint/${params.mint}?${queryParams.toString()}`,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                    },
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`DFlow API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            return {
+                success: true,
+                trades: data.trades || [],
+                cursor: data.cursor,
+                timestamp: new Date().toISOString(),
+            };
+        } catch (error) {
+            console.error('Error fetching trades by mint:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to fetch trades',
+            };
+        }
+    }, {
+        query: t.Object({
+            limit: t.Optional(t.String()),
+            cursor: t.Optional(t.String()),
+        })
+    })
+
     // Get market accounts for reference
     .get('/market-accounts/:ticker', async ({ params, set }) => {
         try {
