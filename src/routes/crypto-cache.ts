@@ -11,6 +11,7 @@ interface SparklineData {
  * Fetch sparkline data from the crypto_price_history table
  * Returns a map of coingeckoId -> price array (last 24 hours of data points)
  * Uses the historical data stored from snapshot runs instead of calling CoinGecko API
+ * Falls back to CoinGecko API if database doesn't have enough data
  */
 async function fetchSparklineData(coinIds: string[]): Promise<SparklineData> {
     try {
@@ -19,7 +20,7 @@ async function fetchSparklineData(coinIds: string[]): Promise<SparklineData> {
         }
 
         // Get data from the last 24 hours
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
         // Query the crypto_price_history table for price data
         const historyData = await db
@@ -30,7 +31,7 @@ async function fetchSparklineData(coinIds: string[]): Promise<SparklineData> {
             })
             .from(cryptoPriceHistory)
             .where(
-                sql`${cryptoPriceHistory.coingeckoId} = ANY(${coinIds}) AND ${cryptoPriceHistory.snapshotTimestamp} >= ${twentyFourHoursAgo}`
+                sql`${cryptoPriceHistory.coingeckoId} IN (${sql.join(coinIds.map(id => sql`${id}`), sql`, `)}) AND ${cryptoPriceHistory.snapshotTimestamp} >= ${twentyFourHoursAgo}`
             )
             .orderBy(cryptoPriceHistory.coingeckoId, cryptoPriceHistory.snapshotTimestamp);
 
@@ -45,8 +46,49 @@ async function fetchSparklineData(coinIds: string[]): Promise<SparklineData> {
             sparklineMap[coinId].push(parseFloat(record.currentPrice));
         }
 
-        // Ensure we have at least 2 data points for each coin (for meaningful chart)
-        // If we have less, we'll return empty for that coin so the frontend can generate fallback
+        // Check if we have enough data from the database
+        const coinsWithData = Object.keys(sparklineMap).filter(
+            coinId => sparklineMap[coinId].length >= 2
+        );
+
+        // If we don't have data for most coins, fetch from CoinGecko API
+        if (coinsWithData.length < coinIds.length / 2) {
+            console.log(`📡 Database has ${coinsWithData.length}/${coinIds.length} coins with sparkline data. Fetching from CoinGecko API...`);
+            const apiKey = process.env.COINGECKO_API_KEY;
+            const baseUrl = 'https://api.coingecko.com/api/v3';
+
+            // Take the last 50 coins (highest volume/most important) since data is sorted by volume rank ascending
+            const coinsToFetch = coinIds.slice(-50);
+
+            // Fetch market data with sparklines enabled
+            const url = `${baseUrl}/coins/markets?vs_currency=usd&ids=${coinsToFetch.join(',')}&order=market_cap_desc&per_page=50&page=1&sparkline=true&price_change_percentage=24h${apiKey ? `&x_cg_demo_api_key=${apiKey}` : ''}`;
+
+            console.log(`📡 Fetching sparklines for ${coinsToFetch.length} coins...`);
+
+            try {
+                const response = await fetch(url);
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    for (const coin of data) {
+                        if (coin.sparkline_in_7d?.price && coin.sparkline_in_7d.price.length >= 2) {
+                            // Take last 24 data points (roughly 24 hours for 7-day sparkline)
+                            const prices = coin.sparkline_in_7d.price;
+                            sparklineMap[coin.id] = prices.slice(-24);
+                        }
+                    }
+
+                    console.log(`✅ Fetched sparkline data for ${data.length} coins from CoinGecko`);
+                } else {
+                    console.error(`CoinGecko API error: ${response.status} - ${await response.text()}`);
+                }
+            } catch (fetchError) {
+                console.error('Error fetching from CoinGecko:', fetchError);
+            }
+        }
+
+        // Clean up coins with less than 2 data points
         for (const coinId of Object.keys(sparklineMap)) {
             if (sparklineMap[coinId].length < 2) {
                 delete sparklineMap[coinId];
@@ -55,7 +97,7 @@ async function fetchSparklineData(coinIds: string[]): Promise<SparklineData> {
 
         return sparklineMap;
     } catch (error) {
-        console.error('Error fetching sparkline data from database:', error);
+        console.error('Error fetching sparkline data:', error);
         return {};
     }
 }
