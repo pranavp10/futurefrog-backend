@@ -914,6 +914,138 @@ export const kalshiMarketsRoutes = new Elysia({ prefix: '/api/kalshi' })
         }
     })
 
+    // Request redemption order for winning positions
+    // https://pond.dflow.net/quickstart/redeem-outcome-tokens
+    .get('/redeem', async ({ query, set }) => {
+        try {
+            const apiKey = process.env.DFLOW_API_KEY;
+            if (!apiKey) {
+                set.status = 500;
+                return { success: false, error: 'DFlow API key not configured' };
+            }
+
+            const { userPublicKey, outcomeMint, amount } = query;
+
+            if (!userPublicKey || !outcomeMint || !amount) {
+                set.status = 400;
+                return { success: false, error: 'Missing required parameters: userPublicKey, outcomeMint, amount' };
+            }
+
+            // Step 1: Check if outcome token is redeemable
+            const marketResponse = await fetch(
+                `${DFLOW_METADATA_API}/api/v1/market/by-mint/${outcomeMint}`,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(apiKey && { 'x-api-key': apiKey }),
+                    },
+                }
+            );
+
+            if (!marketResponse.ok) {
+                throw new Error(`Failed to fetch market details: ${marketResponse.status}`);
+            }
+
+            const market = await marketResponse.json();
+            console.log('Market for redemption:', JSON.stringify(market, null, 2));
+
+            // Check if market is determined or finalized
+            if (market.status !== 'determined' && market.status !== 'finalized') {
+                set.status = 400;
+                return { 
+                    success: false, 
+                    error: `Market is not determined. Current status: ${market.status}` 
+                };
+            }
+
+            // Find settlement mint with open redemption
+            let settlementMint: string | null = null;
+            const result = market.result; // "yes", "no", or "" for scalar outcomes
+
+            for (const [mint, account] of Object.entries(market.accounts || {}) as [string, DFlowMarketAccount][]) {
+                if (account.redemptionStatus === 'open') {
+                    // Case 1: Standard determined outcome
+                    if (result === 'yes' && account.yesMint === outcomeMint) {
+                        settlementMint = mint;
+                        break;
+                    } else if (result === 'no' && account.noMint === outcomeMint) {
+                        settlementMint = mint;
+                        break;
+                    }
+                    // Case 2: Scalar outcome (both YES and NO are redeemable)
+                    else if (result === '' && (account as any).scalarOutcomePct !== undefined) {
+                        if (account.yesMint === outcomeMint || account.noMint === outcomeMint) {
+                            settlementMint = mint;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!settlementMint) {
+                set.status = 400;
+                return { 
+                    success: false, 
+                    error: 'Token is not redeemable. Either the market result does not match your position, or redemption is not open yet.' 
+                };
+            }
+
+            console.log(`Redemption: ${outcomeMint} -> ${settlementMint}, amount: ${amount}`);
+
+            // Step 2: Request redemption order from DFlow Quote API
+            const params = new URLSearchParams({
+                userPublicKey,
+                inputMint: outcomeMint,
+                outputMint: settlementMint,
+                amount: amount.toString(),
+            });
+
+            const orderResponse = await fetch(
+                `${DFLOW_QUOTE_API}/order?${params.toString()}`,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(apiKey && { 'x-api-key': apiKey }),
+                    },
+                }
+            );
+
+            if (!orderResponse.ok) {
+                const errorText = await orderResponse.text();
+                console.error('DFlow redemption error:', errorText);
+                throw new Error(`Failed to get redemption order: ${orderResponse.status}`);
+            }
+
+            const orderData = await orderResponse.json();
+            console.log('Redemption order:', JSON.stringify(orderData, null, 2));
+
+            return {
+                success: true,
+                order: {
+                    ...orderData,
+                    outcomeMint,
+                    settlementMint,
+                    marketTitle: market.title,
+                    marketResult: result,
+                },
+                timestamp: new Date().toISOString(),
+            };
+        } catch (error) {
+            console.error('Error requesting redemption:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to request redemption',
+            };
+        }
+    }, {
+        query: t.Object({
+            userPublicKey: t.String(),
+            outcomeMint: t.String(),
+            amount: t.String(),
+        })
+    })
+
     // Get market accounts for reference
     .get('/market-accounts/:ticker', async ({ params, set }) => {
         try {
