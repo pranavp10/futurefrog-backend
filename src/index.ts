@@ -21,6 +21,7 @@ import { coinDetailsRoutes } from "./routes/coin-details";
 import { communityPredictionsRoutes } from "./routes/community-predictions";
 import { kalshiMarketsRoutes } from "./routes/kalshi-markets";
 import { functions, inngest } from "./inngest";
+import { startCryptoCacheCron } from "./cron/crypto-cache-cron";
 
 // Create Inngest handler
 const inngestHandler = serve({
@@ -60,3 +61,6 @@ const app = new Elysia()
 console.log(
   `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
 );
+
+// Start the crypto cache cron job (every 30 seconds)
+startCryptoCacheCron();
