@@ -14,6 +14,8 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // USDC mint on Solana mainnet
 const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+// CASH mint on Solana mainnet (DFlow's stablecoin)
+const CASH_MINT = 'CASHx9KJUStyftLFWGvEVf59SGeG9sh5FfcnZMVPCASH';
 
 interface DFlowMarketAccount {
     yesMint: string;
@@ -1076,16 +1078,16 @@ export const kalshiMarketsRoutes = new Elysia()
 
             console.log(`Redemption: ${outcomeMint} -> ${settlementMint}, amount: ${amount}`);
 
-            // Step 2: Request redemption order from DFlow Quote API
-            const params = new URLSearchParams({
+            // Step 2: Request redemption order from DFlow Quote API (outcome token -> CASH)
+            const redeemParams = new URLSearchParams({
                 userPublicKey,
                 inputMint: outcomeMint,
                 outputMint: settlementMint,
                 amount: amount.toString(),
             });
 
-            const orderResponse = await fetch(
-                `${DFLOW_QUOTE_API}/order?${params.toString()}`,
+            const redeemResponse = await fetch(
+                `${DFLOW_QUOTE_API}/order?${redeemParams.toString()}`,
                 {
                     headers: {
                         'Content-Type': 'application/json',
@@ -1094,24 +1096,56 @@ export const kalshiMarketsRoutes = new Elysia()
                 }
             );
 
-            if (!orderResponse.ok) {
-                const errorText = await orderResponse.text();
+            if (!redeemResponse.ok) {
+                const errorText = await redeemResponse.text();
                 console.error('DFlow redemption error:', errorText);
-                throw new Error(`Failed to get redemption order: ${orderResponse.status}`);
+                throw new Error(`Failed to get redemption order: ${redeemResponse.status}`);
             }
 
-            const orderData = await orderResponse.json();
-            console.log('Redemption order:', JSON.stringify(orderData, null, 2));
+            const redeemData = await redeemResponse.json();
+            console.log('Redemption order:', JSON.stringify(redeemData, null, 2));
+
+            // Step 3: Request CASH -> USDC swap order
+            // The amount of CASH received equals the redemption amount (1:1 for winning positions)
+            const swapParams = new URLSearchParams({
+                userPublicKey,
+                inputMint: CASH_MINT,
+                outputMint: USDC_MINT,
+                amount: amount.toString(),
+                slippageBps: '50', // 0.5% slippage for stablecoin swap
+            });
+
+            const swapResponse = await fetch(
+                `${DFLOW_QUOTE_API}/order?${swapParams.toString()}`,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(apiKey && { 'x-api-key': apiKey }),
+                    },
+                }
+            );
+
+            let swapData = null;
+            if (swapResponse.ok) {
+                swapData = await swapResponse.json();
+                console.log('CASH->USDC swap order:', JSON.stringify(swapData, null, 2));
+            } else {
+                // Log but don't fail - user will just receive CASH
+                const errorText = await swapResponse.text();
+                console.warn('CASH->USDC swap not available:', errorText);
+            }
 
             return {
                 success: true,
                 order: {
-                    ...orderData,
+                    ...redeemData,
                     outcomeMint,
                     settlementMint,
                     marketTitle: market.title,
                     marketResult: result,
                 },
+                // Include the swap transaction if available
+                swapOrder: swapData,
                 timestamp: new Date().toISOString(),
             };
         } catch (error) {
