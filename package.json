@@ -1,29 +1,18 @@
 {
-  "name": "futurefrog-backend",
-  "version": "1.0.50",
+  "name": "kalshi-backend",
+  "version": "1.0.0",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "bun run --watch src/index.ts",
     "build": "bun build src/index.ts --outdir ./dist --target bun",
-    "start": "bun run dist/index.js",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "start": "bun run dist/index.js"
   },
   "dependencies": {
     "@elysiajs/cors": "^1.4.0",
-    "@solana/web3.js": "^1.98.4",
     "dotenv": "^17.2.3",
-    "drizzle-orm": "^0.45.1",
-    "elysia": "latest",
-    "inngest": "^3.48.0",
-    "ioredis": "^5.8.2",
-    "postgres": "^3.4.7"
+    "elysia": "latest"
   },
   "devDependencies": {
-    "bun-types": "latest",
-    "drizzle-kit": "^0.31.8"
+    "bun-types": "latest"
   },
   "module": "src/index.js"
 }
