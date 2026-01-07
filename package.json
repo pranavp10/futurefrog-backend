@@ -1,18 +1,21 @@
 {
-  "name": "kalshi-backend",
-  "version": "1.0.0",
-  "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "build": "bun build src/index.ts --outdir ./dist --target bun",
-    "start": "bun run dist/index.js"
-  },
-  "dependencies": {
-    "@elysiajs/cors": "^1.4.0",
-    "dotenv": "^17.2.3",
-    "elysia": "latest"
-  },
-  "devDependencies": {
-    "bun-types": "latest"
-  },
-  "module": "src/index.js"
+	"name": "kalshi-backend",
+	"version": "1.0.0",
+	"scripts": {
+		"dev": "bun run --watch src/index.ts",
+		"build": "bun build src/index.ts --outdir ./dist --target bun",
+		"start": "bun run dist/index.js"
+	},
+	"dependencies": {
+		"@elysiajs/cors": "^1.4.0",
+		"dotenv": "^17.2.3",
+		"drizzle-orm": "^0.38.3",
+		"elysia": "latest",
+		"ioredis": "^5.4.2",
+		"postgres": "^3.4.5"
+	},
+	"devDependencies": {
+		"bun-types": "latest"
+	},
+	"module": "src/index.js"
 }
