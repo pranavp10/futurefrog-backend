@@ -2,6 +2,15 @@ import { Elysia, t } from 'elysia';
 
 const DFLOW_METADATA_API = 'https://b.prediction-markets-api.dflow.net';
 const DFLOW_QUOTE_API = 'https://b.quote-api.dflow.net';
+const COINGECKO_API = 'https://api.coingecko.com/api/v3';
+
+// Cache for crypto prices (5 minute TTL)
+interface CryptoCache {
+    data: any;
+    timestamp: number;
+}
+const cryptoCache: Map<string, CryptoCache> = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // USDC mint on Solana mainnet
 const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
@@ -47,10 +56,85 @@ interface DFlowTagsByCategories {
 }
 
 /**
+ * Crypto price cache routes
+ * Provides cached crypto price data from CoinGecko
+ */
+const cryptoCacheRoutes = new Elysia({ prefix: '/api/crypto-cache' })
+    .get('/:coinId/details', async ({ params, set }) => {
+        try {
+            const { coinId } = params;
+            const cacheKey = `${coinId}-details`;
+            
+            // Check cache
+            const cached = cryptoCache.get(cacheKey);
+            if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+                return cached.data;
+            }
+
+            // Fetch current price and 24h change
+            const priceResponse = await fetch(
+                `${COINGECKO_API}/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true`
+            );
+
+            if (!priceResponse.ok) {
+                throw new Error(`CoinGecko API error: ${priceResponse.status}`);
+            }
+
+            const priceData = await priceResponse.json();
+            const coinData = priceData[coinId];
+
+            if (!coinData) {
+                set.status = 404;
+                return { success: false, error: `Coin ${coinId} not found` };
+            }
+
+            // Fetch 24h price history (hourly data points)
+            const historyResponse = await fetch(
+                `${COINGECKO_API}/coins/${coinId}/market_chart?vs_currency=usd&days=1`
+            );
+
+            if (!historyResponse.ok) {
+                throw new Error(`CoinGecko history API error: ${historyResponse.status}`);
+            }
+
+            const historyData = await historyResponse.json();
+            
+            // Transform price history to expected format
+            const priceHistory = (historyData.prices || []).map((point: [number, number]) => ({
+                timestamp: new Date(point[0]).toISOString(),
+                price: point[1],
+            }));
+
+            const result = {
+                success: true,
+                coinId,
+                currentPrice: coinData.usd,
+                priceChange24h: coinData.usd_24h_change || 0,
+                priceHistory,
+                timestamp: new Date().toISOString(),
+            };
+
+            // Cache the result
+            cryptoCache.set(cacheKey, { data: result, timestamp: Date.now() });
+
+            return result;
+        } catch (error) {
+            console.error('Error fetching crypto price:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to fetch crypto price',
+            };
+        }
+    });
+
+/**
  * Kalshi Markets routes via DFlow API
  * Provides access to prediction markets data from Kalshi via DFlow's infrastructure
  */
-export const kalshiMarketsRoutes = new Elysia({ prefix: '/api/kalshi' })
+export const kalshiMarketsRoutes = new Elysia()
+    .use(cryptoCacheRoutes)
+    .group('/api/kalshi', (app) => app
     // Get all events with nested markets
     .get('/events', async ({ query, set }) => {
         try {
@@ -1193,5 +1277,5 @@ export const kalshiMarketsRoutes = new Elysia({ prefix: '/api/kalshi' })
                 error: error instanceof Error ? error.message : 'Failed to fetch market accounts',
             };
         }
-    });
+    }));
 
