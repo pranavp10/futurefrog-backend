@@ -1187,6 +1187,234 @@ export const kalshiMarketsRoutes = new Elysia()
         })
     })
 
+    // Get user-specific trades for a market using Helius transaction history
+    .get('/user-trades/:publicKey', async ({ params, query, set }) => {
+        try {
+            // Get Helius API key from either HELIUS_API_KEY or extract from SOLANA_RPC_URL/SOLANA_RPC_ENDPOINT
+            let heliusApiKey = process.env.HELIUS_API_KEY;
+            if (!heliusApiKey) {
+                const rpcUrl = process.env.SOLANA_RPC_URL || process.env.SOLANA_RPC_ENDPOINT;
+                if (rpcUrl) {
+                    const match = rpcUrl.match(/api-key=([a-f0-9-]+)/);
+                    heliusApiKey = match?.[1];
+                }
+            }
+            
+            if (!heliusApiKey) {
+                set.status = 500;
+                return { success: false, error: 'Helius API key not configured' };
+            }
+
+            const { publicKey } = params;
+            const { mint } = query;
+
+            if (!mint) {
+                set.status = 400;
+                return { success: false, error: 'Missing required parameter: mint (outcome token mint address)' };
+            }
+
+            console.log(`[User Trades] Fetching trades for ${publicKey}, mint: ${mint}`);
+
+            // Fetch user's transaction history from Helius
+            const heliusUrl = `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`;
+            
+            // First, get parsed transaction history for the user filtered by the outcome token mint
+            const response = await fetch(heliusUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: 1,
+                    method: 'getSignaturesForAddress',
+                    params: [
+                        publicKey,
+                        { limit: 100 }
+                    ]
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Helius API error: ${response.status}`);
+            }
+
+            const signaturesData = await response.json();
+            const signatures = signaturesData.result || [];
+
+            console.log(`[User Trades] Found ${signatures.length} signatures`);
+
+            if (signatures.length === 0) {
+                return {
+                    success: true,
+                    trades: [],
+                    message: 'No transactions found for this wallet',
+                    timestamp: new Date().toISOString(),
+                };
+            }
+
+            // Fetch parsed transactions using Helius Enhanced Transactions API
+            const parsedTxResponse = await fetch(
+                `https://api.helius.xyz/v0/transactions?api-key=${heliusApiKey}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        transactions: signatures.slice(0, 50).map((s: any) => s.signature),
+                    }),
+                }
+            );
+
+            if (!parsedTxResponse.ok) {
+                const errorText = await parsedTxResponse.text();
+                console.error('[User Trades] Helius Enhanced API error:', errorText);
+                throw new Error(`Helius Enhanced API error: ${parsedTxResponse.status}`);
+            }
+
+            const parsedTransactions = await parsedTxResponse.json();
+            console.log(`[User Trades] Parsed ${parsedTransactions.length} transactions`);
+
+            // DFlow uses CASH token internally and Token-2022 for outcome tokens
+            // The outcome token transfers don't always show in tokenTransfers
+            // We need to check accountData and instructions for Token-2022 transfers
+            const DFLOW_CASH_MINT = 'CASHx9KJUStyftLFWGvEVf59SGeG9sh5FfcnZMVPCASH';
+            const userTrades: any[] = [];
+            
+            console.log(`[User Trades] Processing ${parsedTransactions.length} transactions for mint ${mint}`);
+
+            for (const tx of parsedTransactions) {
+                if (!tx || tx.transactionError) continue;
+
+                // Look for PLACE_BET transactions
+                if (tx.type !== 'PLACE_BET' && tx.type !== 'SWAP') continue;
+
+                const tokenTransfers = tx.tokenTransfers || [];
+                
+                // Check if this transaction involves the target mint
+                // Look in accountData for Token-2022 accounts with this mint
+                const accountData = tx.accountData || [];
+                let involvesMint = false;
+                let outcomeTokenAmount = 0;
+                
+                // Check accountData for the outcome token
+                for (const account of accountData) {
+                    if (account.tokenBalanceChanges) {
+                        for (const change of account.tokenBalanceChanges) {
+                            if (change.mint === mint) {
+                                involvesMint = true;
+                                // rawTokenAmount is in smallest units
+                                const decimals = change.rawTokenAmount?.decimals || 6;
+                                const amount = parseInt(change.rawTokenAmount?.tokenAmount || '0') / Math.pow(10, decimals);
+                                if (amount > 0) {
+                                    outcomeTokenAmount = amount;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Also check the description which often contains the mint info
+                if (!involvesMint && tx.description) {
+                    involvesMint = tx.description.includes(mint);
+                }
+                
+                // Also check instructions for the mint
+                if (!involvesMint && tx.instructions) {
+                    for (const instr of tx.instructions) {
+                        if (instr.accounts?.includes(mint)) {
+                            involvesMint = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!involvesMint) continue;
+
+                console.log(`[User Trades] Found matching tx: ${tx.signature}, type: ${tx.type}`);
+                console.log(`[User Trades] accountData:`, JSON.stringify(accountData?.slice(0, 3), null, 2));
+
+                // Get USDC amount from tokenTransfers or accountData
+                let usdcAmount = 0;
+                for (const transfer of tokenTransfers) {
+                    if (transfer.mint === USDC_MINT) {
+                        usdcAmount = Math.abs(transfer.tokenAmount || 0);
+                        break;
+                    }
+                }
+                
+                // If we didn't find USDC in tokenTransfers, check CASH token
+                if (usdcAmount === 0) {
+                    for (const transfer of tokenTransfers) {
+                        if (transfer.mint === DFLOW_CASH_MINT) {
+                            // CASH is 1:1 with USDC in DFlow
+                            usdcAmount = Math.abs(transfer.tokenAmount || 0);
+                            break;
+                        }
+                    }
+                }
+
+                // Try to get outcomeTokenAmount from tokenBalanceChanges if not set
+                if (outcomeTokenAmount === 0) {
+                    for (const account of accountData) {
+                        if (account.tokenBalanceChanges) {
+                            for (const change of account.tokenBalanceChanges) {
+                                if (change.mint === mint && change.rawTokenAmount) {
+                                    const decimals = change.rawTokenAmount.decimals || 6;
+                                    const amount = parseInt(change.rawTokenAmount.tokenAmount || '0') / Math.pow(10, decimals);
+                                    if (amount > 0) {
+                                        outcomeTokenAmount = Math.abs(amount);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Calculate price per contract
+                const pricePerContract = outcomeTokenAmount > 0 ? usdcAmount / outcomeTokenAmount : 0;
+
+                if (outcomeTokenAmount > 0) {
+                    console.log(`[User Trades] Adding trade: buy ${outcomeTokenAmount} @ ${pricePerContract}`);
+
+                    userTrades.push({
+                        tradeId: tx.signature,
+                        signature: tx.signature,
+                        mint: mint,
+                        count: outcomeTokenAmount,
+                        price: pricePerContract,
+                        usdcAmount: usdcAmount,
+                        side: 'buy',
+                        timestamp: tx.timestamp,
+                        createdTime: tx.timestamp,
+                        type: tx.type,
+                        description: tx.description,
+                    });
+                }
+            }
+
+            // Sort by timestamp descending (most recent first)
+            userTrades.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+            console.log(`[User Trades] Found ${userTrades.length} trades for mint ${mint}`);
+
+            return {
+                success: true,
+                trades: userTrades,
+                count: userTrades.length,
+                timestamp: new Date().toISOString(),
+            };
+        } catch (error) {
+            console.error('Error fetching user trades:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to fetch user trades',
+            };
+        }
+    }, {
+        query: t.Object({
+            mint: t.String(),
+        })
+    })
+
     // Get trades by outcome mint address
     .get('/trades/by-mint/:mint', async ({ params, query, set }) => {
         try {
