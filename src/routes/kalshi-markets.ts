@@ -687,6 +687,7 @@ export const kalshiMarketsRoutes = new Elysia()
                 }
                 
                 console.log('Extracted accounts:', accounts);
+                console.log('Market isInitialized:', accounts?.isInitialized);
                 
                 if (!accounts) {
                     throw new Error(`Market accounts not found. Market structure: ${JSON.stringify(Object.keys(market))}`);
@@ -701,17 +702,15 @@ export const kalshiMarketsRoutes = new Elysia()
 
             console.log(`Trading ${side} on ${marketTicker}: inputMint=${inputMint}, outputMint=${outputMint}`);
 
-            // Build query params for Quote API  
-            // Minimize costs - avoid SOL wrapping and optimize routing
+            // Build query params for Quote API
+            // Note: Don't use restrictive routing options as they can prevent 
+            // auto-initialization of uninitialized markets
             const params = new URLSearchParams({
                 userPublicKey,
                 inputMint,
                 outputMint,
                 amount: amount.toString(),
                 slippageBps: (slippageBps || 100).toString(),
-                wrapAndUnwrapSol: 'false', // Don't wrap/unwrap SOL
-                onlyDirectRoutes: 'true', // Avoid intermediate token hops  
-                restrictIntermediateTokens: 'true', // Minimize intermediate tokens
             });
 
             // Get order quote from DFlow Quote API
@@ -736,18 +735,20 @@ export const kalshiMarketsRoutes = new Elysia()
                     errorJson = { msg: errorText };
                 }
                 
-                // Handle route_not_found - try to initialize the market
+                // Handle route_not_found - the market may not be initialized or available
+                // According to DFlow docs, the /order endpoint should auto-initialize markets,
+                // but if we get route_not_found, the market might not be tradeable yet
                 if (errorJson.code === 'route_not_found') {
-                    console.log('Route not found, attempting to check market initialization...');
+                    console.log('Route not found - market may not be initialized or available on DFlow');
                     
+                    // Try the prediction-market-init endpoint as fallback
+                    // According to DFlow docs: payer = user's public key, outcomeMint = the outcome token mint
                     const initCheckParams = new URLSearchParams({
-                        userPublicKey,
-                        inputMint,
-                        outputMint,
-                        amount: amount.toString(),
-                        slippageBps: (slippageBps || 100).toString(),
+                        payer: userPublicKey,
+                        outcomeMint: outputMint,
                     });
                     
+                    console.log('Trying prediction-market-init endpoint...');
                     const initResponse = await fetch(
                         `${DFLOW_QUOTE_API}/prediction-market-init?${initCheckParams.toString()}`,
                         {
@@ -758,8 +759,12 @@ export const kalshiMarketsRoutes = new Elysia()
                         }
                     );
                     
+                    console.log('Init response status:', initResponse.status);
+                    
                     if (initResponse.ok) {
                         const initData = await initResponse.json();
+                        console.log('Init response data:', JSON.stringify(initData, null, 2));
+                        
                         if (initData.transaction) {
                             return {
                                 success: true,
@@ -775,9 +780,29 @@ export const kalshiMarketsRoutes = new Elysia()
                                 timestamp: new Date().toISOString(),
                             };
                         }
+                    } else {
+                        const initErrorText = await initResponse.text();
+                        console.log('Init response error:', initResponse.status, initErrorText);
+                        
+                        // Parse error for specific codes
+                        try {
+                            const initError = JSON.parse(initErrorText);
+                            if (initError.code === 'unknown_outcome_mint') {
+                                return {
+                                    success: false,
+                                    error: `This price level ($${marketTicker.split('-T')[1]?.replace('.', ',') || 'unknown'}) is not available on DFlow yet. Please try a different price level closer to the current market price.`,
+                                    timestamp: new Date().toISOString(),
+                                };
+                            }
+                        } catch {}
                     }
                     
-                    throw new Error(`Trading route not available for this market. The market may not be initialized on DFlow. Try a different market.`);
+                    // If init check also fails, provide helpful message
+                    return {
+                        success: false,
+                        error: 'This price level is not available for trading yet. Try a price level closer to the current market price, or try again later.',
+                        timestamp: new Date().toISOString(),
+                    };
                 }
                 
                 throw new Error(`DFlow Quote API error: ${quoteResponse.status} - ${errorJson.msg || errorText}`);

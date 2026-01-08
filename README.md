@@ -51,3 +51,4 @@ All endpoints are prefixed with `/api/kalshi`
 | `SOLANA_RPC_ENDPOINT` | Solana RPC endpoint | No (defaults to mainnet) |
 | `PORT` | Server port | No (defaults to 3000) |
 
+
