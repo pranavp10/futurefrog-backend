@@ -301,12 +301,24 @@ export const cryptoCacheRoutes = new Elysia({ prefix: '/api/crypto-cache' })
                 : 0;
 
             // Try to get coin metadata from our cache first
-            const cachedCoin = await db
-                .select()
+            // First get the latest roundId (matching the list endpoint pattern)
+            const latestRound = await db
+                .select({
+                    roundId: cryptoMarketCache.roundId,
+                })
                 .from(cryptoMarketCache)
-                .where(eq(cryptoMarketCache.coingeckoId, coinId))
                 .orderBy(desc(cryptoMarketCache.snapshotTimestamp))
                 .limit(1);
+
+            let cachedCoin: typeof cryptoMarketCache.$inferSelect[] = [];
+            if (latestRound.length > 0) {
+                const latestRoundId = latestRound[0].roundId;
+                cachedCoin = await db
+                    .select()
+                    .from(cryptoMarketCache)
+                    .where(sql`${cryptoMarketCache.coingeckoId} = ${coinId} AND ${cryptoMarketCache.roundId} = ${latestRoundId}`)
+                    .limit(1);
+            }
 
             let coinMetadata = {
                 coingeckoId: coinId,
