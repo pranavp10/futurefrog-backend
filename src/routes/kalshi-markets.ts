@@ -667,14 +667,30 @@ export const kalshiMarketsRoutes = new Elysia()
                 // Debug log the market structure
                 console.log('Market response for', marketTicker, ':', JSON.stringify(market, null, 2));
                 
-                // Try multiple ways to get accounts - DFlow API structure varies
+                // Prioritize USDC account since that's our input token
+                // USDC accounts are more likely to be initialized
                 let accounts = null;
                 if (market.accounts) {
-                    accounts = market.accounts.solana || 
-                               market.accounts.Solana || 
-                               market.accounts.SOLANA ||
-                               market.accounts.mainnet ||
-                               Object.values(market.accounts)[0];
+                    // First try USDC account (our input token)
+                    if (market.accounts[USDC_MINT]) {
+                        accounts = market.accounts[USDC_MINT];
+                        console.log('Using USDC account for market');
+                    }
+                    // Then try CASH account
+                    else if (market.accounts[CASH_MINT]) {
+                        accounts = market.accounts[CASH_MINT];
+                        console.log('Using CASH account for market');
+                    }
+                    // Legacy formats
+                    else if (market.accounts.solana || market.accounts.Solana || market.accounts.SOLANA || market.accounts.mainnet) {
+                        accounts = market.accounts.solana || market.accounts.Solana || market.accounts.SOLANA || market.accounts.mainnet;
+                        console.log('Using legacy account format');
+                    }
+                    // Fallback to first account
+                    else {
+                        accounts = Object.values(market.accounts)[0];
+                        console.log('Using first available account');
+                    }
                 }
                 
                 // If market has yesMint/noMint directly at the top level
