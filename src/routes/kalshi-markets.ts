@@ -741,6 +741,41 @@ export const kalshiMarketsRoutes = new Elysia()
                 if (errorJson.code === 'route_not_found') {
                     console.log('Route not found - market may not be initialized or available on DFlow');
                     
+                    // Log all available markets for this event to help debug
+                    try {
+                        // Extract event ticker from market ticker (e.g., KXBTCD-26JAN0817 from KXBTCD-26JAN0817-T89999.99)
+                        const eventTicker = marketTicker.split('-T')[0];
+                        console.log('Fetching all markets for event:', eventTicker);
+                        
+                        const eventResponse = await fetch(
+                            `${DFLOW_METADATA_API}/api/v1/events?withNestedMarkets=true&eventTickers=${eventTicker}`,
+                            {
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'x-api-key': apiKey,
+                                },
+                            }
+                        );
+                        
+                        if (eventResponse.ok) {
+                            const eventData = await eventResponse.json();
+                            const event = eventData.events?.[0];
+                            if (event?.markets) {
+                                console.log(`Found ${event.markets.length} markets for event ${eventTicker}:`);
+                                event.markets.forEach((m: any) => {
+                                    const priceMatch = m.yesSubTitle?.match(/\$?([\d,]+(?:\.\d+)?)/);
+                                    const price = priceMatch ? priceMatch[1] : 'unknown';
+                                    const accountKeys = Object.keys(m.accounts || {});
+                                    const firstAccount = accountKeys.length > 0 ? m.accounts[accountKeys[0]] : null;
+                                    console.log(`  - ${m.ticker}: $${price}, yesMint=${firstAccount?.yesMint?.slice(0,8)}..., noMint=${firstAccount?.noMint?.slice(0,8)}..., isInit=${firstAccount?.isInitialized}`);
+                                });
+                                console.log('Requested outputMint:', outputMint);
+                            }
+                        }
+                    } catch (debugErr) {
+                        console.log('Debug fetch error:', debugErr);
+                    }
+                    
                     // Try the prediction-market-init endpoint as fallback
                     // According to DFlow docs: payer = user's public key, outcomeMint = the outcome token mint
                     const initCheckParams = new URLSearchParams({
