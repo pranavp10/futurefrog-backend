@@ -1,8 +1,12 @@
 import { Elysia, t } from 'elysia';
+import { getRedisClient } from '../lib/redis';
 
 const DFLOW_METADATA_API = 'https://b.prediction-markets-api.dflow.net';
 const DFLOW_QUOTE_API = 'https://b.quote-api.dflow.net';
 const COINGECKO_API = 'https://api.coingecko.com/api/v3';
+
+// Cache TTL for user trades (5 minutes)
+const USER_TRADES_CACHE_TTL = 5 * 60;
 
 // Cache for crypto prices (5 minute TTL)
 interface CryptoCache {
@@ -55,6 +59,261 @@ interface DFlowEventsResponse {
 
 interface DFlowTagsByCategories {
     tagsByCategories: Record<string, string[]>;
+}
+
+interface UserTrade {
+    tradeId: string;
+    signature: string;
+    mint: string;
+    count: number;
+    price: number;
+    usdcAmount: number;
+    side: 'buy' | 'sell';
+    timestamp: number;
+    createdTime: number;
+    type: string;
+    description?: string;
+}
+
+/**
+ * Shared helper function to fetch user trades for multiple mints
+ * Uses Redis caching to avoid redundant Helius API calls
+ */
+async function fetchUserTradesForMints(
+    publicKey: string, 
+    mints: string[]
+): Promise<Record<string, UserTrade[]>> {
+    // Get Helius API key
+    let heliusApiKey = process.env.HELIUS_API_KEY;
+    if (!heliusApiKey) {
+        const rpcUrl = process.env.SOLANA_RPC_URL || process.env.SOLANA_RPC_ENDPOINT;
+        if (rpcUrl) {
+            const match = rpcUrl.match(/api-key=([a-f0-9-]+)/);
+            heliusApiKey = match?.[1];
+        }
+    }
+    
+    if (!heliusApiKey) {
+        throw new Error('Helius API key not configured');
+    }
+
+    const redis = getRedisClient();
+    const result: Record<string, UserTrade[]> = {};
+    const uncachedMints: string[] = [];
+    
+    // Check Redis cache for each mint
+    for (const mint of mints) {
+        const cacheKey = `user-trades:${publicKey}:${mint}`;
+        try {
+            const cached = await redis.get(cacheKey);
+            if (cached) {
+                result[mint] = JSON.parse(cached);
+                console.log(`[User Trades] Cache hit for ${mint.slice(0, 8)}...`);
+            } else {
+                uncachedMints.push(mint);
+            }
+        } catch (err) {
+            console.error(`[User Trades] Redis get error:`, err);
+            uncachedMints.push(mint);
+        }
+    }
+    
+    // If all mints were cached, return early
+    if (uncachedMints.length === 0) {
+        console.log(`[User Trades] All ${mints.length} mints served from cache`);
+        return result;
+    }
+    
+    console.log(`[User Trades] Fetching trades for ${publicKey}, ${uncachedMints.length} uncached mints`);
+
+    // Fetch user's transaction history from Helius
+    const heliusUrl = `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`;
+    
+    interface SignatureResult {
+        signature: string;
+        slot?: number;
+        err?: unknown;
+        memo?: string;
+        blockTime?: number;
+    }
+    
+    let allSignatures: SignatureResult[] = [];
+    let beforeSignature: string | undefined = undefined;
+    const MAX_BATCHES = 5; // Fetch up to 500 signatures
+    
+    for (let batch = 0; batch < MAX_BATCHES; batch++) {
+        const sigResponse: Response = await fetch(heliusUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                jsonrpc: '2.0',
+                id: 1,
+                method: 'getSignaturesForAddress',
+                params: [
+                    publicKey,
+                    { 
+                        limit: 100,
+                        ...(beforeSignature && { before: beforeSignature })
+                    }
+                ]
+            })
+        });
+
+        if (!sigResponse.ok) {
+            throw new Error(`Helius API error: ${sigResponse.status}`);
+        }
+
+        const signaturesResult: { result?: SignatureResult[] } = await sigResponse.json();
+        const batchSignatures: SignatureResult[] = signaturesResult.result || [];
+        
+        if (batchSignatures.length === 0) break;
+        
+        allSignatures = [...allSignatures, ...batchSignatures];
+        beforeSignature = batchSignatures[batchSignatures.length - 1].signature;
+        
+        // Stop if we've found enough or if we got fewer than requested
+        if (batchSignatures.length < 100) break;
+    }
+
+    console.log(`[User Trades] Found ${allSignatures.length} signatures across ${Math.ceil(allSignatures.length / 100)} batches`);
+
+    if (allSignatures.length === 0) {
+        // Cache empty results for all mints
+        for (const mint of uncachedMints) {
+            result[mint] = [];
+            const cacheKey = `user-trades:${publicKey}:${mint}`;
+            try {
+                await redis.setex(cacheKey, USER_TRADES_CACHE_TTL, JSON.stringify([]));
+            } catch (err) {
+                console.error(`[User Trades] Redis set error:`, err);
+            }
+        }
+        return result;
+    }
+
+    // Fetch parsed transactions using Helius Enhanced Transactions API
+    let allParsedTransactions: any[] = [];
+    const PARSE_BATCH_SIZE = 100;
+    
+    for (let i = 0; i < allSignatures.length; i += PARSE_BATCH_SIZE) {
+        const batch = allSignatures.slice(i, i + PARSE_BATCH_SIZE);
+        const parsedTxResponse = await fetch(
+            `https://api.helius.xyz/v0/transactions?api-key=${heliusApiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    transactions: batch.map((s: any) => s.signature),
+                }),
+            }
+        );
+
+        if (!parsedTxResponse.ok) {
+            const errorText = await parsedTxResponse.text();
+            console.error('[User Trades] Helius Enhanced API error:', errorText);
+            continue;
+        }
+
+        const parsedBatch = await parsedTxResponse.json();
+        allParsedTransactions = [...allParsedTransactions, ...parsedBatch];
+    }
+
+    console.log(`[User Trades] Parsed ${allParsedTransactions.length} transactions`);
+
+    // Create a Set for faster mint lookup
+    const mintSet = new Set(uncachedMints);
+    
+    // Initialize results for uncached mints
+    for (const mint of uncachedMints) {
+        result[mint] = [];
+    }
+
+    // DFlow uses CASH token internally
+    const DFLOW_CASH_MINT = 'CASHx9KJUStyftLFWGvEVf59SGeG9sh5FfcnZMVPCASH';
+
+    // Process transactions once and extract trades for ALL mints
+    for (const tx of allParsedTransactions) {
+        if (!tx || tx.transactionError) continue;
+
+        // Look for PLACE_BET transactions
+        if (tx.type !== 'PLACE_BET' && tx.type !== 'SWAP') continue;
+
+        const tokenTransfers = tx.tokenTransfers || [];
+        const accountData = tx.accountData || [];
+        
+        // Find all matching mints in this transaction
+        const mintsInTx: Map<string, number> = new Map();
+        
+        // Check accountData for outcome tokens
+        for (const account of accountData) {
+            if (account.tokenBalanceChanges) {
+                for (const change of account.tokenBalanceChanges) {
+                    if (mintSet.has(change.mint)) {
+                        const decimals = change.rawTokenAmount?.decimals || 6;
+                        const amount = parseInt(change.rawTokenAmount?.tokenAmount || '0') / Math.pow(10, decimals);
+                        if (amount > 0) {
+                            mintsInTx.set(change.mint, amount);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (mintsInTx.size === 0) continue;
+
+        // Get USDC amount from tokenTransfers
+        let usdcAmount = 0;
+        for (const transfer of tokenTransfers) {
+            if (transfer.mint === USDC_MINT) {
+                usdcAmount = Math.abs(transfer.tokenAmount || 0);
+                break;
+            }
+        }
+        
+        // If no USDC, check CASH token
+        if (usdcAmount === 0) {
+            for (const transfer of tokenTransfers) {
+                if (transfer.mint === DFLOW_CASH_MINT) {
+                    usdcAmount = Math.abs(transfer.tokenAmount || 0);
+                    break;
+                }
+            }
+        }
+
+        // Add trade for each matching mint
+        for (const [mint, outcomeTokenAmount] of mintsInTx) {
+            const pricePerContract = outcomeTokenAmount > 0 ? usdcAmount / outcomeTokenAmount : 0;
+            
+            result[mint].push({
+                tradeId: tx.signature,
+                signature: tx.signature,
+                mint: mint,
+                count: outcomeTokenAmount,
+                price: pricePerContract,
+                usdcAmount: usdcAmount,
+                side: 'buy',
+                timestamp: tx.timestamp,
+                createdTime: tx.timestamp,
+                type: tx.type,
+                description: tx.description,
+            });
+        }
+    }
+
+    // Sort and cache results for each mint
+    for (const mint of uncachedMints) {
+        result[mint].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        
+        const cacheKey = `user-trades:${publicKey}:${mint}`;
+        try {
+            await redis.setex(cacheKey, USER_TRADES_CACHE_TTL, JSON.stringify(result[mint]));
+            console.log(`[User Trades] Cached ${result[mint].length} trades for ${mint.slice(0, 8)}...`);
+        } catch (err) {
+            console.error(`[User Trades] Redis set error:`, err);
+        }
+    }
+
+    return result;
 }
 
 /**
@@ -1181,34 +1440,39 @@ export const kalshiMarketsRoutes = new Elysia()
             const redeemData = await redeemResponse.json();
             console.log('Redemption order:', JSON.stringify(redeemData, null, 2));
 
-            // Step 3: Request CASH -> USDC swap order
-            // The amount of CASH received equals the redemption amount (1:1 for winning positions)
-            const swapParams = new URLSearchParams({
-                userPublicKey,
-                inputMint: CASH_MINT,
-                outputMint: USDC_MINT,
-                amount: amount.toString(),
-                slippageBps: '50', // 0.5% slippage for stablecoin swap
-            });
-
-            const swapResponse = await fetch(
-                `${DFLOW_QUOTE_API}/order?${swapParams.toString()}`,
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(apiKey && { 'x-api-key': apiKey }),
-                    },
-                }
-            );
-
+            // Step 3: Only request CASH -> USDC swap if settlement is in CASH
+            // If settlement is already USDC, user receives USDC directly - no swap needed!
             let swapData = null;
-            if (swapResponse.ok) {
-                swapData = await swapResponse.json();
-                console.log('CASH->USDC swap order:', JSON.stringify(swapData, null, 2));
+            if (settlementMint === CASH_MINT) {
+                console.log('Settlement is in CASH, requesting CASH->USDC swap');
+                const swapParams = new URLSearchParams({
+                    userPublicKey,
+                    inputMint: CASH_MINT,
+                    outputMint: USDC_MINT,
+                    amount: amount.toString(),
+                    slippageBps: '50', // 0.5% slippage for stablecoin swap
+                });
+
+                const swapResponse = await fetch(
+                    `${DFLOW_QUOTE_API}/order?${swapParams.toString()}`,
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(apiKey && { 'x-api-key': apiKey }),
+                        },
+                    }
+                );
+
+                if (swapResponse.ok) {
+                    swapData = await swapResponse.json();
+                    console.log('CASH->USDC swap order:', JSON.stringify(swapData, null, 2));
+                } else {
+                    // Log but don't fail - user will just receive CASH
+                    const errorText = await swapResponse.text();
+                    console.warn('CASH->USDC swap not available:', errorText);
+                }
             } else {
-                // Log but don't fail - user will just receive CASH
-                const errorText = await swapResponse.text();
-                console.warn('CASH->USDC swap not available:', errorText);
+                console.log('Settlement is in USDC, no swap needed - user receives USDC directly');
             }
 
             return {
@@ -1300,21 +1564,6 @@ export const kalshiMarketsRoutes = new Elysia()
     // Get user-specific trades for a market using Helius transaction history
     .get('/user-trades/:publicKey', async ({ params, query, set }) => {
         try {
-            // Get Helius API key from either HELIUS_API_KEY or extract from SOLANA_RPC_URL/SOLANA_RPC_ENDPOINT
-            let heliusApiKey = process.env.HELIUS_API_KEY;
-            if (!heliusApiKey) {
-                const rpcUrl = process.env.SOLANA_RPC_URL || process.env.SOLANA_RPC_ENDPOINT;
-                if (rpcUrl) {
-                    const match = rpcUrl.match(/api-key=([a-f0-9-]+)/);
-                    heliusApiKey = match?.[1];
-                }
-            }
-            
-            if (!heliusApiKey) {
-                set.status = 500;
-                return { success: false, error: 'Helius API key not configured' };
-            }
-
             const { publicKey } = params;
             const { mint } = query;
 
@@ -1323,231 +1572,15 @@ export const kalshiMarketsRoutes = new Elysia()
                 return { success: false, error: 'Missing required parameter: mint (outcome token mint address)' };
             }
 
-            console.log(`[User Trades] Fetching trades for ${publicKey}, mint: ${mint}`);
-
-            // Fetch user's transaction history from Helius
-            const heliusUrl = `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`;
+            // Use the shared helper function
+            const result = await fetchUserTradesForMints(publicKey, [mint]);
             
-            // Fetch signatures in batches to get more transaction history
-            // We need to go back further for users with many transactions
-            interface SignatureResult {
-                signature: string;
-                slot?: number;
-                err?: unknown;
-                memo?: string;
-                blockTime?: number;
-            }
-            
-            let allSignatures: SignatureResult[] = [];
-            let beforeSignature: string | undefined = undefined;
-            const MAX_BATCHES = 5; // Fetch up to 500 signatures
-            
-            for (let batch = 0; batch < MAX_BATCHES; batch++) {
-                const sigResponse: Response = await fetch(heliusUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        jsonrpc: '2.0',
-                        id: 1,
-                        method: 'getSignaturesForAddress',
-                        params: [
-                            publicKey,
-                            { 
-                                limit: 100,
-                                ...(beforeSignature && { before: beforeSignature })
-                            }
-                        ]
-                    })
-                });
-
-                if (!sigResponse.ok) {
-                    throw new Error(`Helius API error: ${sigResponse.status}`);
-                }
-
-                const signaturesResult: { result?: SignatureResult[] } = await sigResponse.json();
-                const batchSignatures: SignatureResult[] = signaturesResult.result || [];
-                
-                if (batchSignatures.length === 0) break;
-                
-                allSignatures = [...allSignatures, ...batchSignatures];
-                beforeSignature = batchSignatures[batchSignatures.length - 1].signature;
-                
-                // Stop if we've found enough or if we got fewer than requested
-                if (batchSignatures.length < 100) break;
-            }
-
-            console.log(`[User Trades] Found ${allSignatures.length} signatures across ${Math.ceil(allSignatures.length / 100)} batches`);
-
-            if (allSignatures.length === 0) {
                 return {
                     success: true,
-                    trades: [],
-                    message: 'No transactions found for this wallet',
+                trades: result[mint] || [],
+                count: (result[mint] || []).length,
                     timestamp: new Date().toISOString(),
                 };
-            }
-
-            // Fetch parsed transactions using Helius Enhanced Transactions API
-            // Process in batches of 100 (API limit)
-            let allParsedTransactions: any[] = [];
-            const PARSE_BATCH_SIZE = 100;
-            
-            for (let i = 0; i < allSignatures.length; i += PARSE_BATCH_SIZE) {
-                const batch = allSignatures.slice(i, i + PARSE_BATCH_SIZE);
-                const parsedTxResponse = await fetch(
-                    `https://api.helius.xyz/v0/transactions?api-key=${heliusApiKey}`,
-                    {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            transactions: batch.map((s: any) => s.signature),
-                        }),
-                    }
-                );
-
-                if (!parsedTxResponse.ok) {
-                    const errorText = await parsedTxResponse.text();
-                    console.error('[User Trades] Helius Enhanced API error:', errorText);
-                    // Continue with other batches instead of failing completely
-                    continue;
-                }
-
-                const parsedBatch = await parsedTxResponse.json();
-                allParsedTransactions = [...allParsedTransactions, ...parsedBatch];
-            }
-
-            const parsedTransactions = allParsedTransactions;
-            console.log(`[User Trades] Parsed ${parsedTransactions.length} transactions`);
-
-            // DFlow uses CASH token internally and Token-2022 for outcome tokens
-            // The outcome token transfers don't always show in tokenTransfers
-            // We need to check accountData and instructions for Token-2022 transfers
-            const DFLOW_CASH_MINT = 'CASHx9KJUStyftLFWGvEVf59SGeG9sh5FfcnZMVPCASH';
-            const userTrades: any[] = [];
-            
-            console.log(`[User Trades] Processing ${parsedTransactions.length} transactions for mint ${mint}`);
-
-            for (const tx of parsedTransactions) {
-                if (!tx || tx.transactionError) continue;
-
-                // Look for PLACE_BET transactions
-                if (tx.type !== 'PLACE_BET' && tx.type !== 'SWAP') continue;
-
-                const tokenTransfers = tx.tokenTransfers || [];
-                
-                // Check if this transaction involves the target mint
-                // Look in accountData for Token-2022 accounts with this mint
-                const accountData = tx.accountData || [];
-                let involvesMint = false;
-                let outcomeTokenAmount = 0;
-                
-                // Check accountData for the outcome token
-                for (const account of accountData) {
-                    if (account.tokenBalanceChanges) {
-                        for (const change of account.tokenBalanceChanges) {
-                            if (change.mint === mint) {
-                                involvesMint = true;
-                                // rawTokenAmount is in smallest units
-                                const decimals = change.rawTokenAmount?.decimals || 6;
-                                const amount = parseInt(change.rawTokenAmount?.tokenAmount || '0') / Math.pow(10, decimals);
-                                if (amount > 0) {
-                                    outcomeTokenAmount = amount;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Also check the description which often contains the mint info
-                if (!involvesMint && tx.description) {
-                    involvesMint = tx.description.includes(mint);
-                }
-                
-                // Also check instructions for the mint
-                if (!involvesMint && tx.instructions) {
-                    for (const instr of tx.instructions) {
-                        if (instr.accounts?.includes(mint)) {
-                            involvesMint = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (!involvesMint) continue;
-
-                console.log(`[User Trades] Found matching tx: ${tx.signature}, type: ${tx.type}`);
-                console.log(`[User Trades] accountData:`, JSON.stringify(accountData?.slice(0, 3), null, 2));
-
-                // Get USDC amount from tokenTransfers or accountData
-                let usdcAmount = 0;
-                for (const transfer of tokenTransfers) {
-                    if (transfer.mint === USDC_MINT) {
-                        usdcAmount = Math.abs(transfer.tokenAmount || 0);
-                        break;
-                    }
-                }
-                
-                // If we didn't find USDC in tokenTransfers, check CASH token
-                if (usdcAmount === 0) {
-                    for (const transfer of tokenTransfers) {
-                        if (transfer.mint === DFLOW_CASH_MINT) {
-                            // CASH is 1:1 with USDC in DFlow
-                            usdcAmount = Math.abs(transfer.tokenAmount || 0);
-                            break;
-                        }
-                    }
-                }
-
-                // Try to get outcomeTokenAmount from tokenBalanceChanges if not set
-                if (outcomeTokenAmount === 0) {
-                    for (const account of accountData) {
-                        if (account.tokenBalanceChanges) {
-                            for (const change of account.tokenBalanceChanges) {
-                                if (change.mint === mint && change.rawTokenAmount) {
-                                    const decimals = change.rawTokenAmount.decimals || 6;
-                                    const amount = parseInt(change.rawTokenAmount.tokenAmount || '0') / Math.pow(10, decimals);
-                                    if (amount > 0) {
-                                        outcomeTokenAmount = Math.abs(amount);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Calculate price per contract
-                const pricePerContract = outcomeTokenAmount > 0 ? usdcAmount / outcomeTokenAmount : 0;
-
-                if (outcomeTokenAmount > 0) {
-                    console.log(`[User Trades] Adding trade: buy ${outcomeTokenAmount} @ ${pricePerContract}`);
-
-                    userTrades.push({
-                        tradeId: tx.signature,
-                        signature: tx.signature,
-                        mint: mint,
-                        count: outcomeTokenAmount,
-                        price: pricePerContract,
-                        usdcAmount: usdcAmount,
-                        side: 'buy',
-                        timestamp: tx.timestamp,
-                        createdTime: tx.timestamp,
-                        type: tx.type,
-                        description: tx.description,
-                    });
-                }
-            }
-
-            // Sort by timestamp descending (most recent first)
-            userTrades.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-
-            console.log(`[User Trades] Found ${userTrades.length} trades for mint ${mint}`);
-
-            return {
-                success: true,
-                trades: userTrades,
-                count: userTrades.length,
-                timestamp: new Date().toISOString(),
-            };
         } catch (error) {
             console.error('Error fetching user trades:', error);
             set.status = 500;
@@ -1559,6 +1592,42 @@ export const kalshiMarketsRoutes = new Elysia()
     }, {
         query: t.Object({
             mint: t.String(),
+        })
+    })
+
+    // Batch endpoint: Get user trades for multiple mints at once
+    .post('/user-trades-batch/:publicKey', async ({ params, body, set }) => {
+        try {
+            const { publicKey } = params;
+            const { mints } = body as { mints: string[] };
+
+            if (!mints || !Array.isArray(mints) || mints.length === 0) {
+                set.status = 400;
+                return { success: false, error: 'Missing required parameter: mints (array of outcome token mint addresses)' };
+            }
+
+            console.log(`[User Trades Batch] Fetching trades for ${publicKey}, ${mints.length} mints`);
+
+            // Use the shared helper function
+            const result = await fetchUserTradesForMints(publicKey, mints);
+
+            return {
+                success: true,
+                tradesByMint: result,
+                mintCount: mints.length,
+                timestamp: new Date().toISOString(),
+            };
+        } catch (error) {
+            console.error('Error fetching user trades batch:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to fetch user trades',
+            };
+        }
+    }, {
+        body: t.Object({
+            mints: t.Array(t.String()),
         })
     })
 
