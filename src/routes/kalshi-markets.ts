@@ -1328,31 +1328,57 @@ export const kalshiMarketsRoutes = new Elysia()
             // Fetch user's transaction history from Helius
             const heliusUrl = `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`;
             
-            // First, get parsed transaction history for the user filtered by the outcome token mint
-            const response = await fetch(heliusUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    jsonrpc: '2.0',
-                    id: 1,
-                    method: 'getSignaturesForAddress',
-                    params: [
-                        publicKey,
-                        { limit: 100 }
-                    ]
-                })
-            });
+            // Fetch signatures in batches to get more transaction history
+            // We need to go back further for users with many transactions
+            interface SignatureResult {
+                signature: string;
+                slot?: number;
+                err?: unknown;
+                memo?: string;
+                blockTime?: number;
+            }
+            
+            let allSignatures: SignatureResult[] = [];
+            let beforeSignature: string | undefined = undefined;
+            const MAX_BATCHES = 5; // Fetch up to 500 signatures
+            
+            for (let batch = 0; batch < MAX_BATCHES; batch++) {
+                const sigResponse: Response = await fetch(heliusUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        jsonrpc: '2.0',
+                        id: 1,
+                        method: 'getSignaturesForAddress',
+                        params: [
+                            publicKey,
+                            { 
+                                limit: 100,
+                                ...(beforeSignature && { before: beforeSignature })
+                            }
+                        ]
+                    })
+                });
 
-            if (!response.ok) {
-                throw new Error(`Helius API error: ${response.status}`);
+                if (!sigResponse.ok) {
+                    throw new Error(`Helius API error: ${sigResponse.status}`);
+                }
+
+                const signaturesResult: { result?: SignatureResult[] } = await sigResponse.json();
+                const batchSignatures: SignatureResult[] = signaturesResult.result || [];
+                
+                if (batchSignatures.length === 0) break;
+                
+                allSignatures = [...allSignatures, ...batchSignatures];
+                beforeSignature = batchSignatures[batchSignatures.length - 1].signature;
+                
+                // Stop if we've found enough or if we got fewer than requested
+                if (batchSignatures.length < 100) break;
             }
 
-            const signaturesData = await response.json();
-            const signatures = signaturesData.result || [];
+            console.log(`[User Trades] Found ${allSignatures.length} signatures across ${Math.ceil(allSignatures.length / 100)} batches`);
 
-            console.log(`[User Trades] Found ${signatures.length} signatures`);
-
-            if (signatures.length === 0) {
+            if (allSignatures.length === 0) {
                 return {
                     success: true,
                     trades: [],
@@ -1362,24 +1388,35 @@ export const kalshiMarketsRoutes = new Elysia()
             }
 
             // Fetch parsed transactions using Helius Enhanced Transactions API
-            const parsedTxResponse = await fetch(
-                `https://api.helius.xyz/v0/transactions?api-key=${heliusApiKey}`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        transactions: signatures.slice(0, 50).map((s: any) => s.signature),
-                    }),
-                }
-            );
+            // Process in batches of 100 (API limit)
+            let allParsedTransactions: any[] = [];
+            const PARSE_BATCH_SIZE = 100;
+            
+            for (let i = 0; i < allSignatures.length; i += PARSE_BATCH_SIZE) {
+                const batch = allSignatures.slice(i, i + PARSE_BATCH_SIZE);
+                const parsedTxResponse = await fetch(
+                    `https://api.helius.xyz/v0/transactions?api-key=${heliusApiKey}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            transactions: batch.map((s: any) => s.signature),
+                        }),
+                    }
+                );
 
-            if (!parsedTxResponse.ok) {
-                const errorText = await parsedTxResponse.text();
-                console.error('[User Trades] Helius Enhanced API error:', errorText);
-                throw new Error(`Helius Enhanced API error: ${parsedTxResponse.status}`);
+                if (!parsedTxResponse.ok) {
+                    const errorText = await parsedTxResponse.text();
+                    console.error('[User Trades] Helius Enhanced API error:', errorText);
+                    // Continue with other batches instead of failing completely
+                    continue;
+                }
+
+                const parsedBatch = await parsedTxResponse.json();
+                allParsedTransactions = [...allParsedTransactions, ...parsedBatch];
             }
 
-            const parsedTransactions = await parsedTxResponse.json();
+            const parsedTransactions = allParsedTransactions;
             console.log(`[User Trades] Parsed ${parsedTransactions.length} transactions`);
 
             // DFlow uses CASH token internally and Token-2022 for outcome tokens
