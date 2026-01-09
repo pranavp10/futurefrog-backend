@@ -2,7 +2,6 @@ import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { kalshiMarketsRoutes } from "./routes/kalshi-markets";
 import { cryptoCacheRoutes } from "./routes/crypto-cache";
-import { startCryptoCacheCron } from "./cron/crypto-cache-cron";
 
 const app = new Elysia()
   .use(cors())
@@ -14,9 +13,6 @@ const app = new Elysia()
     };
   })
   .listen(process.env.PORT || 3000);
-
-// Start the crypto cache cron job
-startCryptoCacheCron();
 
 console.log(
   `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
