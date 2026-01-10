@@ -33,17 +33,13 @@ interface HeliusTransaction {
  * This ensures our DB stays in sync with on-chain state
  */
 async function reconcileUserBets(publicKey: string): Promise<void> {
-    let heliusApiKey = process.env.HELIUS_API_KEY;
-    if (!heliusApiKey) {
-        const rpcUrl = process.env.SOLANA_RPC_URL || process.env.SOLANA_RPC_ENDPOINT;
-        if (rpcUrl) {
-            const match = rpcUrl.match(/api-key=([a-f0-9-]+)/);
-            heliusApiKey = match?.[1];
-        }
-    }
+    // Extract Helius API key from SOLANA_RPC_URL
+    const rpcUrl = process.env.SOLANA_RPC_URL;
+    const apiKeyMatch = rpcUrl?.match(/api-key=([a-f0-9-]+)/);
+    const heliusApiKey = apiKeyMatch?.[1];
     
     if (!heliusApiKey) {
-        console.log('[Reconcile] No Helius API key, skipping reconciliation');
+        console.log('[Reconcile] No Helius API key in SOLANA_RPC_URL, skipping reconciliation');
         return;
     }
 
@@ -116,15 +112,15 @@ async function reconcileUserBets(publicKey: string): Promise<void> {
  * This catches trades that were made before tracking was added
  */
 async function backfillUserBets(publicKey: string): Promise<number> {
-    let heliusApiKey = process.env.HELIUS_API_KEY;
-    if (!heliusApiKey) {
-        const rpcUrl = process.env.SOLANA_RPC_URL || process.env.SOLANA_RPC_ENDPOINT;
-        if (rpcUrl) {
-            const match = rpcUrl.match(/api-key=([a-f0-9-]+)/);
-            heliusApiKey = match?.[1];
-        }
+    // Use SOLANA_RPC_URL directly
+    const rpcUrl = process.env.SOLANA_RPC_URL;
+    if (!rpcUrl) {
+        return 0;
     }
     
+    // Extract API key for Helius Enhanced API
+    const apiKeyMatch = rpcUrl.match(/api-key=([a-f0-9-]+)/);
+    const heliusApiKey = apiKeyMatch?.[1];
     if (!heliusApiKey) {
         return 0;
     }
@@ -132,8 +128,8 @@ async function backfillUserBets(publicKey: string): Promise<number> {
     const apiKey = process.env.DFLOW_API_KEY;
     
     try {
-        // Fetch transaction history from Helius
-        const heliusUrl = `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`;
+        // Use SOLANA_RPC_URL for RPC calls
+        const heliusUrl = rpcUrl;
         
         let allSignatures: Array<{ signature: string }> = [];
         let beforeSignature: string | undefined = undefined;

@@ -83,18 +83,17 @@ async function fetchUserTradesForMints(
     publicKey: string, 
     mints: string[]
 ): Promise<Record<string, UserTrade[]>> {
-    // Get Helius API key
-    let heliusApiKey = process.env.HELIUS_API_KEY;
-    if (!heliusApiKey) {
-        const rpcUrl = process.env.SOLANA_RPC_URL || process.env.SOLANA_RPC_ENDPOINT;
-        if (rpcUrl) {
-            const match = rpcUrl.match(/api-key=([a-f0-9-]+)/);
-            heliusApiKey = match?.[1];
-        }
+    // Use SOLANA_RPC_URL for RPC calls
+    const rpcUrl = process.env.SOLANA_RPC_URL;
+    if (!rpcUrl) {
+        throw new Error('SOLANA_RPC_URL not configured');
     }
     
+    // Extract API key for Helius Enhanced API (different endpoint, same key)
+    const apiKeyMatch = rpcUrl.match(/api-key=([a-f0-9-]+)/);
+    const heliusApiKey = apiKeyMatch?.[1];
     if (!heliusApiKey) {
-        throw new Error('Helius API key not configured');
+        throw new Error('Could not extract Helius API key from SOLANA_RPC_URL');
     }
 
     const redis = getRedisClient();
@@ -126,8 +125,8 @@ async function fetchUserTradesForMints(
     
     console.log(`[User Trades] Fetching trades for ${publicKey}, ${uncachedMints.length} uncached mints`);
 
-    // Fetch user's transaction history from Helius
-    const heliusUrl = `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`;
+    // Use SOLANA_RPC_URL directly for RPC calls
+    const heliusUrl = rpcUrl;
     
     interface SignatureResult {
         signature: string;
@@ -160,10 +159,19 @@ async function fetchUserTradesForMints(
         });
 
         if (!sigResponse.ok) {
+            const errorText = await sigResponse.text();
+            console.error(`[User Trades] Helius RPC error: ${sigResponse.status}`, errorText.slice(0, 200));
             throw new Error(`Helius API error: ${sigResponse.status}`);
         }
 
-        const signaturesResult: { result?: SignatureResult[] } = await sigResponse.json();
+        const responseText = await sigResponse.text();
+        let signaturesResult: { result?: SignatureResult[] };
+        try {
+            signaturesResult = JSON.parse(responseText);
+        } catch (e) {
+            console.error('[User Trades] Invalid JSON from Helius (possible block):', responseText.slice(0, 500));
+            throw new Error('Helius returned invalid response');
+        }
         const batchSignatures: SignatureResult[] = signaturesResult.result || [];
         
         if (batchSignatures.length === 0) break;
@@ -1159,19 +1167,9 @@ export const kalshiMarketsRoutes = new Elysia()
         try {
             const apiKey = process.env.DFLOW_API_KEY;
             
-            // Use Helius RPC to avoid being blocked by public RPC rate limiters/Cloudflare
-            let heliusApiKey = process.env.HELIUS_API_KEY;
-            if (!heliusApiKey) {
-                const rpcUrl = process.env.SOLANA_RPC_URL || process.env.SOLANA_RPC_ENDPOINT;
-                if (rpcUrl) {
-                    const match = rpcUrl.match(/api-key=([a-f0-9-]+)/);
-                    heliusApiKey = match?.[1];
-                }
-            }
-            
-            const rpcEndpoint = heliusApiKey 
-                ? `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`
-                : 'https://api.mainnet-beta.solana.com';
+            // Use SOLANA_RPC_URL (Helius) - public RPCs block datacenter IPs via Cloudflare
+            const rpcEndpoint = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+            console.log(`[Positions] Fetching positions for ${params.publicKey.slice(0, 8)}...`);
             
             // Step 1: Fetch Token-2022 accounts (used by DFlow prediction markets)
             const tokenAccountsResponse = await fetch(rpcEndpoint, {
@@ -1190,10 +1188,19 @@ export const kalshiMarketsRoutes = new Elysia()
             });
 
             if (!tokenAccountsResponse.ok) {
-                throw new Error('Failed to fetch token accounts from Solana RPC');
+                const errorText = await tokenAccountsResponse.text();
+                console.error('[Positions] RPC error:', tokenAccountsResponse.status, errorText.slice(0, 200));
+                throw new Error(`Failed to fetch token accounts: ${tokenAccountsResponse.status}`);
             }
 
-            const tokenAccountsData = await tokenAccountsResponse.json();
+            const responseText = await tokenAccountsResponse.text();
+            let tokenAccountsData;
+            try {
+                tokenAccountsData = JSON.parse(responseText);
+            } catch (e) {
+                console.error('[Positions] Invalid JSON response (possible Cloudflare block):', responseText.slice(0, 500));
+                throw new Error('RPC returned invalid response - check HELIUS_API_KEY');
+            }
             const tokenAccounts = tokenAccountsData.result?.value || [];
             
             // Map to simpler structure and filter non-zero balances
