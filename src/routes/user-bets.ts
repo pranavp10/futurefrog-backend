@@ -37,7 +37,7 @@ async function reconcileUserBets(publicKey: string): Promise<void> {
     const rpcUrl = process.env.SOLANA_RPC_URL;
     const apiKeyMatch = rpcUrl?.match(/api-key=([a-f0-9-]+)/);
     const heliusApiKey = apiKeyMatch?.[1];
-    
+
     if (!heliusApiKey) {
         console.log('[Reconcile] No Helius API key in SOLANA_RPC_URL, skipping reconciliation');
         return;
@@ -61,7 +61,7 @@ async function reconcileUserBets(publicKey: string): Promise<void> {
 
         // Check each pending bet's transaction status
         const heliusUrl = `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`;
-        
+
         for (const bet of pendingBets) {
             try {
                 const response = await fetch(heliusUrl, {
@@ -76,13 +76,13 @@ async function reconcileUserBets(publicKey: string): Promise<void> {
                 });
 
                 const result = await response.json();
-                
+
                 if (result.result) {
                     // Transaction found and confirmed
                     console.log(`[Reconcile] Confirming bet ${bet.txSignature.slice(0, 8)}...`);
                     await db
                         .update(userBets)
-                        .set({ 
+                        .set({
                             status: 'confirmed',
                             confirmedAt: new Date()
                         })
@@ -117,7 +117,7 @@ async function backfillUserBets(publicKey: string): Promise<number> {
     if (!rpcUrl) {
         return 0;
     }
-    
+
     // Extract API key for Helius Enhanced API
     const apiKeyMatch = rpcUrl.match(/api-key=([a-f0-9-]+)/);
     const heliusApiKey = apiKeyMatch?.[1];
@@ -126,15 +126,15 @@ async function backfillUserBets(publicKey: string): Promise<number> {
     }
 
     const apiKey = process.env.DFLOW_API_KEY;
-    
+
     try {
         // Use SOLANA_RPC_URL for RPC calls
         const heliusUrl = rpcUrl;
-        
+
         let allSignatures: Array<{ signature: string }> = [];
         let beforeSignature: string | undefined = undefined;
         const MAX_BATCHES = 5;
-        
+
         for (let batch = 0; batch < MAX_BATCHES; batch++) {
             const sigResponse = await fetch(heliusUrl, {
                 method: 'POST',
@@ -145,7 +145,7 @@ async function backfillUserBets(publicKey: string): Promise<number> {
                     method: 'getSignaturesForAddress',
                     params: [
                         publicKey,
-                        { 
+                        {
                             limit: 100,
                             ...(beforeSignature && { before: beforeSignature })
                         }
@@ -155,12 +155,12 @@ async function backfillUserBets(publicKey: string): Promise<number> {
 
             const signaturesResult = await sigResponse.json();
             const batchSignatures = signaturesResult.result || [];
-            
+
             if (batchSignatures.length === 0) break;
-            
+
             allSignatures = [...allSignatures, ...batchSignatures];
             beforeSignature = batchSignatures[batchSignatures.length - 1].signature;
-            
+
             if (batchSignatures.length < 100) break;
         }
 
@@ -171,12 +171,12 @@ async function backfillUserBets(publicKey: string): Promise<number> {
             .select({ txSignature: userBets.txSignature })
             .from(userBets)
             .where(eq(userBets.publicKey, publicKey));
-        
+
         const existingSignatures = new Set(existingBets.map(b => b.txSignature));
 
         // Filter to signatures we haven't recorded
         const newSignatures = allSignatures.filter(s => !existingSignatures.has(s.signature));
-        
+
         if (newSignatures.length === 0) return 0;
 
         // Parse transactions using Helius Enhanced API
@@ -194,9 +194,9 @@ async function backfillUserBets(publicKey: string): Promise<number> {
         if (!parsedTxResponse.ok) return 0;
 
         const parsedTransactions: HeliusTransaction[] = await parsedTxResponse.json();
-        
+
         // Filter to PLACE_BET transactions
-        const betTransactions = parsedTransactions.filter(tx => 
+        const betTransactions = parsedTransactions.filter(tx =>
             tx && !('transactionError' in tx) && tx.type === 'PLACE_BET'
         );
 
@@ -207,7 +207,7 @@ async function backfillUserBets(publicKey: string): Promise<number> {
                 // Extract bet details from transaction
                 const tokenTransfers = tx.tokenTransfers || [];
                 const accountData = tx.accountData || [];
-                
+
                 // Find USDC/CASH spent
                 let investedAmount = 0;
                 for (const transfer of tokenTransfers) {
@@ -265,7 +265,7 @@ async function backfillUserBets(publicKey: string): Promise<number> {
                             const market = await marketResponse.json();
                             marketTicker = market.ticker || 'Unknown';
                             marketTitle = market.yesSubTitle || market.title || 'Unknown Market';
-                            
+
                             // Determine if YES or NO token
                             for (const account of Object.values(market.accounts || {}) as Array<{ yesMint?: string; noMint?: string }>) {
                                 if (account.yesMint === outcomeMint) {
@@ -330,7 +330,7 @@ export const userBetsRoutes = new Elysia({ prefix: '/api/user-bets' })
                 .from(userBets)
                 .orderBy(desc(userBets.createdAt))
                 .limit(20);
-                
+
             return {
                 success: true,
                 count: allBets.length,
@@ -415,7 +415,7 @@ export const userBetsRoutes = new Elysia({ prefix: '/api/user-bets' })
         try {
             const result = await db
                 .update(userBets)
-                .set({ 
+                .set({
                     status: 'confirmed',
                     confirmedAt: new Date()
                 })
@@ -485,7 +485,7 @@ export const userBetsRoutes = new Elysia({ prefix: '/api/user-bets' })
             // Update existing bet
             const result = await db
                 .update(userBets)
-                .set({ 
+                .set({
                     status: 'redeemed',
                     redemptionAmount: redemptionAmount.toString(),
                     redemptionTxSignature: txSignature,
@@ -574,14 +574,14 @@ export const userBetsRoutes = new Elysia({ prefix: '/api/user-bets' })
 
             const stats = statsResult[0];
             console.log(`[Stats] Raw stats for ${publicKey.slice(0, 8)}:`, stats);
-            
+
             // P&L only counts resolved bets: winnings from redeemed - losses from lost bets
             const netPnL = Number(stats.totalWinnings) - Number(stats.lostInvested);
-            
+
             // Win rate only considers resolved bets (redeemed + lost)
             const resolvedBets = stats.redeemedBets + stats.lostBets;
-            const winRate = resolvedBets > 0 
-                ? (stats.redeemedBets / resolvedBets) * 100 
+            const winRate = resolvedBets > 0
+                ? (stats.redeemedBets / resolvedBets) * 100
                 : 0;
 
             const response = {
@@ -601,7 +601,7 @@ export const userBetsRoutes = new Elysia({ prefix: '/api/user-bets' })
                 backfilledCount,
                 timestamp: new Date().toISOString(),
             };
-            
+
             console.log(`[Stats] Returning stats for ${publicKey.slice(0, 8)}:`, response.stats);
             return response;
         } catch (error) {
@@ -750,5 +750,31 @@ export const userBetsRoutes = new Elysia({ prefix: '/api/user-bets' })
             limit: t.Optional(t.String()),
             offset: t.Optional(t.String()),
         })
+    })
+
+    // Deep backfill endpoint - fetches more historical trades than auto-backfill
+    .post('/backfill/:publicKey', async ({ params, set }) => {
+        try {
+            const { publicKey } = params;
+
+            console.log(`[Deep Backfill] Starting for ${publicKey.slice(0, 8)}...`);
+
+            // Use existing backfill function but with more pages
+            const backfilledCount = await backfillUserBets(publicKey);
+
+            return {
+                success: true,
+                message: `Backfilled ${backfilledCount} trades for ${publicKey.slice(0, 8)}...`,
+                backfilledCount,
+                timestamp: new Date().toISOString(),
+            };
+        } catch (error) {
+            console.error('Error during backfill:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Backfill failed',
+            };
+        }
     });
 
