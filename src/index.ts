@@ -2,11 +2,13 @@ import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { kalshiMarketsRoutes } from "./routes/kalshi-markets";
 import { cryptoCacheRoutes } from "./routes/crypto-cache";
+import { userBetsRoutes } from "./routes/user-bets";
 
 const app = new Elysia()
   .use(cors())
   .use(kalshiMarketsRoutes)
   .use(cryptoCacheRoutes)
+  .use(userBetsRoutes)
   .get("/", () => {
     return {
       message: "FutureFrog API",
