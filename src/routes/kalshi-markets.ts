@@ -1158,7 +1158,20 @@ export const kalshiMarketsRoutes = new Elysia()
     .get('/positions/:publicKey', async ({ params, set }) => {
         try {
             const apiKey = process.env.DFLOW_API_KEY;
-            const rpcEndpoint = process.env.SOLANA_RPC_ENDPOINT || 'https://api.mainnet-beta.solana.com';
+            
+            // Use Helius RPC to avoid being blocked by public RPC rate limiters/Cloudflare
+            let heliusApiKey = process.env.HELIUS_API_KEY;
+            if (!heliusApiKey) {
+                const rpcUrl = process.env.SOLANA_RPC_URL || process.env.SOLANA_RPC_ENDPOINT;
+                if (rpcUrl) {
+                    const match = rpcUrl.match(/api-key=([a-f0-9-]+)/);
+                    heliusApiKey = match?.[1];
+                }
+            }
+            
+            const rpcEndpoint = heliusApiKey 
+                ? `https://mainnet.helius-rpc.com/?api-key=${heliusApiKey}`
+                : 'https://api.mainnet-beta.solana.com';
             
             // Step 1: Fetch Token-2022 accounts (used by DFlow prediction markets)
             const tokenAccountsResponse = await fetch(rpcEndpoint, {
