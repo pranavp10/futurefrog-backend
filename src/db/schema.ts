@@ -50,6 +50,7 @@ export const userBets = pgTable('user_bets', {
     status: text('status').notNull().default('pending'), // pending, confirmed, failed, pending_redemption, redeemed
     redemptionAmount: numeric('redemption_amount'),
     redemptionTxSignature: text('redemption_tx_signature'),
+    closeTime: timestamp('close_time'), // market resolution time
     createdAt: timestamp('created_at').notNull().defaultNow(),
     confirmedAt: timestamp('confirmed_at'),
     redeemedAt: timestamp('redeemed_at'),

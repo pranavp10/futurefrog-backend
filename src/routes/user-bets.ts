@@ -319,10 +319,52 @@ async function backfillUserBets(publicKey: string): Promise<number> {
 }
 
 export const userBetsRoutes = new Elysia({ prefix: '/api/user-bets' })
+    // Debug endpoint to list all bets
+    .get('/debug/all', async ({ set }) => {
+        try {
+            const allBets = await db
+                .select({
+                    id: userBets.id,
+                    publicKey: userBets.publicKey,
+                    marketTicker: userBets.marketTicker,
+                    status: userBets.status,
+                    investedAmount: userBets.investedAmount,
+                    createdAt: userBets.createdAt,
+                })
+                .from(userBets)
+                .orderBy(desc(userBets.createdAt))
+                .limit(20);
+                
+            return {
+                success: true,
+                count: allBets.length,
+                bets: allBets,
+                timestamp: new Date().toISOString(),
+            };
+        } catch (error) {
+            console.error('Error fetching all bets:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to fetch bets',
+            };
+        }
+    })
+
     // Record a new bet (called after signing, before sending to chain)
     .post('/record', async ({ body, set }) => {
         try {
-            const { publicKey, marketTicker, marketTitle, eventTitle, side, contracts, entryPrice, investedAmount, txSignature, mint } = body;
+            const { publicKey, marketTicker, marketTitle, eventTitle, side, contracts, entryPrice, investedAmount, txSignature, mint, closeTime } = body;
+
+            console.log('[Record] Received bet record request:', {
+                publicKey: publicKey?.slice(0, 8) + '...',
+                marketTicker,
+                side,
+                contracts,
+                investedAmount,
+                txSignature: txSignature?.slice(0, 8) + '...',
+                closeTime,
+            });
 
             // Insert with pending status
             const result = await db.insert(userBets).values({
@@ -336,8 +378,11 @@ export const userBetsRoutes = new Elysia({ prefix: '/api/user-bets' })
                 investedAmount: investedAmount.toString(),
                 txSignature,
                 mint,
+                closeTime: closeTime ? new Date(closeTime) : null,
                 status: 'pending',
             }).onConflictDoNothing().returning();
+
+            console.log('[Record] Insert result:', result.length > 0 ? 'Success' : 'Already exists or failed');
 
             return {
                 success: true,
@@ -346,7 +391,7 @@ export const userBetsRoutes = new Elysia({ prefix: '/api/user-bets' })
                 timestamp: new Date().toISOString(),
             };
         } catch (error) {
-            console.error('Error recording bet:', error);
+            console.error('[Record] Error recording bet:', error);
             set.status = 500;
             return {
                 success: false,
@@ -365,6 +410,7 @@ export const userBetsRoutes = new Elysia({ prefix: '/api/user-bets' })
             investedAmount: t.Number(),
             txSignature: t.String(),
             mint: t.Optional(t.String()),
+            closeTime: t.Optional(t.String()),
         })
     })
 
@@ -481,6 +527,21 @@ export const userBetsRoutes = new Elysia({ prefix: '/api/user-bets' })
             const { publicKey } = params;
             const shouldBackfill = query.backfill === 'true';
 
+            console.log(`[Stats] Fetching stats for publicKey: "${publicKey}"`);
+
+            // First, check if any bets exist for this user (debug)
+            const allBets = await db
+                .select()
+                .from(userBets)
+                .where(eq(userBets.publicKey, publicKey))
+                .limit(5);
+            console.log(`[Stats] Found ${allBets.length} bets for this user:`, allBets.map(b => ({
+                id: b.id,
+                publicKey: b.publicKey,
+                status: b.status,
+                invested: b.investedAmount
+            })));
+
             // Run reconciliation to sync pending bets
             await reconcileUserBets(publicKey);
 
@@ -490,7 +551,13 @@ export const userBetsRoutes = new Elysia({ prefix: '/api/user-bets' })
                 backfilledCount = await backfillUserBets(publicKey);
             }
 
+            // 48 hours ago threshold for determining losses (as ISO string for SQL)
+            const lossThreshold = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+
             // Calculate stats from confirmed/redeemed bets
+            // A bet is only considered "lost" if:
+            // 1. It's confirmed (not redeemed)
+            // 2. closeTime + 48 hours has passed (giving user time to claim winnings)
             const statsResult = await db
                 .select({
                     totalBets: sql<number>`count(*)::int`,
@@ -499,24 +566,37 @@ export const userBetsRoutes = new Elysia({ prefix: '/api/user-bets' })
                     redeemedBets: sql<number>`count(*) filter (where ${userBets.status} = 'redeemed')::int`,
                     totalWinnings: sql<number>`coalesce(sum(${userBets.redemptionAmount}::numeric) filter (where ${userBets.status} = 'redeemed'), 0)`,
                     pendingBets: sql<number>`count(*) filter (where ${userBets.status} = 'pending')::int`,
+                    // Lost = confirmed, not redeemed, and closeTime + 48h has passed
+                    lostBets: sql<number>`count(*) filter (where ${userBets.status} = 'confirmed' and ${userBets.closeTime} is not null and ${userBets.closeTime} < ${lossThreshold}::timestamp)::int`,
+                    // Active = confirmed, not redeemed, and either no closeTime or closeTime + 48h hasn't passed yet
+                    activeBets: sql<number>`count(*) filter (where ${userBets.status} = 'confirmed' and (${userBets.closeTime} is null or ${userBets.closeTime} >= ${lossThreshold}::timestamp))::int`,
+                    // Invested in lost bets (for P&L calculation)
+                    lostInvested: sql<number>`coalesce(sum(${userBets.investedAmount}::numeric) filter (where ${userBets.status} = 'confirmed' and ${userBets.closeTime} is not null and ${userBets.closeTime} < ${lossThreshold}::timestamp), 0)`,
                 })
                 .from(userBets)
                 .where(eq(userBets.publicKey, publicKey));
 
             const stats = statsResult[0];
-            const netPnL = Number(stats.totalWinnings) - Number(stats.totalInvested);
-            const winRate = stats.confirmedBets > 0 
-                ? (stats.redeemedBets / stats.confirmedBets) * 100 
+            console.log(`[Stats] Raw stats for ${publicKey.slice(0, 8)}:`, stats);
+            
+            // P&L only counts resolved bets: winnings from redeemed - losses from lost bets
+            const netPnL = Number(stats.totalWinnings) - Number(stats.lostInvested);
+            
+            // Win rate only considers resolved bets (redeemed + lost)
+            const resolvedBets = stats.redeemedBets + stats.lostBets;
+            const winRate = resolvedBets > 0 
+                ? (stats.redeemedBets / resolvedBets) * 100 
                 : 0;
 
-            return {
+            const response = {
                 success: true,
                 stats: {
                     totalBets: stats.totalBets,
                     confirmedBets: stats.confirmedBets,
                     pendingBets: stats.pendingBets,
+                    activeBets: stats.activeBets,
                     betsWon: stats.redeemedBets,
-                    betsLost: stats.confirmedBets - stats.redeemedBets,
+                    betsLost: stats.lostBets,
                     totalInvested: Number(stats.totalInvested),
                     totalWinnings: Number(stats.totalWinnings),
                     netPnL,
@@ -525,6 +605,9 @@ export const userBetsRoutes = new Elysia({ prefix: '/api/user-bets' })
                 backfilledCount,
                 timestamp: new Date().toISOString(),
             };
+            
+            console.log(`[Stats] Returning stats for ${publicKey.slice(0, 8)}:`, response.stats);
+            return response;
         } catch (error) {
             console.error('Error fetching user stats:', error);
             set.status = 500;
