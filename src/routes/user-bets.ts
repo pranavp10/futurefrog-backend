@@ -618,6 +618,88 @@ export const userBetsRoutes = new Elysia({ prefix: '/api/user-bets' })
         })
     })
 
+    // Get user trades grouped by mint (for positions panel)
+    // This replaces the Helius-based approach with direct DB reads
+    .post('/trades-by-mint/:publicKey', async ({ params, body, set }) => {
+        try {
+            const { publicKey } = params;
+            const { mints } = body as { mints: string[] };
+
+            if (!mints || !Array.isArray(mints) || mints.length === 0) {
+                set.status = 400;
+                return { success: false, error: 'Missing required parameter: mints (array of outcome token mint addresses)' };
+            }
+
+            console.log(`[Trades By Mint] Fetching trades for ${publicKey.slice(0, 8)}..., ${mints.length} mints`);
+
+            // Fetch all confirmed trades for this user that match the mints
+            const trades = await db
+                .select()
+                .from(userBets)
+                .where(and(
+                    eq(userBets.publicKey, publicKey),
+                    eq(userBets.status, 'confirmed')
+                ))
+                .orderBy(desc(userBets.createdAt));
+
+            // Filter to only mints we care about and group by mint
+            const mintSet = new Set(mints);
+            const tradesByMint: Record<string, Array<{
+                tradeId: string;
+                signature: string;
+                mint: string;
+                count: number;
+                price: number;
+                usdcAmount: number;
+                side: 'buy' | 'sell';
+                timestamp: number;
+                createdTime: number;
+            }>> = {};
+
+            // Initialize empty arrays for all requested mints
+            for (const mint of mints) {
+                tradesByMint[mint] = [];
+            }
+
+            // Group trades by mint
+            for (const trade of trades) {
+                if (trade.mint && mintSet.has(trade.mint)) {
+                    tradesByMint[trade.mint].push({
+                        tradeId: trade.txSignature,
+                        signature: trade.txSignature,
+                        mint: trade.mint,
+                        count: Number(trade.contracts),
+                        price: Number(trade.entryPrice),
+                        usdcAmount: Number(trade.investedAmount),
+                        side: 'buy', // All recorded bets are buys
+                        timestamp: Math.floor(new Date(trade.createdAt).getTime() / 1000),
+                        createdTime: Math.floor(new Date(trade.createdAt).getTime() / 1000),
+                    });
+                }
+            }
+
+            console.log(`[Trades By Mint] Found trades for ${Object.values(tradesByMint).filter(t => t.length > 0).length} mints`);
+
+            return {
+                success: true,
+                tradesByMint,
+                mintCount: mints.length,
+                timestamp: new Date().toISOString(),
+            };
+        } catch (error) {
+            console.error('Error fetching trades by mint:', error);
+            set.status = 500;
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to fetch trades',
+            };
+        }
+    }, {
+        body: t.Object({
+            mints: t.Array(t.String()),
+        })
+    })
+
     // Get user bet history
     .get('/history/:publicKey', async ({ params, query, set }) => {
         try {
